@@ -1,0 +1,2 @@
+class Instrument:
+    None
