@@ -34,45 +34,66 @@ color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82),
 
 class RegionEditWidget(QtGui.QGroupBox):
     
-    def __init__(self, region, name=None, parent=None):
+    def __init__(self, region_item, name=None, parent=None):
         super(RegionEditWidget, self).__init__(name, parent)
-        self.region = region
+        self.region_item = region_item
         self.main_layout = QtGui.QHBoxLayout()
         self.minimum_edit = QtGui.QDoubleSpinBox()
         self.maximum_edit = QtGui.QDoubleSpinBox()
+        self.remove_button = QtGui.QPushButton('Remove')
         self.init_ui()
         
     def init_ui(self):
         self.setLayout(self.main_layout)
         self.main_layout.addWidget(self.minimum_edit)
         self.main_layout.addWidget(self.maximum_edit)
+        self.main_layout.addWidget(self.remove_button)
         self.minimum_edit.setSingleStep(0.01)
         self.maximum_edit.setSingleStep(0.01)
         # FIXME: region.bounds is always (0,0)
         #self.minimum_edit.setRange(self.region.bounds.left(), self.region.bounds.right())
-        self.minimum_edit.setValue(self.region.getRegion()[0])
-        self.maximum_edit.setValue(self.region.getRegion()[1])
+        self.minimum_edit.setValue(self.region()[0])
+        self.maximum_edit.setValue(self.region()[1])
         
         # connect signals
         self.minimum_edit.valueChanged.connect(partial(self.value_changed, self.minimum_edit))
         self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
+        self.region_item.sigRegionChanged.connect(self.region_changed)
+        self.remove_button.clicked.connect(self.remove)
         
-        self.region.sigRegionChanged.connect(self.region_changed)
+    def region(self):
+        ''' Returns region as a tuple '''
+        return self.region_item.getRegion()
+    
+    def bounds(self):
+        ''' Returns bounds as a tuple '''
+        raise NotImplementedError
+        return (self.region_item.bounds.left(), self.region_item.bounds.right())
+    
+    def set_region(self, edges):
+        self.region_item.setRegion(edges)
+        
+    def set_bounds(self, bounds):
+        self.region_item.setBounds(bounds)
+        
+    def remove(self):
+        p = self.parent()
+        p.remove_region(self)
         
     @QtCore.pyqtSlot(object, float)
     def value_changed(self, widget, value):
-        old_edges = self.region.getRegion()
+        old_edges = self.region()
         if widget == self.minimum_edit:
             new_edges = (max(old_edges), value)
         elif widget == self.maximum_edit:
             new_edges = (value, min(old_edges))
         else:
             ValueError('Invalid widget')
-        self.region.setRegion(new_edges)
+        self.set_region(new_edges)
         
     @QtCore.pyqtSlot()
     def region_changed(self):
-        new_edges = self.region.getRegion()
+        new_edges = self.region()
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
 
@@ -110,14 +131,23 @@ class RegionWidget(QtGui.QWidget):
         self.plot_widget.plot(*args, **kwargs)
         
     def add_region(self, initial_values, bounds=None, movable=True):
+        ''' Adds a region to the widget and returns a RegionEditWidget '''
         if bounds is None:
             bounds = [min(self.x()), max(self.x())]
         alpha = 125
         color = list(color_palette[len(self.region_items)]) + [alpha]
         item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
-        self.edit_layout.insertWidget(self.edit_layout.count()-1, RegionEditWidget(item))
-        self.region_items.append(item)
+        edit_widget = RegionEditWidget(item)
+        self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
+        self.region_items.append(edit_widget)
+        return edit_widget
+    
+    def remove_region(self, item):
+        self.region_items.remove(item)
+        self.edit_layout.removeWidget(item)
+        self.plot_widget.removeItem(item.region_item)
+        item.deleteLater()
         
     @QtCore.pyqtSlot()
     def add_button_clicked(self):
