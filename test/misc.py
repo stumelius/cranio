@@ -4,7 +4,10 @@ import random
 import datetime
 import pandas as pd
 
+from pyqtgraph import PlotWidget
 from craniodistractor.core.packet import Packet
+from craniodistractor.app.plot import PlotWindow, update_plot, time_filter
+from craniodistractor.app import app
 
 def producer(q, e):
     while not e.is_set():
@@ -39,10 +42,29 @@ def run_and_print(p, q, e, secs):
     e.set()
     p.join()
     return data
+
+def datetime_to_seconds(arr, t0):
+    _func = lambda x: (x-t0).total_seconds()
+    try:
+        return list(map(_func, arr))
+    except TypeError:
+        return _func(arr)
     
+def run_and_plot(p, q, e, secs, plot_widget):
+    p.start()
+    t0 = datetime.datetime.now()
+    while datetime_to_seconds(datetime.datetime.now(), t0) < secs:
+        packet = _read(q)
+        time_filter(3, update_plot(plot_widget, x=datetime_to_seconds(packet.index, t0), y=packet.data['value']))
+        app.processEvents()
+    e.set()
+    p.join()
         
 if __name__ == '__main__':
     e = mp.Event()
     q = mp.Queue()
     p = mp.Process(name='Producer', target=producer, args=(q, e))
-    print(run_and_print(p, q, e, 2))
+    w = PlotWindow()
+    plot_widget = w.add_plot(PlotWidget())
+    w.show()
+    run_and_plot(p, q, e, 10, plot_widget)

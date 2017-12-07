@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import random
 import sys
+import logging
 import numpy as np
 
 import pyqtgraph as pg
@@ -31,14 +32,19 @@ pg.setConfigOption('foreground', 'k')
 color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
                  (129, 114, 178), (204, 185, 116), (100, 181, 205)]
 
+plot_configuration = {'antialias': True, 'pen': pg.mkPen(color_palette[0])}
+
 def remove_widget_from_layout(layout, widget):
     layout.removeWidget(widget)
     widget.deleteLater()
+    
+def set_data(data_item, x, y):
+    data_item.setData(x, y, **plot_configuration)
 
 def x_filter(func, data_item):
     ''' Filters a PlotDataItem based on its X values '''
     I = np.where(func(data_item.xData))[0]
-    data_item.setData(data_item.xData[I], data_item.yData[I])
+    set_data(data_item, data_item.xData[I], data_item.yData[I])
 
 # filters n most previous seconds
 time_filter = lambda n_seconds, data_item: x_filter(lambda x: x > (x[-1] - n_seconds), data_item)
@@ -58,8 +64,11 @@ def update_plot(plot_widget, x, y):
         None
     '''
     data_items = plot_widget.getPlotItem().dataItems 
-    if len(data_items) != 1:
+    if len(data_items) > 1:
         raise NotImplementedError('Too many data items in plot')
+    elif len(data_items) == 0:
+        plot_widget.plot()
+        logging.info('No plot to update, creating an empty plot')
     data_item = data_items[0]
     old_x = data_item.xData
     old_y = data_item.yData
@@ -69,7 +78,7 @@ def update_plot(plot_widget, x, y):
     if old_y is None:
         old_y = np.array([])
     new_y = np.append(old_y, y)
-    data_item.setData(new_x, new_y)
+    set_data(data_item, new_x, new_y)
     return data_item
 
 class RegionWidget(QtGui.QWidget):
@@ -89,6 +98,12 @@ class RegionWidget(QtGui.QWidget):
         self.main_layout.addLayout(self.edit_layout)
         self.edit_layout.addWidget(self.add_button)
         self.add_button.clicked.connect(self.add_button_clicked)
+        
+    def __getattr__(self, attr):
+        ''' Object composition '''
+        if attr in {'__getstate__', '__setstate__'}:
+            return object.__getattr__(self, attr)
+        return getattr(self.plot_widget, attr)
         
     def x(self):
         try:
@@ -217,6 +232,7 @@ class PlotWindow(QtGui.QDialog):
         return self.plot_widgets[key]
         
     def add_plot(self, widget):
+        widget.setMenuEnabled(False)
         self.plot_widgets.append(widget)
         self.layout.insertWidget(self.layout.count()-1, widget)
         return widget

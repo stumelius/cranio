@@ -1,20 +1,15 @@
 import sys
-import numpy as np
 import pandas as pd
 import random
 import datetime
 
 from pyqtgraph.Qt import QtCore
 from pyqtgraph import PlotWidget
-from craniodistractor.app.plot import PlotWindow, update_plot, time_filter
+from craniodistractor.app.plot import PlotWindow, RegionWidget, update_plot, time_filter
 
 p = PlotWindow()
 plot_widget = p.add_plot(PlotWidget())
 curve = plot_widget.plot()
-
-data = pd.DataFrame()
-def new_data():
-    return pd.DataFrame({'value': [random.gauss(0,1)]}, index=[datetime.datetime.now()])
 
 n_seconds = 3
 t0 = datetime.datetime.now()
