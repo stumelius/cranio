@@ -18,13 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import random
 import sys
+import numpy as np
 
 import pyqtgraph as pg
-import pyqtgraph.examples
 
 from functools import partial
 from pyqtgraph.Qt import QtGui, QtCore
-from craniodistractor.app import app
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -32,6 +31,102 @@ pg.setConfigOption('foreground', 'k')
 color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
                  (129, 114, 178), (204, 185, 116), (100, 181, 205)]
 
+def remove_widget_from_layout(layout, widget):
+    layout.removeWidget(widget)
+    widget.deleteLater()
+
+def x_filter(func, data_item):
+    ''' Filters a PlotDataItem based on its X values '''
+    I = np.where(func(data_item.xData))[0]
+    data_item.setData(data_item.xData[I], data_item.yData[I])
+
+# filters n most previous seconds
+time_filter = lambda n_seconds, data_item: x_filter(lambda x: x > (x[-1] - n_seconds), data_item)
+
+def update_plot(plot_widget, x, y):
+    '''
+    Adds given x and y values to a plot.
+    
+    Args:
+        - x: x values to be added
+        - y: y values to be added
+    
+    Returns:
+        A pg.PlotDataItem object
+
+    Raises:
+        None
+    '''
+    data_items = plot_widget.getPlotItem().dataItems 
+    if len(data_items) != 1:
+        raise NotImplementedError('Too many data items in plot')
+    data_item = data_items[0]
+    old_x = data_item.xData
+    old_y = data_item.yData
+    if old_x is None:
+        old_x = np.array([])
+    new_x = np.append(old_x, x)
+    if old_y is None:
+        old_y = np.array([])
+    new_y = np.append(old_y, y)
+    data_item.setData(new_x, new_y)
+    return data_item
+
+class RegionWidget(QtGui.QWidget):
+    
+    def __init__(self, parent=None):
+        super(RegionWidget, self).__init__(parent)
+        self.main_layout = QtGui.QHBoxLayout()
+        self.plot_widget = pg.PlotWidget()
+        self.edit_layout = QtGui.QVBoxLayout()
+        self.region_items = []
+        self.add_button = QtGui.QPushButton('Add')
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setLayout(self.main_layout)
+        self.main_layout.addWidget(self.plot_widget)
+        self.main_layout.addLayout(self.edit_layout)
+        self.edit_layout.addWidget(self.add_button)
+        self.add_button.clicked.connect(self.add_button_clicked)
+        
+    def x(self):
+        try:
+            return self.plot_widget.getPlotItem().dataItems[0].xData
+        except IndexError:
+            return None
+    
+    def y(self):
+        try:
+            return self.plot_widget.getPlotItem().dataItems[0].xData
+        except IndexError:
+            return None
+    
+    def plot(self, *args, **kwargs):
+        return self.plot_widget.plot(*args, **kwargs)
+        
+    def add_region(self, initial_values, bounds=None, movable=True):
+        ''' Adds a region to the widget and returns a RegionEditWidget '''
+        if bounds is None:
+            bounds = [min(self.x()), max(self.x())]
+        alpha = 125
+        color = list(color_palette[len(self.region_items)]) + [alpha]
+        item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
+        self.plot_widget.addItem(item)
+        edit_widget = RegionEditWidget(item)
+        self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
+        self.region_items.append(edit_widget)
+        return edit_widget
+    
+    def remove_region(self, widget):
+        self.region_items.remove(widget)
+        self.plot_widget.removeItem(widget.region_item)
+        remove_widget_from_layout(self.edit_layout, widget)
+        
+    @QtCore.pyqtSlot()
+    def add_button_clicked(self):
+        self.add_region([min(self.x()), max(self.x())/2])
+        
 class RegionEditWidget(QtGui.QGroupBox):
     
     def __init__(self, region_item, name=None, parent=None):
@@ -97,68 +192,12 @@ class RegionEditWidget(QtGui.QGroupBox):
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
 
-class RegionWidget(QtGui.QWidget):
-    
-    def __init__(self, parent=None):
-        super(RegionWidget, self).__init__(parent)
-        self.main_layout = QtGui.QHBoxLayout()
-        self.plot_widget = pg.PlotWidget()
-        self.edit_layout = QtGui.QVBoxLayout()
-        self.region_items = []
-        self.add_button = QtGui.QPushButton('Add')
-        self.init_ui()
-        
-    def init_ui(self):
-        self.setLayout(self.main_layout)
-        self.main_layout.addWidget(self.plot_widget)
-        self.main_layout.addLayout(self.edit_layout)
-        self.edit_layout.addWidget(self.add_button)
-        self.add_button.clicked.connect(self.add_button_clicked)
-        
-    def x(self):
-        try:
-            return self.plot_widget.plotItem.dataItems[0].xData
-        except IndexError:
-            return None
-    
-    def y(self):
-        try:
-            return self.plot_widget.plotItem.dataItems[0].xData
-        except IndexError:
-            return None
-    
-    def plot(self, *args, **kwargs):
-        self.plot_widget.plot(*args, **kwargs)
-        
-    def add_region(self, initial_values, bounds=None, movable=True):
-        ''' Adds a region to the widget and returns a RegionEditWidget '''
-        if bounds is None:
-            bounds = [min(self.x()), max(self.x())]
-        alpha = 125
-        color = list(color_palette[len(self.region_items)]) + [alpha]
-        item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
-        self.plot_widget.addItem(item)
-        edit_widget = RegionEditWidget(item)
-        self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
-        self.region_items.append(edit_widget)
-        return edit_widget
-    
-    def remove_region(self, item):
-        self.region_items.remove(item)
-        self.edit_layout.removeWidget(item)
-        self.plot_widget.removeItem(item.region_item)
-        item.deleteLater()
-        
-    @QtCore.pyqtSlot()
-    def add_button_clicked(self):
-        self.add_region([min(self.x()), max(self.x())/2])
-
 class PlotWindow(QtGui.QDialog):
     
     def __init__(self, parent=None):
         super(PlotWindow, self).__init__(parent)
         self.layout = QtGui.QVBoxLayout()
-        self.region_widget = RegionWidget()
+        self.plot_widgets = []
         self.ok_button = QtGui.QPushButton('OK')
         self.init_ui()
         
@@ -166,9 +205,29 @@ class PlotWindow(QtGui.QDialog):
         self.setWindowTitle('Plot')
         self.resize(800,800)
         self.setLayout(self.layout)
-        self.layout.addWidget(self.region_widget)
         self.layout.addWidget(self.ok_button)
         self.ok_button.clicked.connect(self.ok_button_clicked)
+        
+    def __contains__(self, key):
+        ''' Implements in operator '''
+        return key in self.plot_widgets
+    
+    def __getitem__(self, key):
+        ''' Implements [] accessor '''
+        return self.plot_widgets[key]
+        
+    def add_plot(self, widget):
+        self.plot_widgets.append(widget)
+        self.layout.insertWidget(self.layout.count()-1, widget)
+        return widget
+    
+    def get_plot(self, index=0):
+        ''' Alternative for plot_window[index] '''
+        return self[index]
+    
+    def remove_plot(self, widget):
+        self.plot_widgets.remove(widget)
+        remove_widget_from_layout(self.layout, widget)
         
     @QtCore.pyqtSlot()
     def ok_button_clicked(self):
