@@ -1,5 +1,5 @@
 '''
-MODULE DESCRIPTION
+Implements a serializable Packet object for data transfer over separate processes
 
 Copyright (C) 2017  Simo Tumelius
 

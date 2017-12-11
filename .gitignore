@@ -8,3 +8,4 @@ craniodistractor.egg-info/
 venv/
 notebooks/
 *.whl
+playground/

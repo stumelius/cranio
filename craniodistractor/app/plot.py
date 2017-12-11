@@ -1,5 +1,5 @@
 '''
-MODULE DESCRIPTION
+This module implements classes and functions for data visualization and computer-aided event detection.
 
 Copyright (C) 2017  Simo Tumelius
 
@@ -26,23 +26,65 @@ import pyqtgraph as pg
 from functools import partial
 from pyqtgraph.Qt import QtGui, QtCore
 
+# pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
+# custom color palette for plots
 color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
                  (129, 114, 178), (204, 185, 116), (100, 181, 205)]
 
+# default plot configuration
 plot_configuration = {'antialias': True, 'pen': pg.mkPen(color_palette[0])}
 
 def remove_widget_from_layout(layout, widget):
+    '''
+    Removes a widget from a layout (calls widget.deleteLater()).
+    
+    Args:
+        - layout: a PyQt Layout object
+        - widget: a PyQt Widget object
+        
+    Returns:
+        None
+        
+    Raises:
+        None
+    '''
     layout.removeWidget(widget)
     widget.deleteLater()
     
 def set_data(data_item, x, y):
+    '''
+    Sets data on a PlotDataItem. Also applies default plot configuration (see plot_configuration).
+    
+    Args:
+        - data_item: a PlotDataItem object
+        - x: x values
+        - y: y values
+        
+    Returns:
+        None
+        
+    Raises:
+        None
+    '''
     data_item.setData(x, y, **plot_configuration)
 
 def x_filter(func, data_item):
-    ''' Filters a PlotDataItem based on its X values '''
+    '''
+    Filters a PlotDataItem based on its X values and updates the PlotDataItem data
+    
+    Args:
+        - func: a function
+        - data_item: a PlotDataItem object
+        
+    Returns:
+        None
+        
+    Raises:
+        None
+    '''
     I = np.where(func(data_item.xData))[0]
     set_data(data_item, data_item.xData[I], data_item.yData[I])
 
@@ -82,6 +124,7 @@ def update_plot(plot_widget, x, y):
     return data_item
 
 class RegionWidget(QtGui.QWidget):
+    ''' Widget for creating plots with selectable regions '''
     
     def __init__(self, parent=None):
         super(RegionWidget, self).__init__(parent)
@@ -100,28 +143,40 @@ class RegionWidget(QtGui.QWidget):
         self.add_button.clicked.connect(self.add_button_clicked)
         
     def __getattr__(self, attr):
-        ''' Object composition '''
+        ''' Object composition from self.plot_widget (PlotWidget) '''
         if attr in {'__getstate__', '__setstate__'}:
             return object.__getattr__(self, attr)
         return getattr(self.plot_widget, attr)
         
     def x(self):
+        ''' Returns x values from the plot '''
         try:
             return self.plot_widget.getPlotItem().dataItems[0].xData
         except IndexError:
             return None
     
     def y(self):
+        ''' Returns y values from the plot '''
         try:
             return self.plot_widget.getPlotItem().dataItems[0].xData
         except IndexError:
             return None
-    
-    def plot(self, *args, **kwargs):
-        return self.plot_widget.plot(*args, **kwargs)
         
     def add_region(self, initial_values, bounds=None, movable=True):
-        ''' Adds a region to the widget and returns a RegionEditWidget '''
+        '''
+        Adds a region to the plot and returns a RegionEditWidget.
+        
+        Args:
+            - initial_values: initial region edges
+            - bounds: region bounds
+            - movable: boolean
+            
+        Returns:
+            A RegionEditWidget
+            
+        Raises:
+            None
+        '''
         if bounds is None:
             bounds = [min(self.x()), max(self.x())]
         alpha = 125
@@ -134,6 +189,18 @@ class RegionWidget(QtGui.QWidget):
         return edit_widget
     
     def remove_region(self, widget):
+        '''
+        Removes a region from the plot.
+        
+        Args:
+            - widget: a RegionEditWidget object
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         self.region_items.remove(widget)
         self.plot_widget.removeItem(widget.region_item)
         remove_widget_from_layout(self.edit_layout, widget)
@@ -143,6 +210,7 @@ class RegionWidget(QtGui.QWidget):
         self.add_region([min(self.x()), max(self.x())/2])
         
 class RegionEditWidget(QtGui.QGroupBox):
+    ''' Widget for editing a RegionWidget '''
     
     def __init__(self, region_item, name=None, parent=None):
         super(RegionEditWidget, self).__init__(name, parent)
@@ -181,12 +249,15 @@ class RegionEditWidget(QtGui.QGroupBox):
         return (self.region_item.bounds.left(), self.region_item.bounds.right())
     
     def set_region(self, edges):
+        ''' Sets new region edges '''
         self.region_item.setRegion(edges)
         
     def set_bounds(self, bounds):
+        ''' Set new region bounds '''
         self.region_item.setBounds(bounds)
         
     def remove(self):
+        ''' Removes region from the parent RegionWidget plot '''
         p = self.parent()
         p.remove_region(self)
         
@@ -208,6 +279,7 @@ class RegionEditWidget(QtGui.QGroupBox):
         self.maximum_edit.setValue(max(new_edges))
 
 class PlotWindow(QtGui.QDialog):
+    ''' A window for plot widgets '''
     
     def __init__(self, parent=None):
         super(PlotWindow, self).__init__(parent)
@@ -232,6 +304,7 @@ class PlotWindow(QtGui.QDialog):
         return self.plot_widgets[key]
         
     def add_plot(self, widget):
+        ''' Adds a plot widget to the window '''
         widget.setMenuEnabled(False)
         self.plot_widgets.append(widget)
         self.layout.insertWidget(self.layout.count()-1, widget)
@@ -242,19 +315,10 @@ class PlotWindow(QtGui.QDialog):
         return self[index]
     
     def remove_plot(self, widget):
+        ''' Removes a plot widget from the window '''
         self.plot_widgets.remove(widget)
         remove_widget_from_layout(self.layout, widget)
         
     @QtCore.pyqtSlot()
     def ok_button_clicked(self):
         print('OK clicked')
-
-if __name__ == '__main__':
-    x = list(range(100))
-    y = [random.gauss(0,1) for _ in range(len(x))]
-    w = PlotWindow()
-    w.region_widget.plot(x, y, pen=pg.mkPen(100,100,100))
-    for _ in range(2):
-        w.region_widget.add_region([1, 30])
-    sys.exit(w.exec_())
-    #pyqtgraph.examples.run()
