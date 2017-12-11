@@ -6,63 +6,39 @@ The methods implemented in this library are based on a whitepaper by Ritvanen et
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a target machine.
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
+* OS: tested on Windows 10
+* Python 3.x
 
 ### Installing
 
-A step by step series of examples that tell you have to get a development env running
+The source code is currently hosted on GitHub at https://github.com/smomni/craniodistractor
 
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
+You can use git clone and pip to install from sources:
 
 ```
-until finished
+git clone https://github.com/smomni/craniodistractor
+cd craniodistractor
+pip install -e .
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+The package will be available in Python package index (PyPI) in the future.
 
 ## Running the tests
 
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
+The tests can be run using pytest as the test runner:
 
 ```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
+pytest tests
 ```
 
 ## Deployment
 
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
+Software deployment by installation from sources on a target machine. 
+Alternatively, you can freeze the source in an executable using [PyInstaller](http://www.pyinstaller.org/) and running the executable on a target machine.
 
 ## Contributing
 
@@ -80,7 +56,7 @@ See also the list of [contributors](https://github.com/smomni/craniodistractor/c
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the GNU GPLv3 license - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
