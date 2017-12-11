@@ -7,3 +7,5 @@ craniodistractor.egg-info/
 *.ipynb
 venv/
 notebooks/
+*.whl
+playground/
