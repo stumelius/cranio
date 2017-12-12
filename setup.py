@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='craniodistractor',
-    packages=['craniodistractor.producer', 'craniodistractor.server', 'craniodistractor.core'],
+    packages=['craniodistractor'],
     install_requires=['twisted', 'pyqtgraph', 'pandas'],
     entry_points={
         'console_scripts': [
