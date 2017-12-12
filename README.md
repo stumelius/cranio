@@ -1,3 +1,5 @@
+**Build Status** : [![Build Status](https://travis-ci.org/smomni/craniodistractor.svg?branch=master)](https://travis-ci.org/smomni/craniodistractor)
+
 # Craniodistractor
 
 Craniodistractor is a Python library used for force measurements, data analysis and visualization in posterior calvarial vault osteodistraction (PCVO). 
