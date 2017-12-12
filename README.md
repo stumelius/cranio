@@ -42,6 +42,22 @@ pytest tests
 Software deployment by installation from sources on a target machine. 
 Alternatively, you can freeze the source in an executable using [PyInstaller](http://www.pyinstaller.org/) and running the executable on a target machine.
 
+## Workflow
+
+* File issues for features. They can be small or big, as long as they are solveable. You should be able to tell when something is done from reading the issue. Too open ended and it cannot be closed.
+
+* Develop created issues
+
+* Commits should touch one thing, preferably, with a label that matches the code. For example, a change that reads "reformat foo" shouldn't add new features, etc.
+
+* Open a pull request (PR) for review from the branch to master
+
+* Try to keep the commits on a PR branch below a dozen
+
+* Keep the PR open for 24 hours to give people the chance to comment and look at it
+
+* Review the changes
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
