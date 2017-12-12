@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import random
 import sys
+import datetime
 import logging
 import numpy as np
 
@@ -277,6 +278,65 @@ class RegionEditWidget(QtGui.QGroupBox):
         new_edges = self.region()
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
+        
+class PlotWidget(QtGui.QWidget):
+    
+    def __init__(self):
+        super(PlotWidget, self).__init__()
+        self.layout = QtGui.QHBoxLayout()
+        self.plot_widget = pg.PlotWidget()
+        self.button_layout = QtGui.QVBoxLayout()
+        self.start_button = QtGui.QPushButton('Start')
+        self.stop_button = QtGui.QPushButton('Stop')
+        
+        self.update_timer = QtCore.QTimer()
+        self.start_time = None
+        self.display_seconds = 3
+        
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.plot_widget)
+        self.layout.addLayout(self.button_layout)
+        self.button_layout.addWidget(self.start_button)
+        self.button_layout.addWidget(self.stop_button)
+        
+        self.start_button.clicked.connect(self.start_button_clicked)
+        self.stop_button.clicked.connect(self.stop_button_clicked)
+        self.update_timer.timeout.connect(partial(self.update, random.gauss(0,1)))
+        
+    def __getattr__(self, attr):
+        ''' Object composition from self.plot_widget (PlotWidget) '''
+        if attr in {'__getstate__', '__setstate__'}:
+            return object.__getattr__(self, attr)
+        return getattr(self.plot_widget, attr)
+    
+    def update(self, y, x=None):
+        '''
+        Appends data to the plot.
+        
+        Args:
+            - y: list of y values to append
+            - x: list of x values to append. If None, seconds since self.start_time is used.
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        if x is None:
+            x = [(datetime.datetime.now()-self.start_time).total_seconds()]
+        time_filter(self.display_seconds, update_plot(self.plot_widget, x, y))
+
+    def start_button_clicked(self):
+        if self.start_time is None:
+            self.start_time = datetime.datetime.now()
+        self.update_timer.start(0)
+        
+    def stop_button_clicked(self):
+        self.update_timer.stop()
 
 class PlotWindow(QtGui.QDialog):
     ''' A window for plot widgets '''
@@ -285,7 +345,7 @@ class PlotWindow(QtGui.QDialog):
         super(PlotWindow, self).__init__(parent)
         self.layout = QtGui.QVBoxLayout()
         self.plot_widgets = []
-        self.ok_button = QtGui.QPushButton('OK')
+        self.ok_button = QtGui.QPushButton('Analyze')
         self.init_ui()
         
     def init_ui(self):
