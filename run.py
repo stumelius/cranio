@@ -15,6 +15,7 @@ def update(plot_widget):
 def run():
     ''' Runs the craniodistractor prototype '''
     p = PlotWindow()
+    p.ok_button.setText('Analyze')
     p.add_plot(PlotWidget())
     return p.exec_()
 
