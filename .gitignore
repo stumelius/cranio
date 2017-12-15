@@ -8,3 +8,4 @@ venv/
 notebooks/
 *.whl
 playground/
+.settings/
