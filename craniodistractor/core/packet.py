@@ -52,3 +52,10 @@ class Packet:
     @classmethod
     def random(cls):
         return Packet(index=[random.random()], data={'value': [random.random()]})
+    
+    @classmethod
+    def concat(cls, packets):
+        '''
+        Inefficient concat.
+        '''
+        return cls.from_dataframe(pd.concat([p.as_dataframe() for p in packets]))
