@@ -2,8 +2,6 @@ import sys
 import random
 import datetime
 
-from functools import partial
-from pyqtgraph.Qt import QtCore
 from craniodistractor.app.plot import PlotWindow, update_plot, time_filter, PlotWidget
 
 start_time = datetime.datetime.now()

@@ -16,11 +16,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import multiprocessing as mp
 import datetime
+import itertools
+import multiprocessing as mp
 import pandas as pd
 
-from craniodistractor.core.packet import Packet
+from craniodistractor.core import Packet
 
 from contextlib import contextmanager
     
@@ -122,13 +123,22 @@ class ProducerProcess:
         ''' Object composition from self._process (multiprocessing.Process) '''
         if attr in {'__getstate__', '__setstate__'}:
             return object.__getattr__(self, attr)
-        if attr in ('start', 'join', 'is_alive'):
+        if attr in ('is_alive', 'join'):
             return getattr(self._process, attr)
         raise AttributeError
         
     def run(self):
         '''
         Runs the producer process. Data Packets are put to data_queue.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
         '''
         # implement required initializations here!
         self.start_event.wait()
@@ -138,3 +148,34 @@ class ProducerProcess:
                 data = self.producer.read()
                 if len(data) > 0:
                     self.data_queue.put(data)
+                    
+    def get_all(self) -> list:
+        '''
+        Returns all data from the data queue.
+        
+        Example:
+            data = Packet.concat(process.get_all())
+        '''
+        return list(itertools.chain(*all_from_queue(self.data_queue)))
+                    
+    def start(self):
+        self._process.start()
+        self.start_event.set()
+        
+    def resume(self):
+        self.start_event.set()
+        
+    def pause(self):
+        '''
+        Pauses the producer. To stop the producer process, call .join() after .pause().
+        
+        Example:
+            process.start()
+            time.sleep(2)
+            process.pause()
+            data = process.get_all()
+            process.join()
+            assert not process.is_alive()
+        
+        '''
+        self.start_event.clear()

@@ -30,7 +30,7 @@ from functools import partial
 from pyqtgraph.Qt import QtGui, QtCore
 from craniodistractor.producer import ProducerProcess, all_from_queue, datetime_to_seconds
 from craniodistractor.imada import ImadaSensor
-from craniodistractor.core.packet import Packet
+from craniodistractor.core import Packet
 
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
@@ -386,14 +386,14 @@ class PlotWidget(QtGui.QWidget):
             self.start_time = datetime.datetime.utcnow()
         self.update_timer.start(0)
         self.producer_process.start()
-        self.producer_process.start_event.set()
         self.started.emit()
         self.parent().ok_button.setEnabled(False)
         
     def stop_button_clicked(self):
-        self.producer_process.start_event.clear()
-        self.producer_process.join()
-        self.producer_process = None
+        if self.producer_process is None:
+            return
+        self.producer_process.pause()
+        #self.producer_process = None
         self.update_timer.stop()
         self.stopped.emit()
         self.parent().ok_button.setEnabled(True)

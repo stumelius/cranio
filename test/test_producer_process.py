@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import time
-import pandas as pd
-from craniodistractor.producer import ChannelInfo, Sensor, Producer, ProducerProcess, all_from_queue
+from craniodistractor.core import Packet
+from craniodistractor.producer import ChannelInfo, Sensor, Producer, ProducerProcess
         
 def test_channel_info():
     c = ChannelInfo('torque', 'Nm')
@@ -50,10 +50,9 @@ def test_producer_process_start_and_join():
     p = ProducerProcess('test_process')
     p.start()
     assert p.is_alive()
-    p.start_event.set()
     time.sleep(0.5)
-    p.start_event.clear()
-    p.join(1)
+    p.pause()
+    p.join()
     assert not p.is_alive()
     
 def test_producer_process_with_sensors():
@@ -65,12 +64,11 @@ def test_producer_process_with_sensors():
     p.producer.add_sensor(s)
     p.start()
     assert p.is_alive()
-    p.start_event.set()
     time.sleep(0.5)
-    p.start_event.clear()
+    p.pause()
     # NOTE: data_queue must be emptied before joining the thread
-    data = pd.concat(all_from_queue(p.data_queue))
+    data = Packet.concat(p.get_all()).as_dataframe()
     for c in channels:
         assert str(c) in data
-    p.join(1)
+    p.join()
     assert not p.is_alive()
