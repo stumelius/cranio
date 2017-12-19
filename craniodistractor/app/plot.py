@@ -23,7 +23,6 @@ import datetime
 import logging
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 import pyqtgraph as pg
 
 from functools import partial
@@ -304,7 +303,6 @@ class PlotWidget(QtGui.QWidget):
         self.start_time = None
         self.display_seconds = 5
         
-        # producer interface
         self.producer_process = None
         self.data = []
         
@@ -319,7 +317,6 @@ class PlotWidget(QtGui.QWidget):
         
         self.start_button.clicked.connect(self.start_button_clicked)
         self.stop_button.clicked.connect(self.stop_button_clicked)
-        #self.update_timer.timeout.connect(partial(self.update, random.gauss(0,1)))
         self.update_timer.timeout.connect(self.update)
         
     def __getattr__(self, attr):
@@ -341,8 +338,9 @@ class PlotWidget(QtGui.QWidget):
         Raises:
             None
         '''
-        for p in all_from_queue(self.producer_process.data_queue):
-            packet = Packet.concat(p)
+        packets = self.producer_process.get_all()
+        if len(packets) > 0:
+            packet = Packet.concat(packets)
             self.data.append(packet)
             # FIXME: get producer info instead of using static 'torque (Nm)'
             self.append(datetime_to_seconds(packet.index, self.start_time), packet.data['torque (Nm)'])
@@ -379,9 +377,8 @@ class PlotWidget(QtGui.QWidget):
         return self.start_event.is_set()
 
     def start_button_clicked(self):
-        self.producer_process = ProducerProcess('Imada torque producer')
-        s = ImadaSensor()
-        self.producer_process.producer.add_sensor(s)
+        if self.producer_process is None:
+            return
         if self.start_time is None:
             self.start_time = datetime.datetime.utcnow()
         self.update_timer.start(0)
@@ -393,7 +390,6 @@ class PlotWidget(QtGui.QWidget):
         if self.producer_process is None:
             return
         self.producer_process.pause()
-        #self.producer_process = None
         self.update_timer.stop()
         self.stopped.emit()
         self.parent().ok_button.setEnabled(True)

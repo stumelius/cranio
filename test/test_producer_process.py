@@ -51,7 +51,13 @@ def test_producer_process_start_and_join():
     p.start()
     assert p.is_alive()
     time.sleep(0.5)
+    assert p.is_alive()
     p.pause()
+    assert p.is_alive()
+    p.start()
+    assert p.is_alive()
+    p.pause()
+    p.get_all()
     p.join()
     assert not p.is_alive()
     

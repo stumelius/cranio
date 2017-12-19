@@ -24,6 +24,7 @@ import pandas as pd
 from craniodistractor.core import Packet
 
 from contextlib import contextmanager
+import logging
     
 def all_from_queue(q):
     while not q.empty():
@@ -116,6 +117,7 @@ class ProducerProcess:
     def __init__(self, name):
         self.data_queue = mp.Queue()
         self.start_event = mp.Event()
+        self.stop_event = mp.Event()
         self.producer = self.producer_class()
         self._process = mp.Process(name=name, target=self.run)
         
@@ -123,7 +125,7 @@ class ProducerProcess:
         ''' Object composition from self._process (multiprocessing.Process) '''
         if attr in {'__getstate__', '__setstate__'}:
             return object.__getattr__(self, attr)
-        if attr in ('is_alive', 'join'):
+        if attr in ('is_alive', ):
             return getattr(self._process, attr)
         raise AttributeError
         
@@ -141,13 +143,15 @@ class ProducerProcess:
             None
         '''
         # implement required initializations here!
-        self.start_event.wait()
         # open producer
+        logging.info('Running producer')
         with open_port(self.producer):
-            while self.start_event.is_set():
-                data = self.producer.read()
-                if len(data) > 0:
-                    self.data_queue.put(data)
+            while not self.stop_event.is_set():
+                if self.start_event.is_set():
+                    data = self.producer.read()
+                    if len(data) > 0:
+                        self.data_queue.put(data)
+        logging.info('Stopping producer')
                     
     def get_all(self) -> list:
         '''
@@ -159,7 +163,21 @@ class ProducerProcess:
         return list(itertools.chain(*all_from_queue(self.data_queue)))
                     
     def start(self):
-        self._process.start()
+        '''
+        Starts the producer in a separate process. If process is already running, only the producer is started.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        self.stop_event.clear()
+        if not self.is_alive():
+            self._process.start()
         self.start_event.set()
         
     def resume(self):
@@ -176,6 +194,15 @@ class ProducerProcess:
             data = process.get_all()
             process.join()
             assert not process.is_alive()
-        
         '''
         self.start_event.clear()
+        
+    def join(self, timeout=1):
+        self.stop_event.set()
+        value = self._process.join(timeout)
+        if self.is_alive():
+            logging.error('Producer process is not shutting down gracefully. Resorting to force terminate and join...')
+            self._process.terminate()
+            value = self._process.join(timeout)
+        logging.info('Producer process joined successfully')
+        return value
