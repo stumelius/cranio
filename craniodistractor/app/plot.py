@@ -23,12 +23,13 @@ import datetime
 import logging
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 import pyqtgraph as pg
 
 from functools import partial
 from pyqtgraph.Qt import QtGui, QtCore
-from craniodistractor.sensor import producer, _read_all, datetime_to_seconds
+from craniodistractor.producer import ProducerProcess, all_from_queue, datetime_to_seconds
+from craniodistractor.imada import ImadaSensor
+from craniodistractor.core import Packet
 
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
@@ -302,12 +303,7 @@ class PlotWidget(QtGui.QWidget):
         self.start_time = None
         self.display_seconds = 5
         
-        # producer interface
-        # TODO: implement this somewhere else
-        self.start_event = mp.Event()
-        self.queue = mp.Queue()
         self.producer_process = None
-        self.registered_column = 'torque (Nm)'
         self.data = []
         
         self.init_ui()
@@ -321,7 +317,6 @@ class PlotWidget(QtGui.QWidget):
         
         self.start_button.clicked.connect(self.start_button_clicked)
         self.stop_button.clicked.connect(self.stop_button_clicked)
-        #self.update_timer.timeout.connect(partial(self.update, random.gauss(0,1)))
         self.update_timer.timeout.connect(self.update)
         
     def __getattr__(self, attr):
@@ -343,9 +338,12 @@ class PlotWidget(QtGui.QWidget):
         Raises:
             None
         '''
-        for p in _read_all(self.queue):
-            self.data.append(p)
-            self.append(datetime_to_seconds(p.index, self.start_time), p.data[self.registered_column])
+        packets = self.producer_process.get_all()
+        if len(packets) > 0:
+            packet = Packet.concat(packets)
+            self.data.append(packet)
+            # FIXME: get producer info instead of using static 'torque (Nm)'
+            self.append(datetime_to_seconds(packet.index, self.start_time), packet.data['torque (Nm)'])
 
     def append(self, x, y):
         '''
@@ -379,19 +377,19 @@ class PlotWidget(QtGui.QWidget):
         return self.start_event.is_set()
 
     def start_button_clicked(self):
-        self.producer_process = mp.Process(name='Producer', target=producer, args=(self.queue, self.start_event))
+        if self.producer_process is None:
+            return
         if self.start_time is None:
             self.start_time = datetime.datetime.utcnow()
         self.update_timer.start(0)
         self.producer_process.start()
-        self.start_event.set()
         self.started.emit()
         self.parent().ok_button.setEnabled(False)
         
     def stop_button_clicked(self):
-        self.start_event.clear()
-        self.producer_process.join()
-        self.producer_process = None
+        if self.producer_process is None:
+            return
+        self.producer_process.pause()
         self.update_timer.stop()
         self.stopped.emit()
         self.parent().ok_button.setEnabled(True)

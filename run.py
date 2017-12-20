@@ -2,8 +2,8 @@ import sys
 import random
 import datetime
 
-from functools import partial
-from pyqtgraph.Qt import QtCore
+from craniodistractor.producer import ProducerProcess
+from craniodistractor.imada import ImadaSensor
 from craniodistractor.app.plot import PlotWindow, update_plot, time_filter, PlotWidget
 
 start_time = datetime.datetime.now()
@@ -16,7 +16,11 @@ def run():
     ''' Runs the craniodistractor prototype '''
     p = PlotWindow()
     p.ok_button.setText('Analyze')
-    p.add_plot(PlotWidget())
+    w = PlotWidget()
+    p.add_plot(w)
+    w.producer_process = ProducerProcess('Imada torque producer')
+    s = ImadaSensor()
+    w.producer_process.producer.add_sensor(s)
     return p.exec_()
 
 
