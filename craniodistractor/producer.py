@@ -125,9 +125,12 @@ class ProducerProcess:
         ''' Object composition from self._process (multiprocessing.Process) '''
         if attr in {'__getstate__', '__setstate__'}:
             return object.__getattr__(self, attr)
-        if attr in ('is_alive', ):
+        if attr in ('is_alive', 'name'):
             return getattr(self._process, attr)
         raise AttributeError
+    
+    def __str__(self):
+        return self.name
         
     def run(self):
         '''
@@ -144,14 +147,14 @@ class ProducerProcess:
         '''
         # implement required initializations here!
         # open producer
-        logging.info('Running producer')
+        logging.info('Running producer process "{}"'.format(str(self)))
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
                     data = self.producer.read()
                     if len(data) > 0:
                         self.data_queue.put(data)
-        logging.info('Stopping producer')
+        logging.info('Stopping producer process "{}"'.format(str(self)))
                     
     def get_all(self) -> list:
         '''
@@ -181,6 +184,18 @@ class ProducerProcess:
         self.start_event.set()
         
     def resume(self):
+        '''
+        Resumes the producer process.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         self.start_event.set()
         
     def pause(self):
@@ -194,15 +209,39 @@ class ProducerProcess:
             data = process.get_all()
             process.join()
             assert not process.is_alive()
+            
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
         '''
         self.start_event.clear()
         
     def join(self, timeout=1):
+        '''
+        Joins the process. If the process won't shut down gracefully, it is forcefully terminated.
+        
+        Args:
+            - timeout: join timeout in seconds
+            
+        Returns:
+            Process exit code
+            
+        Raises:
+            None
+        '''
         self.stop_event.set()
-        value = self._process.join(timeout)
+        # close the queue and join the background thread
+        self.data_queue.close()
+        self.data_queue.join_thread()
+        self._process.join(timeout)
         if self.is_alive():
-            logging.error('Producer process is not shutting down gracefully. Resorting to force terminate and join...')
+            logging.error('Producer process "{}" is not shutting down gracefully. Resorting to force terminate and join...'.format(str(self)))
             self._process.terminate()
-            value = self._process.join(timeout)
-        logging.info('Producer process joined successfully')
-        return value
+            self._process.join(timeout)
+        logging.info('Producer process "{}" joined successfully'.format(str(self)))
+        return self._process.exitcode
