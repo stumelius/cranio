@@ -9,3 +9,4 @@ notebooks/
 *.whl
 playground/
 .settings/
+cranio.egg-info/

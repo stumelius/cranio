@@ -1,6 +1,6 @@
 import pytest
 import random
-from craniodistractor.core.packet import Packet
+from cranio.core import Packet
 
 @pytest.fixture
 def packet_integer():

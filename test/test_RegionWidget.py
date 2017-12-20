@@ -1,7 +1,7 @@
 import pytest
 import random
 
-from craniodistractor.app.plot import PlotWindow, RegionWidget
+from cranio.app.plot import PlotWindow, RegionWidget
 
 random.seed(1)
 

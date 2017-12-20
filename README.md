@@ -1,8 +1,8 @@
 **Build Status** : [![Build Status](https://travis-ci.org/smomni/craniodistractor.svg?branch=master)](https://travis-ci.org/smomni/craniodistractor)
 
-# Craniodistractor
+# Cranio
 
-Craniodistractor is a Python library used for force measurements, data analysis and visualization in posterior calvarial vault osteodistraction (PCVO). 
+Cranio is a Python library used for force measurements, data analysis and visualization in posterior calvarial vault osteodistraction (PCVO). 
 The methods implemented in this library are based on a whitepaper by Ritvanen et al. (2017).
 
 
@@ -17,13 +17,13 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
-The source code is currently hosted on GitHub at https://github.com/smomni/craniodistractor
+The source code is currently hosted on GitHub at https://github.com/smomni/cranio
 
 You can use git clone and pip to install from sources:
 
 ```
-git clone https://github.com/smomni/craniodistractor
-cd craniodistractor
+git clone https://github.com/smomni/cranio
+cd cranio
 pip install -e .
 ```
 
@@ -64,13 +64,13 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## Versioning
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/smomni/craniodistractor/tags). 
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/smomni/cranio/tags). 
 
 ## Authors
 
 * **Simo Tumelius** - *Initial work* - [smomni](https://github.com/smomni)
 
-See also the list of [contributors](https://github.com/smomni/craniodistractor/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/smomni/cranio/contributors) who participated in this project.
 
 ## License
 

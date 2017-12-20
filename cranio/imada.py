@@ -5,8 +5,8 @@ import logging
 
 from collections import namedtuple
 from typing import Tuple
-from craniodistractor.producer import Sensor, ChannelInfo
-from craniodistractor.core import Packet
+from cranio.producer import Sensor, ChannelInfo
+from cranio.core import Packet
 
 class TelegramError(Exception):
     pass

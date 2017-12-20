@@ -17,8 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import time
-from craniodistractor.core import Packet
-from craniodistractor.producer import ChannelInfo, Sensor, Producer, ProducerProcess
+from cranio.core import Packet
+from cranio.producer import ChannelInfo, Sensor, Producer, ProducerProcess
         
 def test_channel_info():
     c = ChannelInfo('torque', 'Nm')

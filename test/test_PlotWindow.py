@@ -1,6 +1,5 @@
-
 from pyqtgraph import PlotWidget
-from craniodistractor.app.plot import PlotWindow, RegionWidget
+from cranio.app.plot import PlotWindow, RegionWidget
 
 def test_add_get_and_remove_plot():
     p = PlotWindow()

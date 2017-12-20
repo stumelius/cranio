@@ -1,6 +1,6 @@
 import numpy as np
 import datetime
-from craniodistractor.producer import datetime_to_seconds
+from cranio.producer import datetime_to_seconds
 
 def test_datetime_to_seconds():
     t0 = datetime.datetime.utcnow()
