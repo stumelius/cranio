@@ -27,9 +27,8 @@ import pyqtgraph as pg
 
 from functools import partial
 from pyqtgraph.Qt import QtGui, QtCore
-from craniodistractor.producer import ProducerProcess, all_from_queue, datetime_to_seconds
-from craniodistractor.imada import ImadaSensor
-from craniodistractor.core import Packet
+from cranio.producer import datetime_to_seconds
+from cranio.core import Packet
 
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')

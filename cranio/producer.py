@@ -21,7 +21,7 @@ import itertools
 import multiprocessing as mp
 import pandas as pd
 
-from craniodistractor.core import Packet
+from cranio.core import Packet
 
 from contextlib import contextmanager
 import logging
