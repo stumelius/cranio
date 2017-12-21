@@ -10,3 +10,4 @@ notebooks/
 playground/
 .settings/
 cranio.egg-info/
+.idea/

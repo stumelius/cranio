@@ -27,10 +27,12 @@ from contextlib import contextmanager
 import logging
     
 def all_from_queue(q):
+    ''' Reads all data from a Queue and returns a generator '''
     while not q.empty():
         yield q.get()
 
 def datetime_to_seconds(arr, t0):
+    ''' Converts datetime to difference in seconds between a reference datetime '''
     # employ conversion to pd.Timestamp for datetime and np.datetime support
     _func = lambda x: (pd.Timestamp(x)-t0).total_seconds()
     try:
