@@ -22,5 +22,3 @@ def test_MeasurementDialog_set_and_get_distractor_index():
     for s in string.printable:
         with pytest.raises(ValueError):
             d.distractor_index = s
-            
-    d.exec_()
