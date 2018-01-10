@@ -150,6 +150,7 @@ class RegionWidget(QtGui.QWidget):
         return getattr(self.plot_widget, attr)
     
     def plot(self, x, y):
+        ''' Calls the plot_widget.plot method with x and y input parameters '''
         self.plot_widget.plot(x, y, **plot_configuration)
         
     def x(self):
@@ -211,6 +212,19 @@ class RegionWidget(QtGui.QWidget):
         
     @QtCore.pyqtSlot()
     def add_button_clicked(self):
+        '''
+        Adds a region to the widget. The region covers the first half of the used x-axis.
+        Called when add button is clicked.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         self.add_region([min(self.x()), max(self.x())/2])
         
 class RegionEditWidget(QtGui.QGroupBox):
@@ -266,7 +280,21 @@ class RegionEditWidget(QtGui.QGroupBox):
         p.remove_region(self)
         
     @QtCore.pyqtSlot(object, float)
-    def value_changed(self, widget, value):
+    def value_changed(self, widget: RegionWidget, value: float):
+        '''
+        Update region edges. 
+        Called when a region edit widgets are manipulated.
+        
+        Args:
+            - widget: RegionWidget object
+            - value: changed edge value
+            
+        Returns:
+            None
+            
+        Raises:
+            ValueError: Invalid widget
+        '''
         old_edges = self.region()
         if widget == self.minimum_edit:
             new_edges = (max(old_edges), value)
@@ -278,6 +306,18 @@ class RegionEditWidget(QtGui.QGroupBox):
         
     @QtCore.pyqtSlot()
     def region_changed(self):
+        '''
+        Update region edges to minimum and maximum edit widgets.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         new_edges = self.region()
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
@@ -357,7 +397,7 @@ class PlotWidget(QtGui.QWidget):
         '''
         time_filter(self.display_seconds, update_plot(self.plot_widget, x, y))
         
-    def is_active(self):
+    def is_active(self) -> bool:
         '''
         Returns a boolean indicating if the real-time plotting is on-going
         
@@ -373,6 +413,19 @@ class PlotWidget(QtGui.QWidget):
         return self.start_event.is_set()
 
     def start_button_clicked(self):
+        '''
+        Starts the producer process if is not None. Otherwise, nothing happens.
+        Parent widget Ok button is disabled. Emits signal: started.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         if self.producer_process is None:
             return
         if self.start_time is None:
@@ -383,6 +436,19 @@ class PlotWidget(QtGui.QWidget):
         self.parent().ok_button.setEnabled(False)
         
     def stop_button_clicked(self):
+        '''
+        Stop the producer process if is not None. Otherwise, nothing happens.
+        Parent widget Ok button is enabled. Emits signal: stopped.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         if self.producer_process is None:
             return
         self.producer_process.pause()
@@ -433,6 +499,18 @@ class PlotWindow(QtGui.QDialog):
         
     @QtCore.pyqtSlot()
     def ok_button_clicked(self):
+        '''
+        Create and show a modal RegionWindow containing the plotted data.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
         plot_widget = self.get_plot()
         data = pd.concat([p.as_dataframe() for p in plot_widget.data])
         data.index = datetime_to_seconds(data.index, plot_widget.start_time)
@@ -445,6 +523,7 @@ class PlotWindow(QtGui.QDialog):
 class RegionWindow(PlotWindow):
     @QtCore.pyqtSlot()
     def ok_button_clicked(self):
+        ''' Closes the window '''
         QtGui.QMessageBox.information(self, 'Success', 'Nothing to see here, come back later!')
         self.close()
         
