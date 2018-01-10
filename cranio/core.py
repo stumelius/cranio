@@ -19,9 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pickle
 import random
+
 import pandas as pd
 
+
 class Packet:
+    ''' Container for moving data between processes '''
     
     def __init__(self, index, data):
         '''
@@ -36,26 +39,29 @@ class Packet:
         return self.index == other.index and self.data == other.data
         
     def encode(self):
+        ''' Encodes the Packet as bytes '''
         return pickle.dumps(self)
     
     @classmethod
     def decode(cls, data):
+        ''' Decodes bytes back to a Packet object '''
         return pickle.loads(data)
     
-    def as_dataframe(self):
+    def as_dataframe(self) -> pd.DataFrame:
+        ''' Converts the Packet to a pd.DataFrame '''
         return pd.DataFrame(self.data, index=self.index)
     
     @classmethod
-    def from_dataframe(cls, df):
+    def from_dataframe(cls, df: pd.DataFrame):
+        ''' Initializes a Packet from a pd.DataFrame '''
         return cls(index=list(df.index.values), data=df.to_dict(orient='list'))
     
     @classmethod
     def random(cls):
+        ''' Creates a Packet with random data '''
         return Packet(index=[random.random()], data={'value': [random.random()]})
     
     @classmethod
     def concat(cls, packets):
-        '''
-        Inefficient concat.
-        '''
+        ''' Inefficient concat utilizing pd.concat '''
         return cls.from_dataframe(pd.concat([p.as_dataframe() for p in packets]))

@@ -18,19 +18,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import datetime
 import itertools
+import logging
 import multiprocessing as mp
 import pandas as pd
 
-from cranio.core import Packet
-
 from contextlib import contextmanager
-import logging
+from cranio.core import Packet
     
 def all_from_queue(q):
+    ''' Reads all data from a Queue and returns a generator '''
     while not q.empty():
         yield q.get()
 
 def datetime_to_seconds(arr, t0):
+    ''' Converts datetime to difference in seconds between a reference datetime '''
     # employ conversion to pd.Timestamp for datetime and np.datetime support
     _func = lambda x: (pd.Timestamp(x)-t0).total_seconds()
     try:
@@ -40,14 +41,17 @@ def datetime_to_seconds(arr, t0):
 
 @contextmanager
 def open_port(p):
+    ''' Context manager for opening and closing a port '''
     yield p.open()
     p.close()
     
 class ChannelInfo:
+    ''' Channel information object '''
     
-    strfmt = '{self.name} ({self.unit})' # default string representation
-    
-    def __init__(self, name, unit):
+    # default string representation
+    strfmt = '{self.name} ({self.unit})'
+        
+    def __init__(self, name: str, unit: str):
         self.name = name
         self.unit = unit
         
@@ -55,30 +59,40 @@ class ChannelInfo:
         return self.strfmt.format(self=self)
 
 class Sensor:
+    '''
+    Sensor object that can contain multiple channels. 
+    Channels are stored as ChannelInfo objects. 
+    Open(), close() and read() method must be overloaded.
+    '''
     
     def __init__(self):
         self.channels = []
     
     def open(self):
+        ''' Dummy sensor port open '''
         pass
     
     def close(self):
+        ''' Dummy sensor port close '''
         pass
     
     def self_test(self):
+        ''' Sensor self test by opening and closing the port '''
         with open_port(self):
             pass
         return True
     
-    def add_channel(self, channel_info):
-        self.channels.append(channel_info)
+    def add_channel(self, channel_info: ChannelInfo):
+        ''' Adds a channel to the sensor '''
+        return self.channels.append(channel_info)
         
-    def remove_channel(self, channel_info):
-        self.channels.remove(channel_info)
+    def remove_channel(self, channel_info: ChannelInfo):
+        ''' Removes a channel from the sensor '''
+        return self.channels.remove(channel_info)
     
     def read(self):
         '''
-        Reads values from the sensor channels.
+        Dummy method for reading values from the sensor channels.
         '''
         if len(self.channels) == 0:
             return None
@@ -88,33 +102,41 @@ class Sensor:
         return Packet([datetime.datetime.utcnow()], values)
 
 class Producer:
-    
+    ''' Producer object that can contain multiple Sensor objects. '''
+        
     def __init__(self):
         self.sensors = []
         
     def open(self):
+        ''' Opens all sensors '''
         for s in self.sensors:
             s.open()
     
     def close(self):
+        ''' Closes all sensors '''
         for s in self.sensors:
             s.close()
         
-    def add_sensor(self, sensor):
+    def add_sensor(self, sensor: Sensor):
+        ''' Adds a sensor to the producer '''
         assert sensor.self_test(), 'Sensor did not pass self test'
         self.sensors.append(sensor)
         
-    def remove_sensor(self, sensor):
+    def remove_sensor(self, sensor: Sensor):
+        ''' Removes a sensor from the producer '''
         self.sensors.remove(sensor)
         
     def read(self):
+        ''' Reads values from all sensors and returns the values in a list '''
         return [s.read() for s in self.sensors]
 
 class ProducerProcess:
+    ''' Process object for running a Producer in '''
     
+    # default producer class
     producer_class = Producer
     
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.data_queue = mp.Queue()
         self.start_event = mp.Event()
         self.stop_event = mp.Event()
