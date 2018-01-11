@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import datetime
 import itertools
 import logging
+import time
 import multiprocessing as mp
 import pandas as pd
 import numpy as np
@@ -104,6 +105,10 @@ class Sensor:
         values = {}
         for c in self.channels:
             values[str(c)] = self._default_value_generator()
+        # sleep for 10 ms to slow down the sampling
+        # if there is no wait between consecutive read() calls,
+        # too much data is generated for a plot widget to handle
+        time.sleep(0.01)
         return Packet([datetime.datetime.utcnow()], values)
 
 class Producer:

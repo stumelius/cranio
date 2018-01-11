@@ -532,7 +532,7 @@ class PlotWindow(QtGui.QDialog):
         window = RegionWindow(self)
         region_widget = RegionWidget()
         window.add_plot(region_widget)
-        region_widget.plot(data.index.values, data[plot_widget.registered_column].tolist())
+        region_widget.plot(data.index.values, data[plot_widget.y_label].tolist())
         window.exec_()
         
 class RegionWindow(PlotWindow):
