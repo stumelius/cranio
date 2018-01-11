@@ -124,30 +124,34 @@ def update_plot(plot_widget, x, y):
     set_data(data_item, new_x, new_y)
     return data_item
 
-class RegionWidget(QtGui.QWidget):
-    ''' Widget for creating plots with selectable regions '''
+class PlotBase(QtGui.QWidget):
+    ''' Base class for plot widgets '''
     
     def __init__(self, parent=None):
-        super(RegionWidget, self).__init__(parent)
-        self.main_layout = QtGui.QHBoxLayout()
+        super(PlotBase, self).__init__(parent)
         self.plot_widget = pg.PlotWidget()
-        self.edit_layout = QtGui.QVBoxLayout()
-        self.region_items = []
-        self.add_button = QtGui.QPushButton('Add')
-        self.init_ui()
-        
-    def init_ui(self):
-        self.setLayout(self.main_layout)
-        self.main_layout.addWidget(self.plot_widget)
-        self.main_layout.addLayout(self.edit_layout)
-        self.edit_layout.addWidget(self.add_button)
-        self.add_button.clicked.connect(self.add_button_clicked)
         
     def __getattr__(self, attr):
         ''' Object composition from self.plot_widget (PlotWidget) '''
         if attr in {'__getstate__', '__setstate__'}:
             return object.__getattr__(self, attr)
         return getattr(self.plot_widget, attr)
+    
+    @property
+    def x_label(self):
+        return self.getAxis('bottom').labelText
+    
+    @x_label.setter
+    def x_label(self, value):
+        self.setLabel('bottom', value)
+        
+    @property
+    def y_label(self):
+        return self.getAxis('left').labelText
+    
+    @y_label.setter
+    def y_label(self, value):
+        self.setLabel('left', value)
     
     def plot(self, x, y):
         ''' Calls the plot_widget.plot method with x and y input parameters '''
@@ -166,6 +170,24 @@ class RegionWidget(QtGui.QWidget):
             return self.plot_widget.getPlotItem().dataItems[0].xData
         except IndexError:
             return None
+
+class RegionWidget(PlotBase):
+    ''' Widget for creating plots with selectable regions '''
+    
+    def __init__(self, parent=None):
+        super(RegionWidget, self).__init__(parent)
+        self.main_layout = QtGui.QHBoxLayout()
+        self.edit_layout = QtGui.QVBoxLayout()
+        self.region_items = []
+        self.add_button = QtGui.QPushButton('Add')
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setLayout(self.main_layout)
+        self.main_layout.addWidget(self.plot_widget)
+        self.main_layout.addLayout(self.edit_layout)
+        self.edit_layout.addWidget(self.add_button)
+        self.add_button.clicked.connect(self.add_button_clicked)
         
     def add_region(self, initial_values, bounds=None, movable=True):
         '''
@@ -322,7 +344,7 @@ class RegionEditWidget(QtGui.QGroupBox):
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
         
-class PlotWidget(QtGui.QWidget):
+class PlotWidget(PlotBase):
     
     started = QtCore.pyqtSignal()
     stopped = QtCore.pyqtSignal()
@@ -330,7 +352,6 @@ class PlotWidget(QtGui.QWidget):
     def __init__(self):
         super(PlotWidget, self).__init__()
         self.layout = QtGui.QHBoxLayout()
-        self.plot_widget = pg.PlotWidget()
         self.button_layout = QtGui.QVBoxLayout()
         self.start_button = QtGui.QPushButton('Start')
         self.stop_button = QtGui.QPushButton('Stop')
@@ -354,12 +375,6 @@ class PlotWidget(QtGui.QWidget):
         self.start_button.clicked.connect(self.start_button_clicked)
         self.stop_button.clicked.connect(self.stop_button_clicked)
         self.update_timer.timeout.connect(self.update)
-        
-    def __getattr__(self, attr):
-        ''' Object composition from self.plot_widget (PlotWidget) '''
-        if attr in {'__getstate__', '__setstate__'}:
-            return object.__getattr__(self, attr)
-        return getattr(self.plot_widget, attr)
     
     def update(self):
         '''
@@ -517,7 +532,7 @@ class PlotWindow(QtGui.QDialog):
         window = RegionWindow(self)
         region_widget = RegionWidget()
         window.add_plot(region_widget)
-        region_widget.plot(data.index.values, data[plot_widget.registered_column].tolist())
+        region_widget.plot(data.index.values, data[plot_widget.y_label].tolist())
         window.exec_()
         
 class RegionWindow(PlotWindow):
