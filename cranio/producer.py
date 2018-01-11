@@ -21,6 +21,7 @@ import itertools
 import logging
 import multiprocessing as mp
 import pandas as pd
+import numpy as np
 
 from contextlib import contextmanager
 from cranio.core import Packet
@@ -57,6 +58,9 @@ class ChannelInfo:
         
     def __str__(self):
         return self.strfmt.format(self=self)
+    
+def _default_value_generator():
+    return np.NaN
 
 class Sensor:
     '''
@@ -67,6 +71,7 @@ class Sensor:
     
     def __init__(self):
         self.channels = []
+        self._default_value_generator = _default_value_generator
     
     def open(self):
         ''' Dummy sensor port open '''
@@ -98,7 +103,7 @@ class Sensor:
             return None
         values = {}
         for c in self.channels:
-            values[str(c)] = None
+            values[str(c)] = self._default_value_generator()
         return Packet([datetime.datetime.utcnow()], values)
 
 class Producer:
