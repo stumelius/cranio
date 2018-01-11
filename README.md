@@ -1,4 +1,4 @@
-**Build Status** : [![Build Status](https://travis-ci.org/smomni/craniodistractor.svg?branch=master)](https://travis-ci.org/smomni/craniodistractor)
+**Build Status** : [![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
 
 # Cranio
 
