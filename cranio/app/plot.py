@@ -255,7 +255,11 @@ class RegionEditWidget(QtGui.QGroupBox):
     def __init__(self, region_item, name=None, parent=None):
         super(RegionEditWidget, self).__init__(name, parent)
         self.region_item = region_item
-        self.main_layout = QtGui.QHBoxLayout()
+        self.main_layout = QtGui.QVBoxLayout()
+        self.name_layout = QtGui.QHBoxLayout()
+        self.boundary_layout = QtGui.QHBoxLayout()
+        self.name_label = QtGui.QLabel('Event identifier')
+        self.name_edit = QtGui.QLineEdit()
         self.minimum_edit = QtGui.QDoubleSpinBox()
         self.maximum_edit = QtGui.QDoubleSpinBox()
         self.remove_button = QtGui.QPushButton('Remove')
@@ -263,8 +267,12 @@ class RegionEditWidget(QtGui.QGroupBox):
         
     def init_ui(self):
         self.setLayout(self.main_layout)
-        self.main_layout.addWidget(self.minimum_edit)
-        self.main_layout.addWidget(self.maximum_edit)
+        self.name_layout.addWidget(self.name_label)
+        self.name_layout.addWidget(self.name_edit)
+        self.main_layout.addLayout(self.name_layout)
+        self.main_layout.addLayout(self.boundary_layout)
+        self.boundary_layout.addWidget(self.minimum_edit)
+        self.boundary_layout.addWidget(self.maximum_edit)
         self.main_layout.addWidget(self.remove_button)
         self.minimum_edit.setSingleStep(0.01)
         self.maximum_edit.setSingleStep(0.01)
