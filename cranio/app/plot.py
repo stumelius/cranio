@@ -268,14 +268,16 @@ class RegionEditWidget(QtGui.QGroupBox):
         self.main_layout = QtGui.QVBoxLayout()
         self.name_layout = QtGui.QHBoxLayout()
         self.boundary_layout = QtGui.QHBoxLayout()
-        self.name_label = QtGui.QLabel('Event identifier')
+        self.name_label = QtGui.QLabel('Identifier')
         self.name_edit = QtGui.QLineEdit()
+        self.name = name
         self.minimum_edit = QtGui.QDoubleSpinBox()
         self.maximum_edit = QtGui.QDoubleSpinBox()
         self.remove_button = QtGui.QPushButton('Remove')
         self.init_ui()
         
     def init_ui(self):
+        self.setTitle('Region')
         self.setLayout(self.main_layout)
         self.name_layout.addWidget(self.name_label)
         self.name_layout.addWidget(self.name_edit)
@@ -296,6 +298,14 @@ class RegionEditWidget(QtGui.QGroupBox):
         self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
         self.parent.sigRegionChanged.connect(self.region_changed)
         # responsibility for connecting the remove button lies in the RegionWidget
+        
+    @property
+    def name(self):
+        return self.name_edit.text()
+    
+    @name.setter
+    def name(self, value):
+        self.name_edit.setText(value)
         
     def region(self):
         ''' Returns region as a tuple '''
