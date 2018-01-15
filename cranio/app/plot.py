@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 
-from functools import partial
+from functools import partial, lru_cache
 from pyqtgraph.Qt import QtGui, QtCore
 from cranio.producer import datetime_to_seconds
 from cranio.core import Packet
@@ -178,7 +178,8 @@ class RegionWidget(PlotBase):
         super(RegionWidget, self).__init__(parent)
         self.main_layout = QtGui.QHBoxLayout()
         self.edit_layout = QtGui.QVBoxLayout()
-        self.region_items = []
+        # region items mapped as {LinearRegionItem: RegionEditWidget}
+        self.region_edit_map = {}
         self.add_button = QtGui.QPushButton('Add')
         self.init_ui()
         
@@ -188,6 +189,13 @@ class RegionWidget(PlotBase):
         self.main_layout.addLayout(self.edit_layout)
         self.edit_layout.addWidget(self.add_button)
         self.add_button.clicked.connect(self.add_button_clicked)
+        
+    def find_region_by_edit(self, edit_widget):
+        ''' Finds a LinearRegionItem paired to a RegionEditWidget '''
+        try:
+            return [key for key, value in self.region_edit_map.items() if value == edit_widget][0]
+        except IndexError:
+            raise ValueError('No matching edit widget found')
         
     def add_region(self, initial_values, bounds=None, movable=True):
         '''
@@ -207,20 +215,21 @@ class RegionWidget(PlotBase):
         if bounds is None:
             bounds = [min(self.x()), max(self.x())]
         alpha = 125
-        color = list(color_palette[len(self.region_items)]) + [alpha]
+        color = list(color_palette[len(self.region_edit_map)]) + [alpha]
         item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
         edit_widget = RegionEditWidget(item)
+        edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
         self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
-        self.region_items.append(edit_widget)
+        self.region_edit_map[item] = edit_widget
         return edit_widget
     
-    def remove_region(self, widget):
+    def remove_region(self, edit_widget):
         '''
         Removes a region from the plot.
         
         Args:
-            - widget: a RegionEditWidget object
+            - edit_widget: a RegionEditWidget object
             
         Returns:
             None
@@ -228,9 +237,10 @@ class RegionWidget(PlotBase):
         Raises:
             None
         '''
-        self.region_items.remove(widget)
-        self.plot_widget.removeItem(widget.region_item)
-        remove_widget_from_layout(self.edit_layout, widget)
+        key = self.find_region_by_edit(edit_widget)
+        self.region_edit_map.pop(key, None)
+        self.plot_widget.removeItem(key)
+        remove_widget_from_layout(self.edit_layout, edit_widget)
         
     @QtCore.pyqtSlot()
     def add_button_clicked(self):
@@ -250,11 +260,11 @@ class RegionWidget(PlotBase):
         self.add_region([min(self.x()), max(self.x())/2])
         
 class RegionEditWidget(QtGui.QGroupBox):
-    ''' Widget for editing a RegionWidget '''
+    ''' Widget for editing a LinearRegionItem '''
     
-    def __init__(self, region_item, name=None, parent=None):
-        super(RegionEditWidget, self).__init__(name, parent)
-        self.region_item = region_item
+    def __init__(self, parent: pg.LinearRegionItem, name=None):
+        super(RegionEditWidget, self).__init__()
+        self.parent = parent
         self.main_layout = QtGui.QVBoxLayout()
         self.name_layout = QtGui.QHBoxLayout()
         self.boundary_layout = QtGui.QHBoxLayout()
@@ -284,33 +294,28 @@ class RegionEditWidget(QtGui.QGroupBox):
         # connect signals
         self.minimum_edit.valueChanged.connect(partial(self.value_changed, self.minimum_edit))
         self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
-        self.region_item.sigRegionChanged.connect(self.region_changed)
-        self.remove_button.clicked.connect(self.remove)
+        self.parent.sigRegionChanged.connect(self.region_changed)
+        # responsibility for connecting the remove button lies in the RegionWidget
         
     def region(self):
         ''' Returns region as a tuple '''
-        return self.region_item.getRegion()
+        return self.parent.getRegion()
     
     def bounds(self):
         ''' Returns bounds as a tuple '''
         raise NotImplementedError
-        return (self.region_item.bounds.left(), self.region_item.bounds.right())
+        return (self.parent.bounds.left(), self.parent.bounds.right())
     
     def set_region(self, edges):
         ''' Sets new region edges '''
-        self.region_item.setRegion(edges)
+        self.parent.setRegion(edges)
         
     def set_bounds(self, bounds):
         ''' Set new region bounds '''
-        self.region_item.setBounds(bounds)
-        
-    def remove(self):
-        ''' Removes region from the parent RegionWidget plot '''
-        p = self.parent()
-        p.remove_region(self)
+        self.parent.setBounds(bounds)
         
     @QtCore.pyqtSlot(object, float)
-    def value_changed(self, widget: RegionWidget, value: float):
+    def value_changed(self, widget: QtGui.QDoubleSpinBox, value: float):
         '''
         Update region edges. 
         Called when a region edit widgets are manipulated.
