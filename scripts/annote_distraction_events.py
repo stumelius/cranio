@@ -65,7 +65,9 @@ def run():
     ''' Graphical annotation '''
     df = join_data(*list(read_data()))
     sessions = df['session_id'].unique()
-    df_session = df[df['session_id'] == sessions[0]]
+    session_id = sessions[9]
+    df_session = df[df['session_id'] == session_id]
+
     p = RegionWindow()
     w = RegionWidget()
     p.add_plot(w)
@@ -74,11 +76,28 @@ def run():
     w.plot(df_session['time_s'], df_session['torque_Nm'])
     w.x_label = 'time (s)'
     w.y_label = 'torque (Nm)'
+    
+    # add regions for existing events
+    for key, df_event in df_session.groupby('event'):
+        t = df_event['time_s']
+        edit_widget = w.add_region((t.min(), t.max()))
+        edit_widget.name = key
+    
+    # run graphical annotation
     ret = p.exec_()
-    for r in w.region_edit_map.values():
-        print(r.region())
+    
+    # extract only Data table columns
+    df_data = df[[c.name for c in Data.columns]]
+    # remove old events from session data
+    if len(w.region_edit_map) > 0:
+        df_data.loc[df_data['session_id'] == session_id, 'event'] = None
+    for edit_widget in w.region_edit_map.values():
+        x_range = sorted(edit_widget.region())
+        df_data.loc[(df_data['session_id'] == session_id) \
+                    & (df_data['time_s'] >= x_range[0]) \
+                    & (df_data['time_s'] <= x_range[1]), 'event'] = edit_widget.name
+    df_data.to_sql(str(Data), engine, if_exists='replace', index=False)
     return ret
-
 
 if __name__ == '__main__':
     sys.exit(run())

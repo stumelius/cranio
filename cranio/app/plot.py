@@ -155,7 +155,7 @@ class PlotBase(QtGui.QWidget):
     
     def plot(self, x, y):
         ''' Calls the plot_widget.plot method with x and y input parameters '''
-        self.plot_widget.plot(x, y, **plot_configuration)
+        self.plot_widget.plot(list(x), list(y), **plot_configuration)
         
     def x(self):
         ''' Returns x values from the plot '''
