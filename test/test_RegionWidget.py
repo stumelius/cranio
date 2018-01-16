@@ -23,7 +23,7 @@ def test_add_region(window):
         assert edit_widget.region() == tuple(region)
         edit_widget.set_region([0,1])
         assert edit_widget.region() == (0,1)
-    for widget in region_widget.region_items:
+    for widget in region_widget.region_edit_map.values():
         assert widget.region() == (0,1)
     w.show()
     
@@ -31,7 +31,7 @@ def test_remove_region(window):
     w = window
     region_widget = w.get_plot()
     item = region_widget.add_region([0,10])
-    assert len(region_widget.region_items) == 1
+    assert len(region_widget.region_edit_map) == 1
     region_widget.remove_region(item)
     #assert len(w.region_widget.region_items) == 0
     w.show()

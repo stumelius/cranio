@@ -19,10 +19,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pickle
 import random
-
+import attr
 import pandas as pd
 
+def event_identifier(event, num):
+    return '{}{:03d}'.format(event, num)
 
+def x_smaller_than_y(instance, attribute, value):
+    if value >= instance.y:
+        raise ValueError("'x' has to be smaller than 'y'!")
+
+@attr.s
+class Event:
+    DISTRACTION = 'D'
+    
+    type = attr.ib(validator=attr.validators.instance_of(str))
+    num = attr.ib(validator=attr.validators.instance_of(int))
+    
+    @num.validator
+    def num_positive_and_less_than_1000(self, attribute, value):
+        if not 0 <= value < 1000:
+            raise ValueError('Event number must be less than 1000')
+        
+    def __str__(self):
+        return event_identifier(self.type, self.num)
+    
 class Packet:
     ''' Container for moving data between processes '''
     
