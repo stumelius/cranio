@@ -113,9 +113,12 @@ class Sensor:
 
 class Producer:
     ''' Producer object that can contain multiple Sensor objects. '''
+    
+    counter = itertools.count()
         
     def __init__(self):
         self.sensors = []
+        self.id = next(self.counter)
         
     def open(self):
         ''' Opens all sensors '''
@@ -146,8 +149,8 @@ class ProducerProcess:
     # default producer class
     producer_class = Producer
     
-    def __init__(self, name: str):
-        self.data_queue = mp.Queue()
+    def __init__(self, name: str, store):
+        self.store = store
         self.start_event = mp.Event()
         self.stop_event = mp.Event()
         self.producer = self.producer_class()
@@ -183,19 +186,14 @@ class ProducerProcess:
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
-                    data = self.producer.read()
-                    if len(data) > 0:
-                        self.data_queue.put(data)
+                    for packet in self.producer.read():
+                        tpl = (self.producer.id,) + packet.as_tuple()
+                        self.store.put(tpl)
         logging.info('Stopping producer process "{}"'.format(str(self)))
                     
-    def get_all(self) -> list:
-        '''
-        Returns all data from the data queue.
-        
-        Example:
-            data = Packet.concat(process.get_all())
-        '''
-        return list(itertools.chain(*all_from_queue(self.data_queue)))
+    def read(self, include_cache: bool=False) -> pd.DataFrame:
+        ''' Returns all data from the data store '''
+        return self.store.get_data(include_cache=include_cache)
                     
     def start(self):
         '''
@@ -268,8 +266,8 @@ class ProducerProcess:
         '''
         self.stop_event.set()
         # close the queue and join the background thread
-        self.data_queue.close()
-        self.data_queue.join_thread()
+        #self.data_queue.close()
+        #self.data_queue.join_thread()
         self._process.join(timeout)
         if self.is_alive():
             logging.error('Producer process "{}" is not shutting down gracefully. Resorting to force terminate and join...'.format(str(self)))

@@ -1,7 +1,8 @@
 import sys
 import random
 import datetime
-
+import multiprocessing as mp
+from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, Sensor, ChannelInfo
 from cranio.imada import ImadaSensor
 from cranio.app.plot import PlotWindow, update_plot, time_filter, PlotWidget
@@ -34,7 +35,10 @@ def run():
     p.ok_button.setText('Analyze')
     w = PlotWidget()
     p.add_plot(w)
-    w.producer_process = ProducerProcess('Imada torque producer')
+    DataStore.queue_cls = mp.Queue
+    store = DataStore(buffer_length=10, resampling_frequency=None)
+    #store.plotter = w
+    w.producer_process = ProducerProcess('Imada torque producer', data_queue=store.data_queue)
     # add imada sensor
     #s = plug_imada_sensor(w.producer_process)
     

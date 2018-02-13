@@ -72,6 +72,10 @@ class Packet:
         ''' Converts the Packet to a pd.DataFrame '''
         return pd.DataFrame(self.data, index=self.index)
     
+    def as_tuple(self):
+        ''' Converts the Packet to a tuple (index, data_dict) '''
+        return (self.index, self.data)
+    
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame):
         ''' Initializes a Packet from a pd.DataFrame '''

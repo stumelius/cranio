@@ -1,2 +1,2 @@
-from PyQt4 import QtGui
-app = QtGui.QApplication([])
+from PyQt5 import QtWidgets
+app = QtWidgets.QApplication([])

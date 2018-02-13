@@ -401,7 +401,7 @@ class PlotWidget(PlotBase):
     
     def update(self):
         '''
-        Reads data from self.queue and appends that to the plot.
+        Reads data from a producer and appends that to the plot.
         
         Args:
             None
@@ -412,6 +412,9 @@ class PlotWidget(PlotBase):
         Raises:
             None
         '''
+        #df = self.producer_process.read()
+        #if len(df) > 0:
+        #    self.data.append(df)
         packets = self.producer_process.get_all()
         if len(packets) > 0:
             packet = Packet.concat(packets)
