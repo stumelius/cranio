@@ -1,5 +1,8 @@
 import sys
 import logging
+import os
+# force PyQt5 instead of PyQt4
+os.environ['PYQTGRAPH_QT_LIB'] = 'PyQt5'
 
 # Global logging configuration
 logger = logging.getLogger()
