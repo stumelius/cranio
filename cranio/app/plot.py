@@ -470,7 +470,7 @@ class PlotWidget(PlotBase):
         if self.producer_process is None:
             return
         if self.start_time is None:
-            self.start_time = datetime.datetime.utcnow()
+            self.start_time = datetime.datetime.now()
         self.update_timer.start(0)
         self.producer_process.start()
         self.started.emit()

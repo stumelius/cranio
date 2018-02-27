@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from PyQt5 import QtWidgets
 from cranio.app import app
-from cranio.plot import PlotWidget, VMultiPlotWidget
+from cranio.plot import PlotWidget, VMultiPlotWidget, PlotWindow
 
 def test_PlotWidget_overwrite():
     w = PlotWidget()
@@ -91,3 +91,7 @@ def test_VMultiPlotWidget_plot_and_overwrite(rows):
             pw = p.find_plot_widget_by_label(c)
             assert pw.x == data[c].index.tolist()
             assert pw.y == data[c].tolist()
+            
+def test_PlotWindow_show():
+    p = PlotWindow(producer_process=None)
+    p.show()

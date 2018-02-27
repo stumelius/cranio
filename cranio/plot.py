@@ -1,7 +1,10 @@
 import pyqtgraph as pg
+import pandas as pd
+from datetime import datetime
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
-                             QDialog, QLabel, QVBoxLayout)
+                             QDialog, QLabel, QVBoxLayout, QPushButton,
+                             QHBoxLayout)
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -193,3 +196,136 @@ class VMultiPlotWidget(QWidget):
         for p in self.plot_widgets:
             remove_widget_from_layout(self.main_layout, p)
         self.plot_widgets = []
+        
+class PlotWindow(QDialog):
+    ''' A window for plot widgets '''
+    
+    started = QtCore.pyqtSignal()
+    stopped = QtCore.pyqtSignal()
+    
+    def __init__(self, producer_process, parent=None):
+        super(PlotWindow, self).__init__(parent)
+        self.producer_process = producer_process
+        self.main_layout = QVBoxLayout()
+        self.plot_layout = QHBoxLayout()
+        self.start_stop_layout = QVBoxLayout()
+        self.multiplot_widget = VMultiPlotWidget()
+        self.ok_button = QPushButton('Ok')
+        self.start_button = QPushButton('Start')
+        self.stop_button = QPushButton('Stop')
+        self.update_timer = QtCore.QTimer()
+        self.update_interval = 0.05 # seconds
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setWindowTitle('Plot')
+        self.resize(800,800)
+        self.plot_layout.addWidget(self.multiplot_widget)
+        self.plot_layout.addLayout(self.start_stop_layout)
+        self.start_stop_layout.addWidget(self.start_button)
+        self.start_stop_layout.addWidget(self.stop_button)
+        self.main_layout.addLayout(self.plot_layout)
+        self.main_layout.addWidget(self.ok_button)
+        self.setLayout(self.main_layout)
+        # connect signals
+        self.ok_button.clicked.connect(self.ok_button_clicked)
+        self.start_button.clicked.connect(self.start_button_clicked)
+        self.stop_button.clicked.connect(self.stop_button_clicked)
+        self.update_timer.timeout.connect(self.update)
+        
+    def plot(self, df: pd.DataFrame):
+        self.multiplot_widget.plot(df)
+        
+    def add_plot(self, label: str):
+        ''' Adds a plot widget to the window '''
+        return self.multiplot_widget.add_plot_widget(label)
+    
+    def get_plot(self, label: str):
+        ''' Alternative for plot_window[index] '''
+        return self.multiplot_widget.find_plot_widget_by_label(label)
+    
+    def update(self):
+        '''
+        Reads data from a producer and appends that to the plot.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        self.producer_process.store.read()
+        self.producer_process.store.flush()
+        data = self.producer_process.read()
+        self.plot(data)
+        
+    @QtCore.pyqtSlot()
+    def ok_button_clicked(self):
+        '''
+        Create and show a modal RegionWindow containing the plotted data.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        raise NotImplementedError
+        '''
+        plot_widget = self.get_plot()
+        data = pd.concat([p.as_dataframe() for p in plot_widget.data])
+        data.index = datetime_to_seconds(data.index, plot_widget.start_time)
+        window = RegionWindow(self)
+        region_widget = RegionWidget()
+        window.add_plot(region_widget)
+        region_widget.plot(data.index.values, data[plot_widget.y_label].tolist())
+        window.exec_()
+        '''
+    
+    def start_button_clicked(self):
+        '''
+        Starts the producer process if is not None. Otherwise, nothing happens.
+        Ok button is disabled. Emits signal: started.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        if self.producer_process is None:
+            return
+        self.update_timer.start(self.update_interval * 1000)
+        self.producer_process.start()
+        self.started.emit()
+        self.ok_button.setEnabled(False)
+        
+    def stop_button_clicked(self):
+        '''
+        Stop the producer process if is not None. Otherwise, nothing happens.
+        Ok button is enabled. Emits signal: stopped.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        if self.producer_process is None:
+            return
+        self.producer_process.pause()
+        self.update_timer.stop()
+        self.stopped.emit()
+        self.parent().ok_button.setEnabled(True)

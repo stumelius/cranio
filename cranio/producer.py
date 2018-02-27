@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import datetime
-import itertools
 import logging
 import time
 import multiprocessing as mp
@@ -26,6 +25,7 @@ import numpy as np
 
 from contextlib import contextmanager
 from cranio.core import Packet
+from daqstore.store import DataStore
     
 def all_from_queue(q):
     ''' Reads all data from a Queue and returns a generator '''
@@ -109,16 +109,14 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return Packet([datetime.datetime.utcnow()], values)
+        return Packet([datetime.datetime.now()], values)
 
 class Producer:
     ''' Producer object that can contain multiple Sensor objects. '''
-    
-    counter = itertools.count()
         
     def __init__(self):
         self.sensors = []
-        self.id = next(self.counter)
+        self.id = DataStore.register_device()
         
     def open(self):
         ''' Opens all sensors '''
