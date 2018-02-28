@@ -1,13 +1,19 @@
 import pyqtgraph as pg
 import pandas as pd
+from functools import partial
 from datetime import datetime
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
                              QDialog, QLabel, QVBoxLayout, QPushButton,
-                             QHBoxLayout)
+                             QHBoxLayout, QDoubleSpinBox, QLineEdit,
+                             QGroupBox, QMessageBox)
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
+
+# custom color palette for plots
+color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
+                 (129, 114, 178), (204, 185, 116), (100, 181, 205)]
 
 def remove_widget_from_layout(layout: QLayout, widget: QWidget):
     '''
@@ -102,6 +108,217 @@ class PlotWidget(pg.PlotWidget):
         else:
             raise ValueError('Invalid mode {}'.format(mode))
         self.getPlotItem().plot(self.x, self.y, clear=True, **self.plot_configuration)
+
+class RegionEditWidget(QGroupBox):
+    ''' Widget for editing a LinearRegionItem '''
+    
+    def __init__(self, parent: pg.LinearRegionItem, name=None):
+        super(RegionEditWidget, self).__init__()
+        self.parent = parent
+        self.main_layout = QVBoxLayout()
+        self.name_layout = QHBoxLayout()
+        self.boundary_layout = QHBoxLayout()
+        self.name_label = QLabel('Identifier')
+        self.name_edit = QLineEdit()
+        self.name = name
+        self.minimum_edit = QDoubleSpinBox()
+        self.maximum_edit = QDoubleSpinBox()
+        self.remove_button = QPushButton('Remove')
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setTitle('Region')
+        self.setLayout(self.main_layout)
+        self.name_layout.addWidget(self.name_label)
+        self.name_layout.addWidget(self.name_edit)
+        self.main_layout.addLayout(self.name_layout)
+        self.main_layout.addLayout(self.boundary_layout)
+        self.boundary_layout.addWidget(self.minimum_edit)
+        self.boundary_layout.addWidget(self.maximum_edit)
+        self.main_layout.addWidget(self.remove_button)
+        self.minimum_edit.setSingleStep(0.01)
+        self.maximum_edit.setSingleStep(0.01)
+        # FIXME: region.bounds is always (0,0)
+        #self.minimum_edit.setRange(self.region.bounds.left(), self.region.bounds.right())
+        self.minimum_edit.setValue(self.region()[0])
+        self.maximum_edit.setValue(self.region()[1])
+        
+        # connect signals
+        self.minimum_edit.valueChanged.connect(partial(self.value_changed, self.minimum_edit))
+        self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
+        self.parent.sigRegionChanged.connect(self.region_changed)
+        # responsibility for connecting the remove button lies in the RegionWidget
+        
+    @property
+    def name(self):
+        return self.name_edit.text()
+    
+    @name.setter
+    def name(self, value):
+        self.name_edit.setText(value)
+        
+    def region(self):
+        ''' Returns region as a tuple '''
+        return self.parent.getRegion()
+    
+    def bounds(self):
+        ''' Returns bounds as a tuple '''
+        raise NotImplementedError
+        return (self.parent.bounds.left(), self.parent.bounds.right())
+    
+    def set_region(self, edges):
+        ''' Sets new region edges '''
+        self.parent.setRegion(edges)
+        
+    def set_bounds(self, bounds):
+        ''' Set new region bounds '''
+        self.parent.setBounds(bounds)
+        
+    @QtCore.pyqtSlot(object, float)
+    def value_changed(self, widget: QDoubleSpinBox, value: float):
+        '''
+        Update region edges. 
+        Called when a region edit widgets are manipulated.
+        
+        Args:
+            - widget: RegionWidget object
+            - value: changed edge value
+            
+        Returns:
+            None
+            
+        Raises:
+            ValueError: Invalid widget
+        '''
+        old_edges = self.region()
+        if widget == self.minimum_edit:
+            new_edges = (max(old_edges), value)
+        elif widget == self.maximum_edit:
+            new_edges = (value, min(old_edges))
+        else:
+            ValueError('Invalid widget')
+        self.set_region(new_edges)
+        
+    @QtCore.pyqtSlot()
+    def region_changed(self):
+        '''
+        Update region edges to minimum and maximum edit widgets.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        new_edges = self.region()
+        self.minimum_edit.setValue(min(new_edges))
+        self.maximum_edit.setValue(max(new_edges))
+        
+class RegionPlotWidget(QWidget):
+    ''' Widget for creating plots with selectable regions '''
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.plot_widget = PlotWidget()
+        self.main_layout = QHBoxLayout()
+        self.edit_layout = QVBoxLayout()
+        # region items mapped as {LinearRegionItem: RegionEditWidget}
+        self.region_edit_map = {}
+        self.add_button = QPushButton('Add')
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setLayout(self.main_layout)
+        self.main_layout.addWidget(self.plot_widget)
+        self.main_layout.addLayout(self.edit_layout)
+        self.edit_layout.addWidget(self.add_button)
+        self.add_button.clicked.connect(self.add_button_clicked)
+        
+    def __getattr__(self, attr):
+        ''' Object composition from self.plot_widget (PlotWidget) '''
+        if attr in {'__getstate__', '__setstate__'}:
+            return object.__getattr__(self, attr)
+        return getattr(self.plot_widget, attr)
+    
+    @property
+    def x(self):
+        return self.plot_widget.x
+    
+    @property
+    def y(self):
+        return self.plot_widget.y
+        
+    def find_region_by_edit(self, edit_widget):
+        ''' Finds a LinearRegionItem paired to a RegionEditWidget '''
+        try:
+            return [key for key, value in self.region_edit_map.items() if value == edit_widget][0]
+        except IndexError:
+            raise ValueError('No matching edit widget found')
+        
+    def add_region(self, initial_values, bounds=None, movable=True):
+        '''
+        Adds a region to the plot and returns a RegionEditWidget.
+        
+        Args:
+            - initial_values: initial region edges
+            - bounds: region bounds
+            - movable: boolean
+            
+        Returns:
+            A RegionEditWidget
+            
+        Raises:
+            None
+        '''            
+        if bounds is None:
+            bounds = [min(self.x), max(self.x)]
+        alpha = 125
+        color = list(color_palette[len(self.region_edit_map)]) + [alpha]
+        item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
+        self.plot_widget.addItem(item)
+        edit_widget = RegionEditWidget(item)
+        edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
+        self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
+        self.region_edit_map[item] = edit_widget
+        return edit_widget
+    
+    def remove_region(self, edit_widget):
+        '''
+        Removes a region from the plot.
+        
+        Args:
+            - edit_widget: a RegionEditWidget object
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        key = self.find_region_by_edit(edit_widget)
+        self.region_edit_map.pop(key, None)
+        self.plot_widget.removeItem(key)
+        remove_widget_from_layout(self.edit_layout, edit_widget)
+        
+    @QtCore.pyqtSlot()
+    def add_button_clicked(self):
+        '''
+        Adds a region to the widget. The region covers the first half of the used x-axis.
+        Called when add button is clicked.
+        
+        Args:
+            None
+            
+        Returns:
+            None
+            
+        Raises:
+            None
+        '''
+        self.add_region([min(self.x), max(self.x)/2])
             
 class VMultiPlotWidget(QWidget):
     '''
@@ -276,17 +493,10 @@ class PlotWindow(QDialog):
         Raises:
             None
         '''
-        raise NotImplementedError
-        '''
-        plot_widget = self.get_plot()
-        data = pd.concat([p.as_dataframe() for p in plot_widget.data])
-        data.index = datetime_to_seconds(data.index, plot_widget.start_time)
-        window = RegionWindow(self)
-        region_widget = RegionWidget()
-        window.add_plot(region_widget)
-        region_widget.plot(data.index.values, data[plot_widget.y_label].tolist())
+        window = RegionPlotWindow(self)
+        # FIXME: relay the exact same plot to the RegionPlotWindow
+        window.plot(x=self.x, y=self.y)
         window.exec_()
-        '''
     
     def start_button_clicked(self):
         '''
@@ -328,4 +538,34 @@ class PlotWindow(QDialog):
         self.producer_process.pause()
         self.update_timer.stop()
         self.stopped.emit()
-        self.parent().ok_button.setEnabled(True)
+        self.ok_button.setEnabled(True)
+        
+class RegionPlotWindow(QDialog):
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout()
+        self.region_widget = RegionPlotWidget()
+        self.ok_button = QPushButton('Ok')
+        self.init_ui()
+        
+    def init_ui(self):
+        self.setLayout(self.layout)
+        self.layout.addWidget(self.region_widget)
+        self.layout.addWidget(self.ok_button)
+        self.ok_button.clicked.connect(self.ok_button_clicked)
+        
+    def __getattr__(self, attr):
+        ''' Object composition from self.region_widget (RegionPlotWidget) '''
+        if attr in {'__getstate__', '__setstate__'}:
+            return object.__getattr__(self, attr)
+        return getattr(self.region_widget, attr)
+    
+    @QtCore.pyqtSlot()
+    def ok_button_clicked(self):
+        n = len(self.region_edit_map)
+        msg = f'You have selected {n} regions. Are you sure you want to continue?'
+        if QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
+            self.close()
+        
+        

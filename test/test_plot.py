@@ -3,9 +3,12 @@ import random
 import pytest
 import numpy as np
 import pandas as pd
-from PyQt5 import QtWidgets
+from functools import partial
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QApplication, QMessageBox
 from cranio.app import app
-from cranio.plot import PlotWidget, VMultiPlotWidget, PlotWindow
+from cranio.plot import (PlotWidget, VMultiPlotWidget, PlotWindow,
+                         RegionPlotWidget, RegionPlotWindow)
 
 def test_PlotWidget_overwrite():
     w = PlotWidget()
@@ -95,3 +98,59 @@ def test_VMultiPlotWidget_plot_and_overwrite(rows):
 def test_PlotWindow_show():
     p = PlotWindow(producer_process=None)
     p.show()
+    
+def test_RegionPlotWidget_add_region():
+    region_widget = RegionPlotWidget()
+    n = 100
+    region_widget.plot(x=list(range(n)), y=list(range(n)))
+    for top in range(0,51,10):
+        region = [0, top]
+        edit_widget = region_widget.add_region(region)
+        assert edit_widget.region() == tuple(region)
+        edit_widget.set_region([0,1])
+        assert edit_widget.region() == (0,1)
+    for widget in region_widget.region_edit_map.values():
+        assert widget.region() == (0,1)
+        
+def test_RegionPlotWidget_remove_region():
+    region_widget = RegionPlotWidget()
+    n = 100
+    region_widget.plot(x=list(range(n)), y=list(range(n)))
+    item = region_widget.add_region([0,10])
+    assert len(region_widget.region_edit_map) == 1
+    region_widget.remove_region(item)
+    assert len(region_widget.region_edit_map) == 0
+    
+def test_RegionPlotWidget_set_bounds():
+    region_widget = RegionPlotWidget()
+    n = 100
+    region_widget.plot(x=list(range(n)), y=list(range(n)))
+    edit_widget = region_widget.add_region([0,50])
+    assert edit_widget.region() == (0,50)
+    edit_widget.set_bounds([0,10])
+    assert edit_widget.region() == (0,10)
+    edit_widget.set_bounds([0,100])
+    assert edit_widget.region() == (0,10)
+    edit_widget.set_region([0,50])
+    assert edit_widget.region() == (0,50)
+    
+def test_RegionPlotWindow_ok_button():
+    d = RegionPlotWindow()
+    n = 100
+    d.plot(x=list(range(n)), y=list(range(n)))
+    assert len(d.region_edit_map) == 0
+    d.add_button_clicked()
+    assert len(d.region_edit_map) == 1
+    def click_button(standard_button):
+        w = QApplication.activeWindow()
+        b = w.button(standard_button)
+        b.clicked.emit()
+    timer = QTimer()
+    timer.setSingleShot(True)
+    timer.setInterval(100)
+    timer.timeout.connect(partial(click_button, QMessageBox.Yes))
+    timer.start()
+    d.show()
+    assert d.isVisible()
+    d.ok_button_clicked()
+    assert not d.isVisible()
