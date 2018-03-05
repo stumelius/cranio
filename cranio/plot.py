@@ -108,6 +108,7 @@ class PlotWidget(pg.PlotWidget):
         else:
             raise ValueError('Invalid mode {}'.format(mode))
         self.getPlotItem().plot(self.x, self.y, clear=True, **self.plot_configuration)
+        return self
 
 class RegionEditWidget(QGroupBox):
     ''' Widget for editing a LinearRegionItem '''
@@ -435,7 +436,7 @@ class PlotWindow(QDialog):
         self.init_ui()
         
     def init_ui(self):
-        self.setWindowTitle('Plot')
+        self.setWindowTitle('Plot window')
         self.resize(800,800)
         self.plot_layout.addWidget(self.multiplot_widget)
         self.plot_layout.addLayout(self.start_stop_layout)
@@ -494,8 +495,12 @@ class PlotWindow(QDialog):
             None
         '''
         window = RegionPlotWindow(self)
-        # FIXME: relay the exact same plot to the RegionPlotWindow
-        window.plot(x=self.x, y=self.y)
+        if len(self.multiplot_widget.plot_widgets) > 1:
+            raise NotImplementedError('No support for over 2-dimensional data')
+        for p in self.multiplot_widget.plot_widgets:
+            # copy plot widget
+            p_new = window.plot(x=p.x, y=p.y)
+            p_new.y_label = p.y_label
         window.exec_()
     
     def start_button_clicked(self):
@@ -550,6 +555,7 @@ class RegionPlotWindow(QDialog):
         self.init_ui()
         
     def init_ui(self):
+        self.setWindowTitle('Region window')
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_widget)
         self.layout.addWidget(self.ok_button)
