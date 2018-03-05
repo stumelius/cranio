@@ -5,4 +5,4 @@
     - pip install -r requirements.txt
     - pip install -e .
   script:
-    - pytest
+    - pytest test
