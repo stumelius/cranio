@@ -7,7 +7,7 @@ from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, Sensor, ChannelInfo
 from cranio.imada import ImadaSensor
 from cranio.app import app
-from cranio.plot import PlotWindow
+from cranio.app.plot import PlotWindow
 
 start_time = datetime.datetime.now()
 n_seconds = 3

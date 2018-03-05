@@ -16,9 +16,23 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+import pytest
+import random
 import time
+import multiprocessing as mp
+from daqstore.store import DataStore
 from cranio.core import Packet
 from cranio.producer import ChannelInfo, Sensor, Producer, ProducerProcess
+
+@pytest.fixture
+def store():
+    DataStore.queue_cls = mp.Queue
+    store = DataStore(buffer_length=10, resampling_frequency=None)
+    yield store
+    store.cache.delete()
+    
+def random_value_generator():
+    return random.gauss(0, 1)
         
 def test_channel_info():
     c = ChannelInfo('torque', 'Nm')
@@ -46,35 +60,43 @@ def test_producer_add_and_remove_sensors():
         p.remove_sensor(s)
     assert len(p.sensors) == 0
                 
-def test_producer_process_start_and_join():
-    p = ProducerProcess('test_process')
+def test_producer_process_start_and_join(store):
+    p = ProducerProcess('test_process', store)
     p.start()
     assert p.is_alive()
-    time.sleep(0.5)
+    time.sleep(1)
     assert p.is_alive()
     p.pause()
     assert p.is_alive()
     p.start()
     assert p.is_alive()
     p.pause()
-    p.get_all()
+    # read and flush store
+    store.read()
+    store.flush()
+    # no sensors -> empty data
+    df = p.read(include_cache=True)
+    assert df.empty
     p.join()
     assert not p.is_alive()
     
-def test_producer_process_with_sensors():
-    p = ProducerProcess('test_process')
+def test_producer_process_with_sensors(store):
+    p = ProducerProcess('test_process', store)
     s = Sensor()
+    s._default_value_generator = random_value_generator
     channels = [ChannelInfo('torque', 'Nm'), ChannelInfo('load', 'N'), ChannelInfo('extension', 'mm')]
     for c in channels:
         s.add_channel(c)
     p.producer.add_sensor(s)
     p.start()
     assert p.is_alive()
-    time.sleep(0.5)
+    time.sleep(1)
     p.pause()
-    # NOTE: data_queue must be emptied before joining the thread
-    data = Packet.concat(p.get_all()).as_dataframe()
+    # read and flush store
+    store.read()
+    store.flush()
+    df = p.read(include_cache=True)
     for c in channels:
-        assert str(c) in data
+        assert str(c) in df
     p.join()
     assert not p.is_alive()

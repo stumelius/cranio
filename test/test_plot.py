@@ -7,8 +7,8 @@ from functools import partial
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QApplication, QMessageBox
 from cranio.app import app
-from cranio.plot import (PlotWidget, VMultiPlotWidget, PlotWindow,
-                         RegionPlotWidget, RegionPlotWindow)
+from cranio.app.plot import (PlotWidget, VMultiPlotWidget, PlotWindow,
+                             RegionPlotWidget, RegionPlotWindow)
 
 def test_PlotWidget_overwrite():
     w = PlotWidget()
