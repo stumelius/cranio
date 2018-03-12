@@ -6,7 +6,7 @@ setup(
     install_requires=['pandas', 'pyserial', 'attrs', 'pyqt5', 'pyqtgraph'],
     extras_require={
         'dev': [],
-        'test': ['pytest'],
+        'test': ['pytest', 'pytest-xvfb'],
     },
     entry_points={
         'console_scripts': [],
