@@ -17,7 +17,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import datetime
-import itertools
 import logging
 import time
 import multiprocessing as mp
@@ -26,6 +25,7 @@ import numpy as np
 
 from contextlib import contextmanager
 from cranio.core import Packet
+from daqstore.store import DataStore
     
 def all_from_queue(q):
     ''' Reads all data from a Queue and returns a generator '''
@@ -109,13 +109,14 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return Packet([datetime.datetime.utcnow()], values)
+        return Packet([datetime.datetime.now()], values)
 
 class Producer:
     ''' Producer object that can contain multiple Sensor objects. '''
         
     def __init__(self):
         self.sensors = []
+        self.id = DataStore.register_device()
         
     def open(self):
         ''' Opens all sensors '''
@@ -146,8 +147,8 @@ class ProducerProcess:
     # default producer class
     producer_class = Producer
     
-    def __init__(self, name: str):
-        self.data_queue = mp.Queue()
+    def __init__(self, name: str, store):
+        self.store = store
         self.start_event = mp.Event()
         self.stop_event = mp.Event()
         self.producer = self.producer_class()
@@ -183,19 +184,14 @@ class ProducerProcess:
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
-                    data = self.producer.read()
-                    if len(data) > 0:
-                        self.data_queue.put(data)
+                    for packet in self.producer.read():
+                        tpl = (self.producer.id,) + packet.as_tuple()
+                        self.store.put(tpl)
         logging.info('Stopping producer process "{}"'.format(str(self)))
                     
-    def get_all(self) -> list:
-        '''
-        Returns all data from the data queue.
-        
-        Example:
-            data = Packet.concat(process.get_all())
-        '''
-        return list(itertools.chain(*all_from_queue(self.data_queue)))
+    def read(self, include_cache: bool=False) -> pd.DataFrame:
+        ''' Returns all data from the data store '''
+        return self.store.get_data(include_cache=include_cache)
                     
     def start(self):
         '''
@@ -268,8 +264,8 @@ class ProducerProcess:
         '''
         self.stop_event.set()
         # close the queue and join the background thread
-        self.data_queue.close()
-        self.data_queue.join_thread()
+        #self.data_queue.close()
+        #self.data_queue.join_thread()
         self._process.join(timeout)
         if self.is_alive():
             logging.error('Producer process "{}" is not shutting down gracefully. Resorting to force terminate and join...'.format(str(self)))

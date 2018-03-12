@@ -13,3 +13,5 @@ cranio.egg-info/
 .idea/
 build/
 dist/
+_cache/
+.pytest_cache/

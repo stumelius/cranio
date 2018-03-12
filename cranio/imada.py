@@ -171,5 +171,5 @@ class ImadaSensor(Sensor):
         except TelegramError as e:
             logging.error('Decode telegram failed! {}'.format(str(e)))
             value = None
-        record = Packet([datetime.datetime.utcnow()], {str(self.channels[0]): value})
+        record = Packet([datetime.datetime.now()], {str(self.channels[0]): value})
         return record

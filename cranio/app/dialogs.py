@@ -16,16 +16,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from PyQt4 import QtGui
+from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QSpinBox
 
 from cranio.app.plot import PlotWidget, PlotWindow
 
 class MeasurementDialog(PlotWindow):
     
     def __init__(self):
-        self.distractor_groupbox = QtGui.QGroupBox()
-        self.distractor_groupbox_layout = QtGui.QVBoxLayout()
-        self.distractor_edit = QtGui.QSpinBox()
+        self.distractor_groupbox = QGroupBox()
+        self.distractor_groupbox_layout = QVBoxLayout()
+        self.distractor_edit = QSpinBox()
         super(MeasurementDialog, self).__init__()
         self.plot_widget = PlotWidget()
         self.add_plot(self.plot_widget)
@@ -35,7 +35,7 @@ class MeasurementDialog(PlotWindow):
         self.setWindowTitle('Measurement dialog')
         self.distractor_groupbox_layout.addWidget(self.distractor_edit)
         self.distractor_groupbox.setLayout(self.distractor_groupbox_layout)
-        self.layout.insertWidget(0, self.distractor_groupbox)
+        self.main_layout.insertWidget(0, self.distractor_groupbox)
         self.distractor_groupbox.setTitle('Distractor index')
     
     @property  
