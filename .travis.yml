@@ -11,5 +11,6 @@
     - sh -e /etc/init.d/xvfb start
     - pip install -r requirements.txt
     - pip install -e .[test]
+    - sudo apt-get install python3-pyqt5  
   script:
     - pytest test
