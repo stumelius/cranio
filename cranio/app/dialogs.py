@@ -48,7 +48,7 @@ class MeasurementDialog(PlotWindow):
         
     def start_button_clicked(self):
         ''' Confirm that user wants to start the measurement '''
-        message = f'''You entered {self.distractor_index} as the distractor index. 
-        Are you sure you want to start the measurement?'''
+        message = (f'You entered {self.distractor_index} as the distractor index.\n'
+                   'Are you sure you want to start the measurement?')
         if QMessageBox.question(self, 'Are you sure?', message) == QMessageBox.Yes:
             super().start_button_clicked()
