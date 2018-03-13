@@ -95,6 +95,13 @@ def test_VMultiPlotWidget_plot_and_overwrite(rows):
             assert pw.x == data[c].index.tolist()
             assert pw.y == data[c].tolist()
             
+def test_VMultiPlotWidget_placeholder():
+    p = VMultiPlotWidget()
+    assert p.placeholder is not None
+    plot_widget = p.add_plot_widget('foo')
+    assert p.placeholder is None
+    assert p.find_plot_widget_by_label('foo') == plot_widget
+            
 def test_PlotWindow_show():
     p = PlotWindow(producer_process=None)
     p.show()

@@ -332,6 +332,9 @@ class VMultiPlotWidget(QWidget):
         self.title_label = QLabel()
         self.main_layout = QVBoxLayout()
         self.init_ui()
+        # add placeholder widget
+        self.placeholder = PlotWidget()
+        self.main_layout.addWidget(self.placeholder)
 
     def init_ui(self):
         self.setLayout(self.main_layout)
@@ -356,10 +359,17 @@ class VMultiPlotWidget(QWidget):
         ''' Adds a plot widget by a label (i.e., y axis name) '''
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
-        plot_widget = PlotWidget()
+        # if placeholder exists, use it
+        # NOTE: no need to add to layout as placeholder is there by default
+        if self.placeholder is not None:
+            plot_widget = self.placeholder
+            self.placeholder = None
+        # if no placeholder exists, create new
+        else:
+            plot_widget = PlotWidget()
+            self.main_layout.addWidget(plot_widget)
         plot_widget.y_label = label
         self.plot_widgets.append(plot_widget)
-        self.main_layout.addWidget(plot_widget)
         return plot_widget
 
     def plot(self, data, title='', mode='o'):

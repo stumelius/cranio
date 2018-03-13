@@ -16,19 +16,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QSpinBox
-
-from cranio.app.plot import PlotWidget, PlotWindow
+from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, 
+                             QSpinBox, QMessageBox)
+from cranio.app.plot import PlotWindow
 
 class MeasurementDialog(PlotWindow):
     
-    def __init__(self):
+    def __init__(self, producer_process=None):
         self.distractor_groupbox = QGroupBox()
         self.distractor_groupbox_layout = QVBoxLayout()
         self.distractor_edit = QSpinBox()
-        super(MeasurementDialog, self).__init__()
-        self.plot_widget = PlotWidget()
-        self.add_plot(self.plot_widget)
+        super(MeasurementDialog, self).__init__(producer_process)
         
     def init_ui(self):
         super(MeasurementDialog, self).init_ui()
@@ -47,3 +45,10 @@ class MeasurementDialog(PlotWindow):
         if not isinstance(value, int):
             raise ValueError('Distractor index must be an integer')
         self.distractor_edit.setValue(value)
+        
+    def start_button_clicked(self):
+        ''' Confirm that user wants to start the measurement '''
+        message = f'''You entered {self.distractor_index} as the distractor index. 
+        Are you sure you want to start the measurement?'''
+        if QMessageBox.question(self, 'Are you sure?', message) == QMessageBox.Yes:
+            super().start_button_clicked()
