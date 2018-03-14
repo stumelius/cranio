@@ -16,11 +16,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
+import uuid
 import pickle
 import random
 import attr
 import pandas as pd
+from datetime import datetime
+
+def generate_unique_id():
+    ''' Return unique id based on host ID, sequence number and current time '''
+    return str(uuid.uuid1())
+
+def timestamp():
+    ''' Return current date and time (UTC+0) '''
+    return datetime.utcnow()
 
 def event_identifier(event, num):
     return '{}{:03d}'.format(event, num)
@@ -90,3 +99,9 @@ class Packet:
     def concat(cls, packets):
         ''' Inefficient concat utilizing pd.concat '''
         return cls.from_dataframe(pd.concat([p.as_dataframe() for p in packets]))
+    
+@attr.s
+class SessionMeta:
+    patient_id = attr.ib()
+    session_id = attr.ib(default=attr.Factory(generate_unique_id))
+    datetime = attr.ib(default=None)
