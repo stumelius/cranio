@@ -17,10 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import uuid
+import json
+import io
 import pickle
 import random
 import attr
 import pandas as pd
+from collections import namedtuple
+from typing import Tuple
+from contextlib import contextmanager
 from datetime import datetime
 
 def generate_unique_id():
@@ -105,3 +110,59 @@ class SessionMeta:
     patient_id = attr.ib()
     session_id = attr.ib(default=attr.Factory(generate_unique_id))
     datetime = attr.ib(default=None)
+    
+Attachment = namedtuple('Attachment', ['content', 'filename', 'content_type'])
+
+class Session:
+    
+    def __init__(self, patient_id, _id=None, datetime=None, data=None, log=None):
+        if _id is None:
+            _id = generate_unique_id()
+        self._id = _id
+        self.patient_id = patient_id
+        self.datetime = datetime
+        self.data = data
+        self.log = log
+    
+    def as_document(self) -> dict:
+        ''' Return the session as a document that can be uploaded to a CouchDB database '''
+        return {'_id': self._id, 'patient_id': self.patient_id, 'datetime': self.datetime}
+    
+    @contextmanager
+    def data_io(self) -> io.StringIO:
+        ''' Return the session data as a file-like object '''
+        # data to file-like object
+        dio = io.StringIO()
+        self.data.to_csv(dio, sep=';')
+        dio.seek(0)
+        yield dio
+        dio.close()
+    
+    @contextmanager
+    def log_io(self) -> io.StringIO:
+        ''' Return the session log as a file-like object '''
+        # log to file-like object
+        lio = io.StringIO()
+        lio.write(self.log)
+        lio.seek(0)
+        yield lio
+        lio.close()
+    
+    def attachments(self) -> Tuple[Attachment]:
+        ''' Return the session attachments (i.e., data and log) as file-like objects '''
+        with self.data_io() as f:
+            data = Attachment(content=f.read(), filename=self._id + '.csv', content_type='text/csv')
+        with self.log_io() as f:
+            log = Attachment(content=f.read(), filename=self._id + '.log', content_type='text/plain')
+        return (data, log)
+    
+    def save(self, path):
+        ''' Save the session on disk '''
+        with open(path, 'w') as f:
+            json.dump(self.as_document(), f)
+    
+    @classmethod
+    def load(cls, path):
+        ''' Load a session from disk '''
+        with open(path, 'r') as f:
+            return cls(**json.load(f))
