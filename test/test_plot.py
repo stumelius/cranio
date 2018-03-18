@@ -141,6 +141,7 @@ def test_RegionPlotWidget_set_bounds():
     edit_widget.set_region([0,50])
     assert edit_widget.region() == (0,50)
     
+@pytest.mark.skip
 def test_RegionPlotWindow_ok_button():
     d = RegionPlotWindow()
     n = 100
