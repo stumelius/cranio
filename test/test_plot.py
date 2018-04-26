@@ -162,3 +162,16 @@ def test_RegionPlotWindow_ok_button():
     assert d.isVisible()
     d.ok_button_clicked()
     assert not d.isVisible()
+    
+def test_RegionPlotWidget_add_and_remove_all_buttons():
+    w = RegionPlotWindow()
+    n = 100
+    w.plot(x=list(range(n)), y=list(range(n)))
+    for count in range(4):
+        # add widgets
+        w.add_count.setValue(count)
+        w.add_button_clicked()
+        assert len(w.region_edit_map) == count
+        # remove widgets
+        w.remove_all_button_clicked()
+        assert len(w.region_edit_map) == 0
