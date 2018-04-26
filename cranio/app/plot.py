@@ -1,12 +1,12 @@
+import logging
 import pyqtgraph as pg
 import pandas as pd
 from functools import partial
-from datetime import datetime
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
                              QDialog, QLabel, QVBoxLayout, QPushButton,
                              QHBoxLayout, QDoubleSpinBox, QLineEdit,
-                             QGroupBox, QMessageBox)
+                             QGroupBox, QMessageBox, QSpinBox, QGridLayout)
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -226,17 +226,24 @@ class RegionPlotWidget(QWidget):
         self.plot_widget = PlotWidget()
         self.main_layout = QHBoxLayout()
         self.edit_layout = QVBoxLayout()
+        self.add_layout = QGridLayout()
         # region items mapped as {LinearRegionItem: RegionEditWidget}
         self.region_edit_map = {}
+        self.add_count = QSpinBox()
         self.add_button = QPushButton('Add')
+        self.remove_all_button = QPushButton('Remove all')
         self.init_ui()
         
     def init_ui(self):
         self.setLayout(self.main_layout)
         self.main_layout.addWidget(self.plot_widget)
         self.main_layout.addLayout(self.edit_layout)
-        self.edit_layout.addWidget(self.add_button)
+        self.add_layout.addWidget(self.add_count, 0, 0)
+        self.add_layout.addWidget(self.add_button, 0, 1)
+        self.add_layout.addWidget(self.remove_all_button, 1, 0, 1, 2)
+        self.edit_layout.addLayout(self.add_layout)
         self.add_button.clicked.connect(self.add_button_clicked)
+        self.remove_all_button.clicked.connect(self.remove_all_button_clicked)
         
     def __getattr__(self, attr):
         ''' Object composition from self.plot_widget (PlotWidget) '''
@@ -252,7 +259,7 @@ class RegionPlotWidget(QWidget):
     def y(self):
         return self.plot_widget.y
         
-    def find_region_by_edit(self, edit_widget):
+    def find_region_by_edit(self, edit_widget: RegionEditWidget) -> pg.LinearRegionItem:
         ''' Finds a LinearRegionItem paired to a RegionEditWidget '''
         try:
             return [key for key, value in self.region_edit_map.items() if value == edit_widget][0]
@@ -286,7 +293,7 @@ class RegionPlotWidget(QWidget):
         self.region_edit_map[item] = edit_widget
         return edit_widget
     
-    def remove_region(self, edit_widget):
+    def remove_region(self, edit_widget: RegionEditWidget):
         '''
         Removes a region from the plot.
         
@@ -319,7 +326,20 @@ class RegionPlotWidget(QWidget):
         Raises:
             None
         '''
-        self.add_region([min(self.x), max(self.x)/2])
+        if len(self.x) == 0:
+            # Exceptions in a PyQt slot will result in qFatal() and crash the app
+            # Therefore, error is logged
+            # More info here: https://stackoverflow.com/questions/43641638/unhandled-exceptions-in-pyqt5
+            logging.error('Unable to add region to empty plot')
+            return 0
+        for _ in range(self.add_count.value()):
+            self.add_region([min(self.x), max(self.x)/2])
+            
+    @QtCore.pyqtSlot()
+    def remove_all_button_clicked(self):
+        ''' Remove all regions from the widget '''
+        for edit_widget in list(self.region_edit_map.values()):
+            self.remove_region(edit_widget)
             
 class VMultiPlotWidget(QWidget):
     '''
