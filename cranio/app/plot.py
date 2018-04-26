@@ -332,8 +332,15 @@ class RegionPlotWidget(QWidget):
             # More info here: https://stackoverflow.com/questions/43641638/unhandled-exceptions-in-pyqt5
             logging.error('Unable to add region to empty plot')
             return 0
-        for _ in range(self.add_count.value()):
-            self.add_region([min(self.x), max(self.x)/2])
+        count = self.add_count.value()
+        if count > 0:
+            x_min = min(self.x)
+            interval = (max(self.x) - x_min) / count
+            for i in range(count):
+                # insert at uniform intervals
+                low = x_min + i*interval
+                high = x_min + (i+1)*interval
+                self.add_region([low, high])
             
     @QtCore.pyqtSlot()
     def remove_all_button_clicked(self):
