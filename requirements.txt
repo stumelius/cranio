@@ -9,7 +9,7 @@ py==1.5.3
 PyQt5==5.10.1
 pyqtgraph==0.10.0
 pyserial==3.4
-pytest==3.3.0
+pytest==3.5.1
 python-dateutil==2.6.1
 pytz==2018.3
 sip==4.19.7
