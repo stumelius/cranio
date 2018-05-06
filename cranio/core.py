@@ -22,6 +22,7 @@ import io
 import pickle
 import random
 import attr
+import couchdb
 import pandas as pd
 from collections import namedtuple
 from typing import Tuple
@@ -42,6 +43,19 @@ def event_identifier(event, num):
 def x_smaller_than_y(instance, attribute, value):
     if value >= instance.y:
         raise ValueError("'x' has to be smaller than 'y'!")
+    
+def assert_document_equal(left: couchdb.Document, right: couchdb.Document, 
+                          check_attachments=True, check_rev=True):
+    without = []
+    if not check_attachments:
+        without.append('_attachments')
+    if not check_rev:
+        without.append('_rev')
+    def _exclude_keys(doc, keys):
+        return {key: value for key, value in doc.items() if key not in keys}
+    left_excl = _exclude_keys(left, without)
+    right_excl = _exclude_keys(right, without)
+    assert left_excl == right_excl
 
 @attr.s
 class Event:
@@ -123,10 +137,14 @@ class Session:
         self.datetime = datetime
         self.data = data
         self.log = log
+        
+    def as_dict(self):
+        ''' Return the session as a dictionary that can be uploaded to a CouchDB database '''
+        return {'_id': self._id, 'patient_id': self.patient_id, 'datetime': self.datetime}
     
     def as_document(self) -> dict:
-        ''' Return the session as a document that can be uploaded to a CouchDB database '''
-        return {'_id': self._id, 'patient_id': self.patient_id, 'datetime': self.datetime}
+        ''' Return the session as a Document that can be uploaded to a CouchDB database '''
+        return couchdb.Document(**self.as_dict())
     
     @contextmanager
     def data_io(self) -> io.StringIO:
