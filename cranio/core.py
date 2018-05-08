@@ -51,6 +51,7 @@ def assert_document_equal(left: couchdb.Document, right: couchdb.Document,
         without.append('_attachments')
     if not check_rev:
         without.append('_rev')
+
     def _exclude_keys(doc, keys):
         return {key: value for key, value in doc.items() if key not in keys}
     left_excl = _exclude_keys(left, without)
@@ -71,7 +72,8 @@ class Event:
         
     def __str__(self):
         return event_identifier(self.type, self.num)
-    
+
+
 class Packet:
     ''' Container for moving data between processes '''
     
@@ -102,7 +104,7 @@ class Packet:
     
     def as_tuple(self):
         ''' Converts the Packet to a tuple (index, data_dict) '''
-        return (self.index, self.data)
+        return self.index, self.data
     
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame):
@@ -118,14 +120,23 @@ class Packet:
     def concat(cls, packets):
         ''' Inefficient concat utilizing pd.concat '''
         return cls.from_dataframe(pd.concat([p.as_dataframe() for p in packets]))
-    
+
+
 @attr.s
 class SessionMeta:
+    ''' Session meta information '''
     patient_id = attr.ib()
     session_id = attr.ib(default=attr.Factory(generate_unique_id))
     datetime = attr.ib(default=None)
-    
+
+
 Attachment = namedtuple('Attachment', ['content', 'filename', 'content_type'])
+
+
+class ContentType:
+    ''' Content type constants '''
+    CSV = 'text/csv'
+    PLAIN = 'text/plain'
 
 
 class SessionType:
@@ -194,10 +205,10 @@ class Session:
     def attachments(self) -> Tuple[Attachment]:
         ''' Return the session attachments (i.e., data and log) as file-like objects '''
         with self.data_io() as f:
-            data = Attachment(content=f.read(), filename=self._id + '.csv', content_type='text/csv')
+            data = Attachment(content=f.read(), filename=self._id + '.csv', content_type=ContentType.CSV)
         with self.log_io() as f:
-            log = Attachment(content=f.read(), filename=self._id + '.log', content_type='text/plain')
-        return (data, log)
+            log = Attachment(content=f.read(), filename=self._id + '.log', content_type=ContentType.PLAIN)
+        return data, log
     
     def save(self, path):
         ''' Save the session on disk '''
