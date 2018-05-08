@@ -133,18 +133,18 @@ class SessionMetaDialog(QDialog):
 class MeasurementDialog(PlotWindow):
     
     def __init__(self, producer_process=None):
-        self.distractor_groupbox = QGroupBox()
-        self.distractor_groupbox_layout = QVBoxLayout()
+        self.distractor_group_box = QGroupBox()
+        self.distractor_group_box_layout = QVBoxLayout()
         self.distractor_edit = QSpinBox()
         super(MeasurementDialog, self).__init__(producer_process)
         
     def init_ui(self):
         super(MeasurementDialog, self).init_ui()
         self.setWindowTitle('Measurement dialog')
-        self.distractor_groupbox_layout.addWidget(self.distractor_edit)
-        self.distractor_groupbox.setLayout(self.distractor_groupbox_layout)
-        self.main_layout.insertWidget(0, self.distractor_groupbox)
-        self.distractor_groupbox.setTitle('Distractor index')
+        self.distractor_group_box_layout.addWidget(self.distractor_edit)
+        self.distractor_group_box.setLayout(self.distractor_group_box_layout)
+        self.main_layout.insertWidget(0, self.distractor_group_box)
+        self.distractor_group_box.setTitle('Distractor index')
     
     @property  
     def distractor_index(self):

@@ -25,7 +25,7 @@ import attr
 import couchdb
 import pandas as pd
 from collections import namedtuple
-from typing import Tuple
+from typing import Tuple, List
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -127,20 +127,45 @@ class SessionMeta:
     
 Attachment = namedtuple('Attachment', ['content', 'filename', 'content_type'])
 
+
+class SessionType:
+    ''' Session type constants '''
+    RECORDING_SESSION = 'recording_session'
+
+
 class Session:
-    
-    def __init__(self, patient_id, _id=None, datetime=None, data=None, log=None):
+    ''' Session data container '''
+    document_attrs = ('_id', 'patient_id', 'distractor_id',
+                      'datetime', 'type', 'schema_version',
+                      'operator', 'notes', 'distraction_achieved',
+                      'missed_distractors', 'distraction_plan_followed')
+
+    def __init__(self, patient_id: str, distractor_id: int=None, _id: str=None, datetime=None, data=None, log=None, type: str=None,
+                 schema_version: str=None, operator: str=None, notes: str=None, distraction_achieved: float=None,
+                 missed_distractors: List[int]=None, distraction_plan_followed: bool=None):
         if _id is None:
             _id = generate_unique_id()
         self._id = _id
         self.patient_id = patient_id
+        self.distractor_id = distractor_id
+        if type is None:
+            type = SessionType.RECORDING_SESSION
+        self.type = type
+        self.schema_version = schema_version
         self.datetime = datetime
         self.data = data
         self.log = log
+        self.operator = operator
+        self.notes = notes
+        self.distraction_achieved = distraction_achieved
+        if missed_distractors is None:
+            missed_distractors = []
+        self.missed_distractors = missed_distractors
+        self.distraction_plan_followed = distraction_plan_followed
         
     def as_dict(self):
         ''' Return the session as a dictionary that can be uploaded to a CouchDB database '''
-        return {'_id': self._id, 'patient_id': self.patient_id, 'datetime': self.datetime}
+        return {a: getattr(self, a, 'NOT_DEFINED') for a in self.document_attrs}
     
     def as_document(self) -> dict:
         ''' Return the session as a Document that can be uploaded to a CouchDB database '''
