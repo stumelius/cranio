@@ -5,18 +5,18 @@ import pandas as pd
 import numpy as np
 import couchdb
 from contextlib import suppress
-from cranio.core import Session, Attachment, assert_document_equal, generate_unique_id
+from cranio.core import Document, Attachment, assert_document_equal, generate_unique_id
 
 COUCHDB_URL = 'http://127.0.0.1:5984/'
 DATABASE_NAME = 'craniodistractor'
         
 @pytest.fixture
-def session():
+def document():
     # assing random data
-    s = Session(session_id=generate_unique_id(), patient_id='test_patient',
-                data=pd.DataFrame(data=np.random.rand(100, 3), columns=list('ABC')),
-                log='abc')
-    yield s
+    d = Document(session_id=generate_unique_id(), patient_id='test_patient',
+                 data=pd.DataFrame(data=np.random.rand(100, 3), columns=list('ABC')),
+                 log='abc')
+    yield d
     
 @pytest.fixture
 def path():
@@ -38,45 +38,45 @@ def db(couchserver):
         db = couchserver.create(DATABASE_NAME)
     yield db
         
-def test_Session_init_with_required_arguments():
-    session = Session(session_id='foo', patient_id='123')
-    assert session._id is not None
-    assert session.session_id is 'foo'
-    assert session.patient_id is '123'
+def test_Document_init_with_required_arguments():
+    document = Document(session_id='foo', patient_id='123')
+    assert document._id is not None
+    assert document.session_id is 'foo'
+    assert document.patient_id is '123'
     # no arguments
     with pytest.raises(TypeError):
-        Session()
+        Document()
 
-def test_Session_save_and_load(session, path):
-    session.save(path)
-    s2 = Session.load(path)
-    assert session.as_document() == s2.as_document()
+def test_Document_save_and_load(document, path):
+    document.save(path)
+    d2 = Document.load(path)
+    assert document.as_document() == d2.as_document()
     
-def test_Session_data_and_log_io(session):
+def test_Document_data_and_log_io(document):
     # verify data integrity after reading from io object
-    with session.data_io() as dio:
+    with document.data_io() as dio:
         df = pd.read_csv(dio, sep=';', index_col=0)
-    pd.testing.assert_frame_equal(df, session.data)
+    pd.testing.assert_frame_equal(df, document.data)
     # verify log integrity after reading from io object
-    with session.log_io() as lio:
-        assert lio.read() == session.log
+    with document.log_io() as lio:
+        assert lio.read() == document.log
 
 @pytest.mark.couchdb
-def test_Session_to_couchdb(db, session):
-    doc = session.as_document()
+def test_Document_to_couchdb(db, document):
+    doc = document.as_document()
     doc_id, rev_id = db.save(doc)
     # put attachments
-    for attachment in session.attachments():
+    for attachment in document.attachments():
         db.put_attachment(db[doc_id], **attachment._asdict())
     # read attachments and verify contents
-    for attachment in session.attachments():
+    for attachment in document.attachments():
         bytesio = db.get_attachment(doc_id, attachment.filename)
         assert bytesio.read().decode() == attachment.content
     # delete document
     db.delete(db[doc_id])
 
-def test_assert_document_equal(session):
-    doc1 = session.as_document()
+def test_assert_document_equal(document):
+    doc1 = document.as_document()
     doc2 = copy.copy(doc1)
     assert_document_equal(doc1, doc2)
     # change id
@@ -111,12 +111,12 @@ def test_assert_document_equal(session):
     assert_document_equal(doc1, doc2)
     
 @pytest.mark.couchdb
-def test_Session_client_side_update_handler(db, session):
+def test_Document_client_side_update_handler(db, document):
     # create original document
-    doc = session.as_document()
+    doc = document.as_document()
     doc_id, rev_id = db.save(doc)
     # put attachments
-    for attachment in session.attachments():
+    for attachment in document.attachments():
         db.put_attachment(db[doc_id], **attachment._asdict())
     # retrieve document from database
     doc_ret = db[doc_id]

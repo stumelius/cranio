@@ -144,8 +144,11 @@ class DocumentType:
     RECORDING = 'recording'
 
 
-class Session:
-    ''' Session data container '''
+class Document:
+    '''
+    A document contains information from a single, continuous measurement event.
+    A measurement event starts when the user clicks "Start" and ends on "Stop".
+    '''
     document_attrs = ('_id', 'patient_id', 'distractor_id',
                       'datetime', 'type', 'schema_version',
                       'operator', 'notes', 'distraction_achieved',
@@ -178,16 +181,16 @@ class Session:
         self.distraction_plan_followed = distraction_plan_followed
         
     def as_dict(self):
-        ''' Return the session as a dictionary that can be uploaded to a CouchDB database '''
+        ''' Return the document as a dictionary that can be uploaded to a CouchDB database '''
         return {a: getattr(self, a, 'NOT_DEFINED') for a in self.document_attrs}
     
     def as_document(self) -> dict:
-        ''' Return the session as a Document that can be uploaded to a CouchDB database '''
+        ''' Return the document as a couchdb.Document that can be uploaded to a CouchDB database '''
         return couchdb.Document(**self.as_dict())
     
     @contextmanager
     def data_io(self) -> io.StringIO:
-        ''' Return the session data as a file-like object '''
+        ''' Return the document data as a file-like object '''
         # data to file-like object
         dio = io.StringIO()
         self.data.to_csv(dio, sep=';')
@@ -197,7 +200,7 @@ class Session:
     
     @contextmanager
     def log_io(self) -> io.StringIO:
-        ''' Return the session log as a file-like object '''
+        ''' Return the document log as a file-like object '''
         # log to file-like object
         lio = io.StringIO()
         lio.write(self.log)
@@ -206,7 +209,7 @@ class Session:
         lio.close()
     
     def attachments(self) -> Tuple[Attachment]:
-        ''' Return the session attachments (i.e., data and log) as file-like objects '''
+        ''' Return the document attachments (i.e., data and log) as file-like objects '''
         with self.data_io() as f:
             data = Attachment(content=f.read(), filename=self._id + '.csv', content_type=ContentType.CSV)
         with self.log_io() as f:
@@ -214,12 +217,12 @@ class Session:
         return data, log
     
     def save(self, path):
-        ''' Save the session on disk '''
+        ''' Save the document on disk '''
         with open(path, 'w') as f:
             json.dump(self.as_document(), f)
     
     @classmethod
     def load(cls, path):
-        ''' Load a session from disk '''
+        ''' Load a document from disk '''
         with open(path, 'r') as f:
             return cls(**json.load(f))
