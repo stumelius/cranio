@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import couchdb
 from contextlib import suppress
-from cranio.core import Session, Attachment, assert_document_equal
+from cranio.core import Session, Attachment, assert_document_equal, generate_unique_id
 
 COUCHDB_URL = 'http://127.0.0.1:5984/'
 DATABASE_NAME = 'craniodistractor'
@@ -13,7 +13,7 @@ DATABASE_NAME = 'craniodistractor'
 @pytest.fixture
 def session():
     # assing random data
-    s = Session(patient_id='test_patient', 
+    s = Session(session_id=generate_unique_id(), patient_id='test_patient',
                 data=pd.DataFrame(data=np.random.rand(100, 3), columns=list('ABC')),
                 log='abc')
     yield s
@@ -38,11 +38,12 @@ def db(couchserver):
         db = couchserver.create(DATABASE_NAME)
     yield db
         
-def test_Session_init_with_keyword_arguments():
-    session = Session(patient_id='123')
+def test_Session_init_with_required_arguments():
+    session = Session(session_id='foo', patient_id='123')
     assert session._id is not None
+    assert session.session_id is 'foo'
     assert session.patient_id is '123'
-    # no keyword arguments
+    # no arguments
     with pytest.raises(TypeError):
         Session()
 

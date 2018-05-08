@@ -139,9 +139,9 @@ class ContentType:
     PLAIN = 'text/plain'
 
 
-class SessionType:
-    ''' Session type constants '''
-    RECORDING_SESSION = 'recording_session'
+class DocumentType:
+    ''' Document type constants '''
+    RECORDING = 'recording'
 
 
 class Session:
@@ -149,18 +149,21 @@ class Session:
     document_attrs = ('_id', 'patient_id', 'distractor_id',
                       'datetime', 'type', 'schema_version',
                       'operator', 'notes', 'distraction_achieved',
-                      'missed_distractors', 'distraction_plan_followed')
+                      'missed_distractors', 'distraction_plan_followed',
+                      'session_id')
 
-    def __init__(self, patient_id: str, distractor_id: int=None, _id: str=None, datetime=None, data=None, log=None, type: str=None,
-                 schema_version: str=None, operator: str=None, notes: str=None, distraction_achieved: float=None,
-                 missed_distractors: List[int]=None, distraction_plan_followed: bool=None):
+    def __init__(self, session_id: str, patient_id: str, distractor_id: int=None, _id: str=None, datetime=None,
+                 data=None, log=None, type: str=None, schema_version: str=None, operator: str=None,
+                 notes: str=None, distraction_achieved: float=None, missed_distractors: List[int]=None,
+                 distraction_plan_followed: bool=None):
         if _id is None:
             _id = generate_unique_id()
         self._id = _id
+        self.session_id = session_id
         self.patient_id = patient_id
         self.distractor_id = distractor_id
         if type is None:
-            type = SessionType.RECORDING_SESSION
+            type = DocumentType.RECORDING
         self.type = type
         self.schema_version = schema_version
         self.datetime = datetime
