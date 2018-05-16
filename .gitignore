@@ -15,3 +15,5 @@ build/
 dist/
 _cache/
 .pytest_cache/
+
+sandbox/

@@ -1,13 +1,19 @@
 '''
 DUMMY MODULE
 '''
+import re
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Tuple
 DOCUMENT_NAME_TEMPLATE = '{}.json'
 DATA_NAME_TEMPLATE = '{}.csv'
 LOG_NAME_TEMPLATE = '{}.txt'
-
 ENCODING = 'utf-8'
+
+
+def extract_name_from_manifest(line):
+    pattern = 'MANIFEST\s(\w+)'
+    m = re.search(pattern, line)
+    return m.group(1)
 
 
 class FileObject:
@@ -35,28 +41,41 @@ class Index(FileObject):
     def __init__(self, path: Union[str, Path]):
         super().__init__()
         self.path = path
+        self.database_name = None
         self.file_objects = []
 
     def load(self):
         ''' Load index from disk '''
-        self.file_objects = self.parse(self.read(self.path))
+        self.database_name, self.file_objects = self.parse(self.read(self.path))
         return self
 
     @classmethod
-    def parse(cls, index_str: str) -> List[FileObject]:
-        ''' Index string format: "content_type: path_to_file" '''
+    def parse(cls, index_str: str) -> Tuple[str, List[FileObject]]:
+        '''
+        Index/manifest string format:
+
+        MANIFEST <database_name>
+        <content_type>: <path_to_file>
+        .
+        .
+        .
+        <content_type>: <path_to_file>
+        '''
         file_objects = []
-        for line in index_str.splitlines():
+        for i, line in enumerate(index_str.splitlines()):
+            if i == 0:
+                database_name = extract_name_from_manifest(line)
+                continue
             content_type, path = (x.strip() for x in line.split(':'))
             file_object = FileObject(path)
             file_object.content_type = content_type
             file_objects.append(file_object)
-        return file_objects
+        return database_name, file_objects
 
 
-class FileDatabase:
-    ''' Simple file database '''
-    index_name = 'index'
+class FlatfileDatabase:
+    ''' Simple flat file database '''
+    index_name = 'db.manifest'
 
     def __init__(self, index_path: Union[str, Path]):
         self.index_path = index_path
