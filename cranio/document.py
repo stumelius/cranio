@@ -2,12 +2,16 @@
 DUMMY MODULE
 '''
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import Union, List, Tuple
 DOCUMENT_NAME_TEMPLATE = '{}.json'
 DATA_NAME_TEMPLATE = '{}.csv'
 LOG_NAME_TEMPLATE = '{}.txt'
 ENCODING = 'utf-8'
+
+class NoChangesToCommitError(Exception):
+    pass
 
 
 def extract_name_from_manifest(line):
@@ -17,32 +21,66 @@ def extract_name_from_manifest(line):
 
 
 class FileObject:
+    ''' Content is read when needed '''
     content_type = 'text/plain'
 
-    def __init__(self, path= Union[str, Path]):
+    def __init__(self, path: Union[str, Path]=None):
         self.path = path
-        self.content = None
+        self._content = None
+        # original content
+        self.__content = None
 
-    def read(self, path: Union[str, Path]) -> str:
+    @property
+    def content(self):
+        if self._content is None:
+            self.read(self.path)
+        return self._content
+
+    @content.setter
+    def content(self, value):
+        self._content = value
+
+    def read(self, path: Union[str, Path]=None) -> str:
         ''' Read from file '''
+        if path is None:
+            path = self.path
         with open(str(path), 'r', encoding=ENCODING) as f:
             self.content = f.read()
+            self.__content = self.content
         return self.content
 
-    def write(self, path: Union[str, Path]) -> None:
-        ''' Write to file '''
-        self.path = path
-        with open(str(self.path), 'w', encoding=ENCODING) as f:
-            f.write(self.content)
+    def write(self, path: Union[str, Path]=None) -> None:
+        '''
+        Write to file.
+
+        Raises:
+             NoChangesToCommitError: No changes to commit to {path}
+        '''
+        if path is None:
+            path = self.path
+        if self._content != self.__content and path == self.path:
+            self.path = path
+            with open(str(self.path), 'w', encoding=ENCODING) as f:
+                f.write(self.content)
+        else:
+            raise NoChangesToCommitError(f'No changes to commit to {path}')
 
 
 class Index(FileObject):
 
     def __init__(self, path: Union[str, Path]):
-        super().__init__()
-        self.path = path
+        super().__init__(path)
         self.database_name = None
         self.file_objects = []
+
+    def __iter__(self):
+        return iter(self.file_objects)
+
+    def __len__(self):
+        return len(self.file_objects)
+
+    def __getitem__(self, key):
+        return self.file_objects[key]
 
     def load(self):
         ''' Load index from disk '''
@@ -83,7 +121,14 @@ class FlatfileDatabase:
 
     def commit(self):
         ''' Commit all changes to disk '''
-        raise NotImplementedError
+        for file_object in self.index:
+            # TODO: what if a write fails? changes are lost and/or data gets corrupted
+            # write to a temporary file
+            # if any of the writes fail, fallback
+            with suppress(NoChangesToCommitError):
+                file_object.write()
+
+
 
     def load(self):
         ''' Load database from disk '''
