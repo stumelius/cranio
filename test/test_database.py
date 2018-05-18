@@ -72,8 +72,9 @@ def test_create_query_and_delete_measurement(document):
         assert_add_query_and_delete(measurements, sql_session, Measurement)
 
 
-def test_create_query_and_delete_log():
+def test_create_query_and_delete_log(document):
     with session_scope() as sql_session:
-        logs = [Log(datetime=datetime.utcnow(), level=np.random.choice(LogLevel), message=i) for i in range(10)]
+        logs = [Log(datetime=datetime.utcnow(), level=np.random.choice(LogLevel),
+                    message=i, document_id=document.id) for i in range(10)]
         assert_add_query_and_delete(logs, sql_session, Log)
         # sql_session.query(Log).filter_by(level=LogLevel.INFO).all()

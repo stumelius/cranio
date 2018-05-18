@@ -73,6 +73,7 @@ class Log(Base):
     ''' Software log table '''
     __tablename__ = 'fact_log'
     id = Column(Integer, primary_key=True, autoincrement=True)
+    document_id = Column(String, ForeignKey('dim_document.id'), nullable=False)
     datetime = Column(DateTime, nullable=False)
     level = Column(Enum(LogLevel), nullable=False)
     message = Column(String, nullable=False)
