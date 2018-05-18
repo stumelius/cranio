@@ -1,96 +1,79 @@
 import pytest
-import os
-import copy
-from typing import Union
-from contextlib import suppress
-from cranio.document import FlatfileDatabase, FileObject, Index, ENCODING, NoChangesToCommitError
-from pathlib import Path
-
-DATABASE_NAME = 'foo'
+import numpy as np
+from datetime import datetime
+from cranio.core import generate_unique_id
+from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope
 
 
-def try_remove(name: Union[str, Path]):
-    ''' Try to remove a file from the file system '''
-    if name is not None:
-        with suppress(PermissionError, FileNotFoundError):
-            os.remove(str(name))
-
-
-@pytest.fixture
-def txt_path():
-    content = 'foo bar'
-    path = 'foo.txt'
-    with open(path, 'w', encoding=ENCODING) as f:
-        f.write(content)
-    yield path
-    try_remove(path)
+def assert_add_query_and_delete(rows, session, Table):
+    # add rows
+    for r in rows:
+        session.add(r)
+    # query and verify row insert
+    results = session.query(Table).all()
+    assert len(results) == len(rows)
+    for original, queried in zip(rows, results):
+        assert original.id == queried.id
+    # delete rows
+    for r in rows:
+        session.delete(r)
+    assert len(session.query(Table).all()) == 0
 
 
 @pytest.fixture
-def csv_path():
-    content = 'foo;bar'
-    path = 'foo.csv'
-    with open(path, 'w', encoding=ENCODING) as f:
-        f.write(content)
-    yield path
-    try_remove(path)
+def patient():
+    p = Patient(id=generate_unique_id())
+    return p
 
 
 @pytest.fixture
-def index_path(txt_path, csv_path):
-    content = '\n'.join(['MANIFEST ' + DATABASE_NAME,
-                         'text/plain: ' + txt_path,
-                         'text/csv: ' + csv_path])
-    path = FlatfileDatabase.index_name
-    with open(path, 'w', encoding=ENCODING) as f:
-        f.write(content)
-    yield path
-    try_remove(path)
+def session(patient):
+    s = Session(id=generate_unique_id(), patient_id=patient.id)
+    return s
 
 
-def test_FileObject_read_modify_and_write(txt_path):
-    path = txt_path
-    f = FileObject()
-    # no path defined yet
-    with pytest.raises(FileNotFoundError):
-        f.content
-    f.path = path
-    # content is read when property is accessed
-    assert f.content is not None
-    content = f.content + ' baz'
-    # try write to file without making any changes
-    with pytest.raises(NoChangesToCommitError):
-        f.write()
-    # make changes and write
-    f.content = content
-    f.write()
-    # read and verify content
-    assert f.read() == content
-    try_remove(path)
+@pytest.fixture
+def document(session):
+    d = Document(id=generate_unique_id(), session_id=session.id)
+    return d
 
 
-def assert_default_index(index):
-    assert index.database_name == DATABASE_NAME
-    assert len(index.file_objects) == 2
-    assert index.file_objects[0].content_type == 'text/plain'
-    assert index.file_objects[1].content_type == 'text/csv'
+def test_create_query_and_delete_patient(patient):
+    with session_scope() as sql_session:
+        patients = [patient]
+        assert_add_query_and_delete(patients, sql_session, Patient)
 
 
-def test_Index_load(index_path):
-    index = Index(index_path).load()
-    assert_default_index(index)
+def test_create_query_and_delete_session(patient):
+    with session_scope() as sql_session:
+        sql_session.add(patient)
+        s = Session(patient_id=patient.id)
+        sessions = [s]
+        assert_add_query_and_delete(sessions, sql_session, Session)
+        assert len(sql_session.query(Patient).all()) == 1
 
 
-def test_FileDatabase_load_modify_and_commit(index_path):
-    db = FlatfileDatabase(index_path).load()
-    assert_default_index(db.index)
-    # modify text file
-    txt_file = db.index[0]
-    txt_file.content += ' baz'
-    db.commit()
-    # verify that the changes were committed
-    new_txt_file = FileObject(txt_file.path)
-    assert new_txt_file.content == txt_file.content
+def test_create_query_and_delete_document(patient):
+    with session_scope() as sql_session:
+        # first create session to get session_id
+        session = Session(patient_id=patient.id)
+        sql_session.add(session)
+        # flush to realize session_id
+        sql_session.flush()
+        assert session.id is not None
+        sql_session.add(patient)
+        d = Document(session_id=session.id)
+        assert_add_query_and_delete([d], sql_session, Document)
 
 
+def test_create_query_and_delete_measurement(document):
+    with session_scope() as sql_session:
+        measurements = [Measurement(time_s=t, torque_Nm=np.random.rand(), document_id=document.id) for t in range(10)]
+        assert_add_query_and_delete(measurements, sql_session, Measurement)
 
+
+def test_create_query_and_delete_log():
+    with session_scope() as sql_session:
+        logs = [Log(datetime=datetime.utcnow(), level=np.random.choice(LogLevel), message=i) for i in range(10)]
+        assert_add_query_and_delete(logs, sql_session, Log)
+        # sql_session.query(Log).filter_by(level=LogLevel.INFO).all()
