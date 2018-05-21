@@ -3,7 +3,7 @@ colorama==0.3.9
 CouchDB==1.2
 -e git+https://github.com/smomni/daqstore.git@v0.1.0#egg=daqstore
 numpy==1.14.3
-pandas==0.22.0
+pandas==0.23.0
 pluggy==0.6.0
 py==1.5.3
 PyQt5==5.10.1
