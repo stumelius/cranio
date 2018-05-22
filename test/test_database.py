@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 from datetime import datetime
 from cranio.core import generate_unique_id
-from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope
+from cranio.utils import try_remove
+from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph
 
 
 def assert_add_query_and_delete(rows, session, Table):
@@ -78,3 +79,10 @@ def test_create_query_and_delete_log(document):
                     message=i, document_id=document.id) for i in range(10)]
         assert_add_query_and_delete(logs, sql_session, Log)
         # sql_session.query(Log).filter_by(level=LogLevel.INFO).all()
+
+
+@pytest.mark.skip('Requires graphviz')
+def test_export_schema_graph():
+    name = 'foo.png'
+    export_schema_graph(name)
+    try_remove(name)

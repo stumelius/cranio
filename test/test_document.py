@@ -1,19 +1,8 @@
 import pytest
-import os
-import copy
-from typing import Union
-from contextlib import suppress
+from cranio.utils import try_remove
 from cranio.document import FlatfileDatabase, FileObject, Index, ENCODING, NoChangesToCommitError
-from pathlib import Path
 
 DATABASE_NAME = 'foo'
-
-
-def try_remove(name: Union[str, Path]):
-    ''' Try to remove a file from the file system '''
-    if name is not None:
-        with suppress(PermissionError, FileNotFoundError):
-            os.remove(str(name))
 
 
 @pytest.fixture

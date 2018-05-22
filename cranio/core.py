@@ -29,21 +29,26 @@ from typing import Tuple, List
 from contextlib import contextmanager
 from datetime import datetime
 
+
 def generate_unique_id():
     ''' Return unique id based on host ID, sequence number and current time '''
     return str(uuid.uuid1())
+
 
 def timestamp():
     ''' Return current date and time (UTC+0) '''
     return datetime.utcnow()
 
+
 def event_identifier(event, num):
     return '{}{:03d}'.format(event, num)
+
 
 def x_smaller_than_y(instance, attribute, value):
     if value >= instance.y:
         raise ValueError("'x' has to be smaller than 'y'!")
-    
+
+
 def assert_document_equal(left: couchdb.Document, right: couchdb.Document, 
                           check_attachments=True, check_rev=True):
     without = []
@@ -57,6 +62,7 @@ def assert_document_equal(left: couchdb.Document, right: couchdb.Document,
     left_excl = _exclude_keys(left, without)
     right_excl = _exclude_keys(right, without)
     assert left_excl == right_excl
+
 
 @attr.s
 class Event:
