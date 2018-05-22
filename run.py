@@ -6,7 +6,6 @@ import multiprocessing as mp
 from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, Sensor, ChannelInfo
 from cranio.imada import ImadaSensor
-from cranio.app import app
 from cranio.app.plot import PlotWindow
 from cranio.app.dialogs import SessionMetaDialog
 
