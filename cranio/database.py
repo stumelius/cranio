@@ -1,9 +1,10 @@
 import enum
 from contextlib import contextmanager
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Enum, ForeignKey, create_engine
-from cranio.core import generate_unique_id
+from cranio.core import generate_unique_id, timestamp
 from cranio import __version__
 
 # define database connection
@@ -31,6 +32,7 @@ def session_scope():
 class Patient(Base):
     __tablename__ = 'dim_patient'
     id = Column(String, primary_key=True, comment='Patient identifier (pseudonym)')
+    created_at = Column(DateTime, default=timestamp, comment='Patient creation date and time')
 
 
 class Session(Base):
