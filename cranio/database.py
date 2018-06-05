@@ -8,16 +8,25 @@ from cranio.core import generate_unique_id, timestamp
 from cranio import __version__
 
 # define database connection
-# TODO: replace in-memory database
-#engine = create_engine(f'sqlite:///{DATABASE_NAME}.db')
-engine = create_engine('sqlite://')
+db_engine = None
 Base = declarative_base()
-SQLSession = sessionmaker(bind=engine)
+SQLSession = sessionmaker()
+
+
+def init_database(engine_str: str='sqlite://'):
+    global db_engine
+    db_engine = create_engine(engine_str)
+    # create all databases
+    Base.metadata.create_all(db_engine)
 
 
 @contextmanager
-def session_scope():
+def session_scope(engine=None):
     ''' Provide a transactional scope around a series of operations. '''
+    if engine is None:
+        # use global db_engine by default
+        engine = db_engine
+    SQLSession.configure(bind=engine)
     session = SQLSession()
     try:
         yield session
@@ -81,10 +90,6 @@ class Log(Base):
     datetime = Column(DateTime, nullable=False, comment='Log entry date and time')
     level = Column(Enum(LogLevel), nullable=False, comment='Log entry level')
     message = Column(String, nullable=False, comment='Log entry')
-
-
-# create database schema
-Base.metadata.create_all(engine)
 
 
 def export_schema_graph(name: str):
