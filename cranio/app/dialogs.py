@@ -16,6 +16,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QPushButton, 
                              QSpinBox, QMessageBox, QWidget,
@@ -181,13 +182,33 @@ def add_patient(patient_id: str) -> Patient:
     Add new patient record to the database.
     Raises sqlalchemy.exc.IntegrityError if a record with the given patient_id already exists.
     '''
-    patient = Patient(id=patient_id)
+    patient = Patient(patient_id=patient_id)
     with session_scope() as session:
         session.add(patient)
     return patient
 
 
-class CreatePatientWidget(QWidget):
+def prompt_create_patient(parent_widget) -> str:
+    '''
+    Prompt the user to create a new patient id.
+    The patient is inserted to the database if no constraints are violated.
+    Returns:
+        patient identifier string or None if no patient was created (user cancelled or constraint violation)
+    '''
+    # open create patient dialog
+    patient_id, ok = QInputDialog.getText(parent_widget, 'Create patient', 'Enter patient id:')
+    if not ok:
+        return
+    # try to insert patient to database
+    try:
+        add_patient(patient_id)
+        return patient_id
+    except IntegrityError:
+        QMessageBox.information(parent_widget, 'Invalid value',
+                                'Patient id "{}" is invalid or already exists in the database'.format(patient_id))
+
+
+class PatientWidget(QWidget):
     '''
     Addition by clicking on an empty row and writing the patient_id.
     Removal is not supported by the widget and is only possible by directly querying the database.
@@ -205,7 +226,7 @@ class CreatePatientWidget(QWidget):
         self.table_widget.horizontalHeader().setStretchLastSection(True);
         self.table_widget.resizeColumnsToContents()
         self.add_button = QPushButton('Add', parent=self)
-        self.add_button.clicked.connect(self.add_patient_prompt)
+        self.add_button.clicked.connect(self.add_button_clicked)
         self.main_layout.addWidget(self.label)
         self.main_layout.addWidget(self.table_widget)
         self.main_layout.addWidget(self.add_button)
@@ -217,24 +238,16 @@ class CreatePatientWidget(QWidget):
         with session_scope() as session:
             for i, patient in enumerate(session.query(Patient).all()):
                 self.table_widget.setRowCount(i + 1)
-                self.table_widget.setItem(i, 0, QTableWidgetItem(patient.id))
+                self.table_widget.setItem(i, 0, QTableWidgetItem(patient.patient_id))
                 self.table_widget.setItem(i, 1, QTableWidgetItem(str(patient.created_at)))
 
     def add_patient(self, patient_id: str):
         add_patient(patient_id)
         self.update_patients()
 
-    def add_patient_prompt(self):
-        # open create patient dialog
-        patient_id, ok = QInputDialog.getText(self, 'Create patient', 'Enter patient id:')
-        if not ok:
-            return
-        # try to insert patient to database
-        try:
-            self.add_patient(patient_id)
-        except IntegrityError:
-            QMessageBox.information(self, 'Already exists',
-                                    'Patient id "{}" already exists in the database'.format(patient_id))
+    def add_button_clicked(self):
+        prompt_create_patient(self)
+        self.update_patients()
 
     def patient_count(self):
         return self.table_widget.rowCount()
@@ -254,31 +267,16 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction(self.load_document_action)
         # add separator between documents and patients
         self.file_menu.addSeparator()
-        self.new_patient_action = QAction('New patient', self)
-        self.new_patient_action.triggered.connect(self.create_patient)
-        self.file_menu.addAction(self.new_patient_action)
-        self.get_patients_action = QAction('Patients', self)
-        self.get_patients_action.triggered.connect(self.get_patients)
-        self.file_menu.addAction(self.get_patients_action)
+        self.patients_action = QAction('Patients', self)
+        self.patients_action.triggered.connect(self.open_patient_widget)
+        self.file_menu.addAction(self.patients_action)
 
-    def create_patient(self):
-        # open create patient dialog
-        patient_id, ok = QInputDialog.getText(self, 'Create patient', 'Enter patient id:')
-        if not ok:
-            return
-        # try to insert patient to database
-        try:
-            add_patient(patient_id)
-        except IntegrityError:
-            QMessageBox.information(self, 'Already exists',
-                                    'Patient id "{}" already exists in the database'.format(patient_id))
-
-    def get_patients(self):
+    def open_patient_widget(self):
         with session_scope() as session:
             patients = session.query(Patient).all()
         dialog = QDialog(parent=self)
         layout = QVBoxLayout()
-        widget = CreatePatientWidget()
+        widget = PatientWidget()
         layout.addWidget(widget)
         dialog.setLayout(layout)
         dialog.exec_()
