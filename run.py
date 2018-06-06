@@ -2,15 +2,21 @@ import sys
 import random
 import datetime
 import logging
+import logging.config
 import multiprocessing as mp
 from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, Sensor, ChannelInfo
 from cranio.imada import ImadaSensor
 from cranio.app.plot import PlotWindow
 from cranio.app.dialogs import SessionMetaDialog
+from cranio.utils import get_logging_config
 
 start_time = datetime.datetime.now()
 n_seconds = 3
+
+# logging configuration
+d = get_logging_config()
+logging.config.dictConfig(d)
 
 def update(plot_widget):
     time_filter(n_seconds, update_plot(plot_widget, x=[(datetime.datetime.now()-start_time).total_seconds()], y=[random.gauss(0,1)]))

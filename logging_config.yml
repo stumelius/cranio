@@ -1,0 +1,33 @@
+version: 1
+formatters:
+  default:
+    format: '%(asctime)s.%(msecs)03d;%(name)s;%(threadName)s;%(levelname)s;%(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  long:
+    format: '%(asctime)s.%(msecs)03d;%(name)s;%(threadName)s;%(levelname)s;%(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: default
+    stream: ext://sys.stdout
+  file:
+    class : logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: long
+    filename: app.log
+    maxBytes: 100000
+    backupCount: 3
+loggers:
+  cranio:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: False
+  cranio.database:
+    level: DEBUG
+    handlers: [console, file]
+    propagate: False
+root:
+  level: DEBUG
+  handlers: [console, file]
