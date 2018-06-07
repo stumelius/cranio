@@ -88,7 +88,7 @@ class Log(Base):
     ''' Software log table '''
     __tablename__ = 'fact_log'
     log_id = Column(Integer, primary_key=True, autoincrement=True)
-    document_id = Column(String, ForeignKey('dim_document.document_id'), nullable=False)
+    document_id = Column(String, ForeignKey('dim_document.document_id'))
     created_at = Column(DateTime, nullable=False, comment='Log entry date and time')
     logger = Column(String, nullable=False, comment='Name of the logger')
     level = Column(Enum(LogLevel), nullable=False, comment='Log entry level')
