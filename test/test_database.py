@@ -1,9 +1,10 @@
 import pytest
 import numpy as np
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id
-from cranio.utils import try_remove
+from cranio.utils import try_remove, get_logging_levels
 from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
                              export_schema_graph, init_database)
 
@@ -82,12 +83,19 @@ def test_create_query_and_delete_measurement(document):
 
 
 def test_create_query_and_delete_log(document):
-    with session_scope() as sql_session:
-        logs = [Log(created_at=datetime.utcnow(), level=np.random.choice(LogLevel),
-                    message=i, document_id=document.document_id,
-                    trace='Empty', logger='test.logger') for i in range(10)]
-        assert_add_query_and_delete(logs, sql_session, Log)
-        # sql_session.query(Log).filter_by(level=LogLevel.INFO).all()
+    with session_scope() as s:
+        # create log for all logging levels
+        logs = []
+        for i, level in enumerate(get_logging_levels().keys()):
+            log = Log(created_at=datetime.utcnow(), level=level, message=i, document_id=document.document_id,
+                      trace='Empty', logger='test.logger')
+            logs.append(log)
+        assert_add_query_and_delete(logs, s, Log)
+        # insert at invalid level
+        log = Log(created_at=datetime.utcnow(), level=1337, message='foo', document_id=document.document_id,
+                  trace='Empty', logger='test.logger')
+        with pytest.raises(IntegrityError):
+            s.add(log)
 
 
 @pytest.mark.skip('Requires graphviz')
@@ -95,3 +103,13 @@ def test_export_schema_graph():
     name = 'foo.png'
     export_schema_graph(name)
     try_remove(name)
+
+
+def test_database_init_populate_lookup_table():
+    logging_levels = get_logging_levels()
+    with session_scope() as s:
+        levels = s.query(LogLevel).all()
+        assert len(levels) == len(logging_levels)
+        for log_level in s.query(LogLevel).all():
+            assert log_level.level in logging_levels.keys()
+            assert log_level.level_name in logging_levels.values()

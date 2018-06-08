@@ -1,4 +1,5 @@
 import enum
+import logging
 from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
@@ -6,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, Enum, ForeignKey, create_engine,
                         CheckConstraint)
 from cranio.core import generate_unique_id, timestamp
+from cranio.utils import get_logging_levels
 from cranio import __version__
 
 # define database connection
@@ -19,6 +21,9 @@ def init_database(engine_str: str='sqlite://'):
     db_engine = create_engine(engine_str)
     # create all databases
     Base.metadata.create_all(db_engine)
+    with session_scope() as s:
+        for level, level_name in get_logging_levels().items():
+            s.add(LogLevel(level=level, level_name=level_name))
 
 
 @contextmanager
@@ -78,10 +83,11 @@ class Measurement(Base):
     event_id = Column(Numeric, nullable=True, comment='Manually annotated distraction event identifier')
 
 
-class LogLevel(enum.Enum):
-    DEBUG = 0
-    INFO = 1
-    ERROR = 2
+class LogLevel(Base):
+    ''' Lookup table '''
+    __tablename__ = 'dim_log_level'
+    level = Column(Integer, primary_key=True, comment='Level priority')
+    level_name = Column(String, nullable=False, comment='E.g. ERROR or INFO')
 
 
 class Log(Base):
@@ -91,7 +97,7 @@ class Log(Base):
     document_id = Column(String, ForeignKey('dim_document.document_id'))
     created_at = Column(DateTime, nullable=False, comment='Log entry date and time')
     logger = Column(String, nullable=False, comment='Name of the logger')
-    level = Column(Enum(LogLevel), nullable=False, comment='Log entry level')
+    level = Column(Integer, ForeignKey('dim_log_level.level'), nullable=False)
     trace = Column(String, comment='Error traceback')
     message = Column(String, nullable=False, comment='Log entry')
 
