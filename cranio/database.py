@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import (Column, Integer, String, DateTime, Float, Boolean, Enum, ForeignKey, create_engine,
+from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, Enum, ForeignKey, create_engine,
                         CheckConstraint)
 from cranio.core import generate_unique_id, timestamp
 from cranio import __version__
@@ -64,7 +64,7 @@ class Document(Base):
     started_at = Column(DateTime, comment='Data collection start date and time')
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
-    distraction_achieved = Column(Float, comment='Achieved distraction in millimeters')
+    distraction_achieved = Column(Numeric, comment='Achieved distraction in millimeters')
     missed_distractors = Column(String, comment='Comma-separated list of missed distractor identifiers')
     distraction_plan_followed = Column(Boolean, comment='Boolean indicating if the distraction plan was followed')
 
@@ -73,9 +73,9 @@ class Measurement(Base):
     __tablename__ = 'fact_measurement'
     measurement_id = Column(Integer, primary_key=True, autoincrement=True)
     document_id = Column(String, ForeignKey('dim_document.document_id'), nullable=False)
-    time_s = Column(Float, nullable=False, comment='Time since start of data collection in seconds')
-    torque_Nm = Column(Float, nullable=False, comment='Torque measured from the screwdriver')
-    event_id = Column(Float, nullable=True, comment='Manually annotated distraction event identifier')
+    time_s = Column(Numeric, nullable=False, comment='Time since start of data collection in seconds')
+    torque_Nm = Column(Numeric, nullable=False, comment='Torque measured from the screwdriver')
+    event_id = Column(Numeric, nullable=True, comment='Manually annotated distraction event identifier')
 
 
 class LogLevel(enum.Enum):
