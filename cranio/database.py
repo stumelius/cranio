@@ -4,8 +4,8 @@ from contextlib import contextmanager
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, Enum, ForeignKey, create_engine,
-                        CheckConstraint)
+from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, create_engine,
+                        CheckConstraint, event)
 from cranio.core import generate_unique_id, timestamp
 from cranio.utils import get_logging_levels
 from cranio import __version__
@@ -16,9 +16,16 @@ Base = declarative_base()
 SQLSession = sessionmaker()
 
 
+def _fk_pragma_on_connect(dbapi_con, con_record):
+    ''' Enforce sqlite foreign keys '''
+    dbapi_con.execute('pragma foreign_keys=ON')
+
+
 def init_database(engine_str: str='sqlite://'):
     global db_engine
     db_engine = create_engine(engine_str)
+    # enforce sqlite foreign keys
+    event.listen(db_engine, 'connect', _fk_pragma_on_connect)
     # create all databases
     Base.metadata.create_all(db_engine)
     with session_scope() as s:
