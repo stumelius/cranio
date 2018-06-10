@@ -28,27 +28,10 @@ def init_database(engine_str: str='sqlite://'):
     event.listen(db_engine, 'connect', _fk_pragma_on_connect)
     # create all databases
     Base.metadata.create_all(db_engine)
+    # populate lookup tables
     with session_scope() as s:
         for level, level_name in get_logging_levels().items():
             s.add(LogLevel(level=level, level_name=level_name))
-
-
-def init_session():
-    with session_scope() as s:
-        session = Session()
-        s.add(session)
-        s.flush()
-        Session.instance_id = session.session_id
-
-
-def init_document():
-    if Session.instance_id is None:
-        raise ValueError('Session must be initialized before Document')
-    with session_scope() as s:
-        document = Document(session_id=Session.instance_id)
-        s.add(document)
-        s.flush()
-        Document.instance_id = document.document_id
 
 
 @contextmanager
@@ -74,6 +57,17 @@ class Patient(Base):
     patient_id = Column(String, CheckConstraint('patient_id != ""'), primary_key=True,
                         comment='Patient identifier (pseudonym)')
     created_at = Column(DateTime, default=timestamp, comment='Patient creation date and time')
+    # global instance
+    instance_id = None
+
+    @classmethod
+    def init(cls, patient_id) -> str:
+        if cls.instance_id is not None:
+            raise ValueError('{} already initialized'.format(cls.__name__))
+        with session_scope() as s:
+            s.add(cls(patient_id=patient_id))
+            cls.instance_id = patient_id
+        return cls.instance_id
 
 
 class Session(Base):
@@ -84,6 +78,17 @@ class Session(Base):
     sw_version = Column(String, default=__version__)
     # global instance
     instance_id = None
+
+    @classmethod
+    def init(cls) -> str:
+        if cls.instance_id is not None:
+            raise ValueError('{} already initialized'.format(cls.__name__))
+        with session_scope() as s:
+            obj = cls()
+            s.add(obj)
+            s.flush()
+            cls.instance_id = obj.session_id
+        return cls.instance_id
 
 
 class Document(Base):
@@ -101,6 +106,23 @@ class Document(Base):
     distraction_plan_followed = Column(Boolean, comment='Boolean indicating if the distraction plan was followed')
     # global instance
     instance_id = None
+
+    @classmethod
+    def init(cls, patient_id=None) -> str:
+        if cls.instance_id is not None:
+            raise ValueError('{} already initialized'.format(cls.__name__))
+        if patient_id is None:
+            patient_id = Patient.instance_id
+        if Session.instance_id is None:
+            raise ValueError('Session must be initialized before Document')
+        if patient_id is None:
+            raise ValueError('Patient must be initialized before Document')
+        with session_scope() as s:
+            obj = cls(session_id=Session.instance_id, patient_id=patient_id)
+            s.add(obj)
+            s.flush()
+            cls.instance_id = obj.document_id
+        return cls.instance_id
 
 
 class Measurement(Base):
