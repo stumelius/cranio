@@ -1,4 +1,5 @@
 import os
+import logging
 from contextlib import suppress
 from pathlib import Path
 from typing import Union
@@ -20,3 +21,12 @@ def get_logging_config(path: Union[Path, str]=None) -> dict:
         path = DEFAULT_LOGGING_CONFIG_PATH
     with open(path) as stream:
         return yaml.safe_load(stream)
+
+
+def get_logging_levels() -> dict:
+    ''' Return logging levels as dict {level_priority: level_name} '''
+    return logging._levelToName
+
+
+def level_to_name(level: int) -> str:
+    return logging._levelToName[level]
