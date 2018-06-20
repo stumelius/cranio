@@ -30,8 +30,12 @@ def init_database(engine_str: str='sqlite://'):
     Base.metadata.create_all(db_engine)
     # populate lookup tables
     with session_scope() as s:
+        # log levels
         for level, level_name in get_logging_levels().items():
             s.add(LogLevel(level=level, level_name=level_name))
+        # event types
+        for obj in EVENT_TYPES:
+            s.add(EventType(event_type=obj.event_type, event_type_description=obj.event_type_description))
 
 
 @contextmanager
@@ -131,7 +135,6 @@ class Measurement(Base):
     document_id = Column(String, ForeignKey('dim_document.document_id'), nullable=False)
     time_s = Column(Numeric, nullable=False, comment='Time since start of data collection in seconds')
     torque_Nm = Column(Numeric, nullable=False, comment='Torque measured from the screwdriver')
-    event_id = Column(Numeric, nullable=True, comment='Manually annotated distraction event identifier')
 
 
 class LogLevel(Base):
@@ -151,6 +154,29 @@ class Log(Base):
     level = Column(Integer, ForeignKey('dim_log_level.level'), nullable=False)
     trace = Column(String, comment='Error traceback')
     message = Column(String, nullable=False, comment='Log entry')
+
+
+class EventType(Base):
+    ''' Lookup table '''
+    __tablename__ = 'dim_event_type'
+    event_type = Column(String, primary_key=True, comment='Event type character (e.g., D for distraction)')
+    event_type_description = Column(String)
+
+
+# NOTE: Objects in EVENT_TYPES should not be inserted to the database to prevent side effects from SQLAlchemy's
+# lazy loading
+# Instead, only copies of EVENT_TYPES object are to be inserted
+EVENT_TYPE_DISTRACTION = EventType(event_type='D', event_type_description='Distraction event')
+EVENT_TYPES = (EVENT_TYPE_DISTRACTION,)
+
+
+class AnnotatedEvent(Base):
+    __tablename__ = 'fact_annotated_event'
+    event_type = Column(String, primary_key=True, comment='TODO')
+    event_num = Column(Integer, primary_key=True, comment='TODO')
+    document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
+    event_begin = Column(Numeric, comment='Allow placeholder as NULL')
+    event_end = Column(Numeric, comment='Allow placeholder as NULL')
 
 
 def export_schema_graph(name: str):
