@@ -25,6 +25,7 @@ import numpy as np
 
 from contextlib import contextmanager
 from cranio.core import Packet
+from cranio.utils import random_value_generator
 from daqstore.store import DataStore
     
 def all_from_queue(q):
@@ -273,3 +274,12 @@ class ProducerProcess:
             self._process.join(timeout)
         logging.info('Producer process "{}" joined successfully'.format(str(self)))
         return self._process.exitcode
+
+
+def plug_dummy_sensor(producer_process):
+    s = Sensor()
+    s._default_value_generator = random_value_generator
+    ch = ChannelInfo('torque', 'Nm')
+    s.add_channel(ch)
+    producer_process.producer.add_sensor(s)
+    return s
