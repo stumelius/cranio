@@ -172,7 +172,7 @@ EVENT_TYPES = (EVENT_TYPE_DISTRACTION,)
 
 class AnnotatedEvent(Base):
     __tablename__ = 'fact_annotated_event'
-    event_type = Column(String, primary_key=True, comment='TODO')
+    event_type = Column(String, ForeignKey('dim_event_type.event_type'), primary_key=True, comment='TODO')
     event_num = Column(Integer, primary_key=True, comment='TODO')
     document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
     event_begin = Column(Numeric, comment='Allow placeholder as NULL')

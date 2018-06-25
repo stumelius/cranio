@@ -7,7 +7,7 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
-                             export_schema_graph, init_database)
+                             export_schema_graph, init_database, EVENT_TYPE_DISTRACTION, AnnotatedEvent)
 
 
 @pytest.fixture()
@@ -110,6 +110,21 @@ def test_database_init_populate_lookup_table(init):
             assert log_level.level_name in logging_levels.values()
 
 
+def test_create_query_and_delete_annotated_event(init):
+    doc_id = Document.instance_id
+    with session_scope() as s:
+        events = [AnnotatedEvent(event_type=EVENT_TYPE_DISTRACTION.event_type, event_num=i, document_id=doc_id)
+                  for i in range(10)]
+        assert_add_query_and_delete(events, s, AnnotatedEvent)
+
+
+@pytest.mark.skip('FIXME: IntegrityError is raised after add')
+def test_annotated_event_foreign_key_constraint(init):
+    with session_scope() as s:
+        with pytest.raises(IntegrityError):
+            s.add(AnnotatedEvent(event_type=EVENT_TYPE_DISTRACTION.event_type, event_num=1, document_id=1337))
+
+
 def test_init_session():
     assert Session.instance_id is None
     Session.init()
@@ -128,3 +143,4 @@ def test_init_document():
         s.add(p)
     Document.init(patient_id=patient_id)
     assert Document.instance_id is not None
+
