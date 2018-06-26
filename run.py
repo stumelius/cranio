@@ -1,15 +1,11 @@
 import sys
-import random
 import datetime
 import logging
 import logging.config
 import multiprocessing as mp
 from daqstore.store import DataStore
-from cranio.producer import ProducerProcess, plug_dummy_sensor
-from cranio.imada import ImadaSensor, plug_imada_sensor
-from cranio.app.plot import PlotWindow
 from cranio.app import app
-from cranio.app.dialogs import SessionMetaDialog, MainWindow
+from cranio.app.dialogs import  MainWindow
 from cranio.utils import get_logging_config
 from cranio.database import init_database
 
