@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import pandas as pd
 import logging
+from typing import List
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QPushButton, 
@@ -109,6 +110,7 @@ class SessionMetaWidget(QGroupBox):
         self.session_widget = EditWidget('Session', generate_unique_id(), self)
         self.toggle_lock_button = QPushButton('Toggle Lock')
         self.layout = QVBoxLayout()
+        self.enabled = True
         self.init_ui()
         
     def init_ui(self):
@@ -125,9 +127,20 @@ class SessionMetaWidget(QGroupBox):
         self.session_widget.tooltip = SESSION_ID_TOOLTIP
 
     def add_patient(self, text: str):
+        '''
+        Add patient to combo box.
+
+        :param text:
+        :return:
+        '''
         self.patient_widget.add_item(text)
 
     def update_patients_from_database(self):
+        '''
+        Clear and populate patient combo box from database.
+
+        :return:
+        '''
         logging.debug('Update patients called')
         self.patient_widget.clear()
         with session_scope() as s:
@@ -136,26 +149,25 @@ class SessionMetaWidget(QGroupBox):
                 logging.debug(f'patient_id = {p.patient_id}')
                 self.patient_widget.add_item(p.patient_id)
 
-    def patients(self):
+    def patients(self) -> List[str]:
+        '''
+
+        :return: List of patient IDs
+        '''
         return [self.patient_widget.item_at(i) for i in range(self.patient_widget.count())]
 
     @property
-    def active_patient(self):
+    def active_patient(self) -> str:
         return self.patient_widget.value
     
     @active_patient.setter
-    def active_patient(self, value):
+    def active_patient(self, value: str):
         self.patient_widget.value = value
 
-    def ok_button_clicked(self):
-        message = (f'You entered "{self.active_patient}" as the patient.\n'
-                   'Are you sure you want to continue?')
-        if QMessageBox.question(self, 'Are you sure?', message) == QMessageBox.Yes:
-            self.closing.emit()
-            self.close()
-
     def toggle_lock_button_clicked(self):
-        logging.debug('Toggle Lock button clicked')
+        self.enabled = not self.enabled
+        self.patient_widget.setEnabled(self.enabled)
+        logging.debug(f'Toggle Lock button clicked (enabled={self.enabled})')
 
 
 class MeasurementDialog(PlotWindow):
@@ -450,7 +462,7 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_ui(self):
-        self.meta_widget.update()
+        self.meta_widget.update_patients_from_database()
 
 
     def open_patient_widget(self):
@@ -462,4 +474,4 @@ class MainWindow(QMainWindow):
         layout.addWidget(widget)
         dialog.setLayout(layout)
         dialog.exec_()
-        self.meta_widget.update()
+        self.meta_widget.update_patients_from_database()

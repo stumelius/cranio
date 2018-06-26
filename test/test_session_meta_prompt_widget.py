@@ -30,3 +30,16 @@ def test_session_meta_widget_update_patients_from_database(session_meta_widget):
     # verify active patient
     assert session_meta_widget.active_patient == '0'
 
+
+def test_session_meta_widget_lock_button(session_meta_widget):
+    patient_id = 'foo'
+    session_meta_widget.add_patient(patient_id)
+    # lock and verify that active patient cannot be changed
+    session_meta_widget.toggle_lock_button.clicked.emit(True)
+    session_meta_widget.active_patient = 'bar'
+    assert session_meta_widget.active_patient == patient_id
+    # unlock and verify that active patient can be changed
+    session_meta_widget.toggle_lock_button.clicked.emit(True)
+    session_meta_widget.active_patient = 'bar'
+    assert session_meta_widget.active_patient == 'bar'
+
