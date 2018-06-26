@@ -16,11 +16,12 @@ n_seconds = 3
 d = get_logging_config()
 logging.config.dictConfig(d)
 
+init_database()
+
 
 def run():
     ''' Runs the craniodistractor application '''
     # initialize database
-    init_database()
     DataStore.queue_cls = mp.Queue
     w = MainWindow()
     logging.info('Opening main window ...')

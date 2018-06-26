@@ -282,4 +282,5 @@ def plug_dummy_sensor(producer_process):
     ch = ChannelInfo('torque', 'Nm')
     s.add_channel(ch)
     producer_process.producer.add_sensor(s)
+    logging.debug('Dummy torque sensor plugged')
     return s
