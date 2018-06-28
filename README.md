@@ -1,4 +1,4 @@
-**Build Status** : [![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
+[![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
 [![Coverage Status](https://coveralls.io/repos/github/smomni/cranio/badge.svg?branch=master)](https://coveralls.io/github/smomni/cranio?branch=master)
 
 # Cranio
