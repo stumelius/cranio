@@ -3,12 +3,12 @@ import logging.config
 from cranio.utils import get_logging_config, level_to_name
 from cranio.database import init_database, session_scope, Log, LogLevel
 
-
+# FIXME: database initialization fails if not done in global scope
+init_database()
 logging.config.dictConfig(get_logging_config())
 
 
 def test_database_handler():
-    init_database()
     logger = logging.getLogger('cranio')
     logger.info('foo')
     with session_scope() as s:
