@@ -15,4 +15,4 @@ pytz==2018.5
 ruamel.yaml==0.15.42
 sip==4.19.8
 six==1.11.0
-SQLAlchemy==1.2.8
+SQLAlchemy==1.2.9
