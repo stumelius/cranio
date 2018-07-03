@@ -1,12 +1,9 @@
 import pytest
 from cranio.app.dialogs import SessionMetaWidget
-from cranio.database import init_database, session_scope, Patient
-
-# FIXME: database initialization fails if not done in global scope
-init_database()
+from cranio.database import session_scope, Patient
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def session_meta_widget():
     widget = SessionMetaWidget()
     return widget
@@ -18,7 +15,7 @@ def test_session_meta_widget_add_patient(session_meta_widget):
     assert session_meta_widget.active_patient == patient_id
 
 
-def test_session_meta_widget_update_patients_from_database(session_meta_widget):
+def test_session_meta_widget_update_patients_from_database(session_meta_widget, database_document_fixture):
     n = 10
     # add patients to database
     with session_scope() as s:
@@ -28,9 +25,10 @@ def test_session_meta_widget_update_patients_from_database(session_meta_widget):
     session_meta_widget.update_patients_from_database()
     patients = session_meta_widget.patients()
     # verify patient count
-    assert len(patients) == n
-    # verify active patient
-    assert session_meta_widget.active_patient == '0'
+    # NOTE: database_document_fixture initializes a patient record by default. therefore, total patients is n + 1
+    assert len(patients) == n + 1
+    # first inserted patient is active
+    assert session_meta_widget.active_patient == patients[0]
 
 
 def test_session_meta_widget_lock_button(session_meta_widget):
