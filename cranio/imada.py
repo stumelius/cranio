@@ -173,3 +173,9 @@ class ImadaSensor(Sensor):
             value = None
         record = Packet([datetime.datetime.now()], {str(self.channels[0]): value})
         return record
+
+
+def plug_imada_sensor(producer_process):
+    s = ImadaSensor()
+    producer_process.producer.add_sensor(s)
+    return s

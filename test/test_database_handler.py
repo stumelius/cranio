@@ -1,14 +1,9 @@
 import logging
-import logging.config
-from cranio.utils import get_logging_config, level_to_name
-from cranio.database import init_database, session_scope, Log, LogLevel
+from cranio.utils import level_to_name
+from cranio.database import session_scope, Log
 
 
-logging.config.dictConfig(get_logging_config())
-
-
-def test_database_handler():
-    init_database()
+def test_database_handler(database_document_fixture):
     logger = logging.getLogger('cranio')
     logger.info('foo')
     with session_scope() as s:

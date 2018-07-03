@@ -1,5 +1,6 @@
 import os
 import logging
+import random
 from contextlib import suppress
 from pathlib import Path
 from typing import Union
@@ -30,3 +31,7 @@ def get_logging_levels() -> dict:
 
 def level_to_name(level: int) -> str:
     return logging._levelToName[level]
+
+
+def random_value_generator():
+    return random.gauss(0, 1)
