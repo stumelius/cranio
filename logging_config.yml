@@ -1,9 +1,7 @@
 version: 1
 formatters:
   default:
-    format: '%(asctime)s.%(msecs)03d;%(name)s;%(threadName)s;%(levelname)s;%(message)s'
-    datefmt: '%Y-%m-%d %H:%M:%S'
-  long:
+    class: cranio.utils.UTCFormatter
     format: '%(asctime)s.%(msecs)03d;%(name)s;%(threadName)s;%(levelname)s;%(message)s'
     datefmt: '%Y-%m-%d %H:%M:%S'
 handlers:
@@ -15,14 +13,14 @@ handlers:
   file:
     class: logging.handlers.RotatingFileHandler
     level: DEBUG
-    formatter: long
+    formatter: default
     filename: app.log
     maxBytes: 100000
     backupCount: 3
   database:
     class: cranio.handler.DatabaseHandler
     level: NOTSET
-    formatter: long
+    formatter: default
 loggers:
   cranio:
     level: DEBUG

@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import random
 from contextlib import suppress
@@ -7,6 +8,11 @@ from typing import Union
 from ruamel import yaml
 
 DEFAULT_LOGGING_CONFIG_PATH = Path(__file__).parent.parent / 'logging_config.yml'
+
+
+class UTCFormatter(logging.Formatter):
+    """ Logging formatter that converts timestamps to UTC+0 """
+    converter = time.gmtime
 
 
 def try_remove(name: Union[str, Path]):
@@ -29,7 +35,7 @@ def get_logging_levels() -> dict:
     return logging._levelToName
 
 
-def level_to_name(level: int) -> str:
+def log_level_to_name(level: int) -> str:
     return logging._levelToName[level]
 
 

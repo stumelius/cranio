@@ -74,6 +74,10 @@ def session_scope(engine=None):
 class InstanceBase:
 
     @classmethod
+    def get_instance(cls):
+        return cls.instance_id
+
+    @classmethod
     def reset_instance(cls):
         cls.instance_id = None
 
@@ -170,8 +174,8 @@ class Log(Base):
     ''' Software log table '''
     __tablename__ = 'fact_log'
     log_id = Column(Integer, primary_key=True, autoincrement=True)
-    document_id = Column(String, ForeignKey('dim_document.document_id'))
-    created_at = Column(DateTime, nullable=False, comment='Log entry date and time')
+    session_id = Column(String, ForeignKey('dim_session.session_id'), nullable=False)
+    created_at = Column(DateTime, nullable=False, comment='Log entry date and time with second precision (UTC+0)')
     logger = Column(String, nullable=False, comment='Name of the logger')
     level = Column(Integer, ForeignKey('dim_log_level.level'), nullable=False)
     trace = Column(String, comment='Error traceback')
