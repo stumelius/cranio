@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
-from cranio.core import generate_unique_id
+from cranio.core import generate_unique_id, timestamp
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
                              export_schema_graph, EVENT_TYPE_DISTRACTION, AnnotatedEvent, init_database)
@@ -54,20 +54,20 @@ def test_create_query_and_delete_measurement(database_document_fixture):
         assert_add_query_and_delete(measurements, s, Measurement)
 
 
-def test_create_query_and_delete_log(database_document_fixture):
+def test_create_query_and_delete_log(database_fixture):
     with session_scope() as s:
         # create log for all logging levels
         logs = []
         for i, level in enumerate(get_logging_levels().keys()):
-            log = Log(created_at=datetime.utcnow(), level=level, message=i, document_id=Document.instance_id,
+            log = Log(created_at=timestamp(), level=level, message=i, session_id=Session.get_instance(),
                       trace='Empty', logger='test.logger')
             logs.append(log)
         assert_add_query_and_delete(logs, s, Log)
 
 
 @pytest.mark.skip('FIXME: IntegrityError is raised after add')
-def test_add_log_with_invalid_level(database_document_fixture):
-    log = Log(created_at=datetime.utcnow(), level=1337, message='foo', document_id=Document.instance_id,
+def test_add_log_with_invalid_level(database_fixture):
+    log = Log(created_at=timestamp(), level=1337, message='foo', session_id=Session.get_instance(),
               trace='Empty', logger='test.logger')
     with session_scope() as s:
         with pytest.raises(IntegrityError):
@@ -106,9 +106,9 @@ def test_annotated_event_foreign_key_constraint(database_fixture):
             s.add(AnnotatedEvent(event_type=EVENT_TYPE_DISTRACTION.event_type, event_num=1, document_id=1337))
 
 
-def test_database_is_empty_after_reinitialization(database_document_fixture):
+def test_database_is_empty_after_reinitialization(database_fixture):
     with session_scope() as s:
-        s.add(Log(document_id=Document.instance_id, created_at=datetime.now(), logger='cranio', level=0, message='foo'))
+        s.add(Log(session_id=Session.get_instance(), created_at=timestamp(), logger='cranio', level=0, message='foo'))
     # re-initialize
     init_database()
     with session_scope() as s:

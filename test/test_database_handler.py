@@ -1,5 +1,5 @@
 import logging
-from cranio.utils import level_to_name
+from cranio.utils import log_level_to_name
 from cranio.database import session_scope, Log
 
 
@@ -11,5 +11,5 @@ def test_database_handler(database_document_fixture):
         assert len(logs) == 1
         log = logs[0]
         assert log.message == 'foo'
-        assert level_to_name(log.level) == 'INFO'
+        assert log_level_to_name(log.level) == 'INFO'
         assert log.logger == 'cranio'
