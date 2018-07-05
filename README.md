@@ -3,13 +3,22 @@
 
 # Cranio
 
-Cranio is a Python library used for force measurements, data analysis and visualization in posterior calvarial vault osteodistraction (PCVO). 
+Cranio is a Python library used for force measurements, data analysis and visualization in 
+posterior calvarial vault osteodistraction (PCVO). 
 The methods implemented in this library are based on a whitepaper by Ritvanen et al. (2017).
 
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a target machine.
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
+See deployment for notes on how to deploy the project on a target machine.
+
+### Hardware
+
+The craniodistractor measurements are taken with a [Imada HTG2-4](https://imada.com/products/htg2-digital-torque-gauge/) 
+digital torque gauge. The gauge features a remote torque sensor with a Jacob's chuck.
+
+![Imada HTG2-4 digital torque gauge with Jacob's chuck (left) and USB serial interface (right).](docs/imada.jpg)
 
 ### Prerequisites
 

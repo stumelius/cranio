@@ -6,8 +6,14 @@ from cranio.database import Log, session_scope, Session
 
 
 class DatabaseHandler(logging.Handler):
-    # A very basic logger that commits a log entry in a database
-    def emit(self, record):
+    """ Logger for committing log entries in a database. """
+    def emit(self, record: dict) -> None:
+        """
+        Overloaded method for handling log records.
+
+        :param record: Log record dictionary
+        :return: None
+        """
         trace = None
         exc = record.__dict__['exc_info']
         if exc:
