@@ -1,3 +1,6 @@
+"""
+Interface for Imada HTG2-4 digital torque gauge.
+"""
 import re
 import serial.tools.list_ports
 import datetime

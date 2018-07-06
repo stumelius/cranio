@@ -1,3 +1,6 @@
+"""
+Relational database definitions and classes/functions for database management.
+"""
 from contextlib import contextmanager, closing
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker

@@ -9,6 +9,7 @@ setup(
     extras_require={
         'dev': [],
         'test': ['pytest'],
+        'docs': ['sphinx', 'sphinx-autodoc-typehints']
     },
     entry_points={
         'console_scripts': [],

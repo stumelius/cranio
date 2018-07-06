@@ -465,7 +465,6 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         self.meta_widget.update_patients_from_database()
 
-
     def open_patient_widget(self):
         with session_scope() as session:
             patients = session.query(Patient).all()
