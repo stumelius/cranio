@@ -73,7 +73,7 @@ class Imada(Sensor):
         super().__init__()
         self.serial = serial.Serial(port=None, **self.rs232_config._asdict())
         self.serial.port = get_com_port(self.serial_number)
-        self.add_channel(ChannelInfo('torque', 'Nm'))
+        self.register_channel(ChannelInfo('torque', 'Nm'))
     
     def open(self):
         """
@@ -140,5 +140,5 @@ def plug_imada(producer_process: ProducerProcess) -> Imada:
     :return: Imada object
     """
     imada = Imada()
-    producer_process.producer.add_sensor(imada)
+    producer_process.producer.register_sensor(imada)
     return imada

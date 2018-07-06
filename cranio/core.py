@@ -32,7 +32,7 @@ def generate_unique_id():
     return str(uuid.uuid1())
 
 
-def timestamp():
+def utc_datetime():
     """
 
     :return: Current date and time (UTC+0)

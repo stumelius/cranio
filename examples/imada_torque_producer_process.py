@@ -6,7 +6,7 @@ from craniodistractor.imada import ImadaSensor
 if __name__ == '__main__':
     p = ProducerProcess('Imada torque producer')
     s = ImadaSensor()
-    p.producer.add_sensor(s)
+    p.producer.register_sensor(s)
     p.start()
     # record for 2 seconds
     time.sleep(2)

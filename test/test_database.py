@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
-from cranio.core import generate_unique_id, timestamp
+from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
                              export_schema_graph, EVENT_TYPE_DISTRACTION, AnnotatedEvent, init_database)
@@ -59,7 +59,7 @@ def test_create_query_and_delete_log(database_fixture):
         # create log for all logging levels
         logs = []
         for i, level in enumerate(get_logging_levels().keys()):
-            log = Log(created_at=timestamp(), level=level, message=i, session_id=Session.get_instance(),
+            log = Log(created_at=utc_datetime(), level=level, message=i, session_id=Session.get_instance(),
                       trace='Empty', logger='test.logger')
             logs.append(log)
         assert_add_query_and_delete(logs, s, Log)
@@ -67,7 +67,7 @@ def test_create_query_and_delete_log(database_fixture):
 
 @pytest.mark.skip('FIXME: IntegrityError is raised after add')
 def test_add_log_with_invalid_level(database_fixture):
-    log = Log(created_at=timestamp(), level=1337, message='foo', session_id=Session.get_instance(),
+    log = Log(created_at=utc_datetime(), level=1337, message='foo', session_id=Session.get_instance(),
               trace='Empty', logger='test.logger')
     with session_scope() as s:
         with pytest.raises(IntegrityError):
@@ -108,7 +108,7 @@ def test_annotated_event_foreign_key_constraint(database_fixture):
 
 def test_database_is_empty_after_reinitialization(database_fixture):
     with session_scope() as s:
-        s.add(Log(session_id=Session.get_instance(), created_at=timestamp(), logger='cranio', level=0, message='foo'))
+        s.add(Log(session_id=Session.get_instance(), created_at=utc_datetime(), logger='cranio', level=0, message='foo'))
     # re-initialize
     init_database()
     with session_scope() as s:

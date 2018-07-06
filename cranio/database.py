@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, create_engine,
                         CheckConstraint, event)
-from cranio.core import generate_unique_id, timestamp
+from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import get_logging_levels
 from cranio import __version__
 
@@ -111,7 +111,7 @@ class Patient(Base, InstanceBase):
     __tablename__ = 'dim_patient'
     patient_id = Column(String, CheckConstraint('patient_id != ""'), primary_key=True,
                         comment='Patient identifier (pseudonym)')
-    created_at = Column(DateTime, default=timestamp, comment='Patient creation date and time')
+    created_at = Column(DateTime, default=utc_datetime, comment='Patient creation date and time')
     # global instance
     instance_id = None
 
