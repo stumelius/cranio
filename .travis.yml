@@ -1,7 +1,6 @@
   language: python
   os:
     - linux
-    - osx
   cache: pip
   python:
     - 3.6
@@ -10,6 +9,9 @@
     - sh -e /etc/init.d/xvfb start
     - pip install -r requirements.txt
     - pip install --upgrade sip
+    - pip install codecov
     - pip install -e .[test]
   script:
     - pytest
+  after_script:
+    - codecov
