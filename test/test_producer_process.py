@@ -46,7 +46,7 @@ def test_sensor():
     assert s.self_test()
     assert s.read() == None
     ch = ChannelInfo('torque', 'Nm')
-    s.add_channel(ch)
+    s.register_channel(ch)
     packet = s.read()
     df = packet.as_dataframe()
     assert not df.empty
@@ -58,10 +58,10 @@ def test_producer_add_and_remove_sensors():
     p = Producer()
     sensors = [Sensor() for _ in range(n)]
     for s in sensors:
-        p.add_sensor(s)
+        p.register_sensor(s)
     assert len(p.sensors) == n
     for s in sensors:
-        p.remove_sensor(s)
+        p.unregister_sensor(s)
     assert len(p.sensors) == 0
 
 
@@ -92,8 +92,8 @@ def test_producer_process_with_sensors(store, database_document_fixture):
     s._default_value_generator = random_value_generator
     channels = [ChannelInfo('torque', 'Nm'), ChannelInfo('load', 'N'), ChannelInfo('extension', 'mm')]
     for c in channels:
-        s.add_channel(c)
-    p.producer.add_sensor(s)
+        s.register_channel(c)
+    p.producer.register_sensor(s)
     p.start()
     assert p.is_alive()
     time.sleep(1)

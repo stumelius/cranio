@@ -1,7 +1,8 @@
 import pytest
 from cranio.app.dialogs import PatientWidget
 from sqlalchemy import exists
-from cranio.database import Patient, session_scope, IntegrityError, init_database
+from sqlalchemy.exc import IntegrityError
+from cranio.database import Patient, session_scope, init_database
 
 
 def patient_exists(patient_id: str) -> bool:

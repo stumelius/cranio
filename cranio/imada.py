@@ -1,64 +1,57 @@
+"""
+Interface for Imada HTG2-4 digital torque gauge.
+"""
 import re
 import serial.tools.list_ports
 import datetime
 import logging
-
 from collections import namedtuple
 from typing import Tuple
-from cranio.producer import Sensor, ChannelInfo
+from serial.tools.list_ports_common import ListPortInfo
+from cranio.producer import Sensor, ChannelInfo, ProducerProcess
 from cranio.core import Packet
-
-class TelegramError(Exception):
-    pass
 
 IMADA_EOL = '\r'
 
-def find_serial_device(serial_number: str):
-    '''
-    Finds a serial device with a specific serial number.
-    
-    Args:
-        - serial_number: device serial number
-        
-    Returns:
-        Serial port
-        
-    Raises:
-        ValueError: No device found
-    '''
+
+class TelegramError(Exception):
+    """ Telegram error. """
+    pass
+
+
+def find_serial_device(serial_number: str) -> ListPortInfo:
+    """
+    Find a serial device with a specific serial number.
+
+    :param serial_number: Device serial number
+    :return: Serial port info
+    :raises ValueError: if no device found
+    """
     try:
         return [port for port in serial.tools.list_ports.comports() if port.serial_number == serial_number][0]
     except IndexError:
         raise ValueError('No device found with serial number {}'.format(serial_number))
 
+
 def get_com_port(serial_number: str) -> str:
-    '''
-    Finds a COM port for a serial device with a specific serial number.
-    
-    Args:
-        - serial_number: device serial number
-        
-    Returns:
-        COM port name as a string
-        
-    Raises:
-        ValueError: No device found
-    '''
+    """
+    Find a COM port for a serial device with a specific serial number.
+
+    :param serial_number: Device serial number
+    :return: COM port name
+    :raises ValueError: if no device found
+    """
     return find_serial_device(serial_number).device
 
+
 def decode_telegram(telegram: str) -> Tuple[str, str, str, str]:
-    '''
-    Decodes a telegram string and returns a tuple (value, unit, mode, condition).
-    
-    Args:
-        - telegram: telegram string
-        
-    Returns:
-        A tuple (value, unit, mode, condition)
-        
-    Raises:
-        TelegramError: Invalid telegram
-    '''
+    """
+    Decode a telegram string and return a tuple (value, unit, mode, condition).
+
+    :param telegram: Telegram string
+    :return: Tuple (value, unit, mode, condition)
+    :raises TelegramError: if telegram is invalid
+    """
     str_ = telegram.replace(IMADA_EOL, '')
     try:
         value = float(re.findall(r'[-+]?\d*\.\d+|\d+', str_)[0])
@@ -68,64 +61,45 @@ def decode_telegram(telegram: str) -> Tuple[str, str, str, str]:
         unit, mode, condition = str_[-3:]
     except ValueError:
         raise TelegramError('Invalid telegram: ' + str_)
-    return (value, unit, mode, condition)
+    return value, unit, mode, condition
 
 # RS232 communication protocol configuration
 RS232Configuration = namedtuple('RS232Configuration', ['baudrate', 'bytesize', 'parity', 'stopbits', 'timeout'])
 
-class ImadaSensor(Sensor):
+
+class Imada(Sensor):
+    """ Imada HTG2-4 digital torque gauge with USB serial (RS-232) interface. """
     rs232_config = RS232Configuration(19200, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, 1/50)
     serial_number = 'FTSLQ6QIA'
     
     def __init__(self):
-        super(ImadaSensor, self).__init__()
+        super().__init__()
         self.serial = serial.Serial(port=None, **self.rs232_config._asdict())
         self.serial.port = get_com_port(self.serial_number)
-        self.add_channel(ChannelInfo('torque', 'Nm'))
+        self.register_channel(ChannelInfo('torque', 'Nm'))
     
     def open(self):
-        '''
-        Opens the serial port.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-        
-        Raises:
-            None
-        '''
+        """
+        Open the serial port.
+
+        :return:
+        """
         return self.serial.open()
     
     def close(self):
-        '''
-        Closes the serial port.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-        
-        Raises:
-            None
-        '''
+        """
+        Close the serial port.
+
+        :return:
+        """
         return self.serial.close()
     
     def readline(self) -> str:
-        '''
-        Reads bytes from the serial port until an EOL character and returns a string.
-        
-        Args:
-            None
-        
-        Returns:
-            A string
-            
-        Raises:
-            None
-        '''
+        """
+        Read bytes from the serial port until an EOL character and returns a string.
+
+        :return: String
+        """
         line = []
         while True:
             c = self.serial.read().decode('utf-8')
@@ -135,36 +109,22 @@ class ImadaSensor(Sensor):
         return ''.join(line)
     
     def poll(self) -> str:
-        '''
-        Polls the display value from the sensor. To decode the display value string, use decode_telegram().
-        
-        Args:
-            None
-            
-        Returns:
-            Display value as a string, or telegram
-            
-        Raises:
-            None
-        '''
-        # ask for display value
+        """
+        Poll the display value from the sensor. To decode the display value string, use decode_telegram().
+
+        :return: Display value as a string
+        """
+        # request display value
         self.serial.write(('D' + IMADA_EOL).encode('utf-8'))
         # return display value
         return self.readline()
     
     def read(self) -> Packet:
-        '''
-        Reads a single display from the sensor and returns a Packet.
-        
-        Args:
-            None
-            
-        Returns:
-            A Packet object
-            
-        Raises:
-            None
-        '''
+        """
+        Read a single value from the sensor.
+
+        :return: Packet object
+        """
         try:
             telegram = self.poll()
             value, _, _, _ = decode_telegram(telegram)
@@ -175,7 +135,13 @@ class ImadaSensor(Sensor):
         return record
 
 
-def plug_imada_sensor(producer_process):
-    s = ImadaSensor()
-    producer_process.producer.add_sensor(s)
-    return s
+def plug_imada(producer_process: ProducerProcess) -> Imada:
+    """
+    Plug Imada digital torque gauge to a producer process.
+
+    :param producer_process: Producer process
+    :return: Imada object
+    """
+    imada = Imada()
+    producer_process.producer.register_sensor(imada)
+    return imada

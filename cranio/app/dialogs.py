@@ -26,12 +26,13 @@ from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QPushButton,
                              QLineEdit, QHBoxLayout, QLabel, 
                              QDialog, QAction, QInputDialog, QComboBox,
                              QMainWindow, QTableWidget, QTableWidgetItem, QAbstractItemView)
+from sqlalchemy.exc import IntegrityError
 from daqstore.store import DataStore
 from cranio.app.plot import PlotWindow, VMultiPlotWidget, RegionPlotWindow
 from cranio.core import generate_unique_id
-from cranio.database import session_scope, IntegrityError, Patient
+from cranio.database import session_scope, Patient
 from cranio.producer import ProducerProcess, plug_dummy_sensor
-from cranio.imada import plug_imada_sensor
+from cranio.imada import plug_imada
 
 PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
                       'NOTE: Do not enter personal information, such as names.')
@@ -454,7 +455,7 @@ class MainWindow(QMainWindow):
         # add Connect menu
         self.connect_menu = self.menuBar().addMenu('Connect')
         self.connect_torque_sensor_action = QAction('Connect Imada torque sensor', self)
-        self.connect_torque_sensor_action.triggered.connect(partial(plug_imada_sensor, self.producer_process))
+        self.connect_torque_sensor_action.triggered.connect(partial(plug_imada, self.producer_process))
         self.connect_dummy_sensor_action = QAction('Connect dummy torque sensor', self)
         self.connect_dummy_sensor_action.triggered.connect(partial(plug_dummy_sensor, self.producer_process))
         self.connect_menu.addAction(self.connect_torque_sensor_action)
@@ -463,7 +464,6 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         self.meta_widget.update_patients_from_database()
-
 
     def open_patient_widget(self):
         with session_scope() as session:

@@ -2,7 +2,7 @@ import pytest
 import logging
 import time
 from sqlalchemy.exc import IntegrityError
-from cranio.core import timestamp
+from cranio.core import utc_datetime
 from cranio.utils import log_level_to_name
 from cranio.database import init_database, Log, session_scope, Session
 
@@ -19,14 +19,14 @@ def test_logging_fails_if_no_session_is_initialized():
 
 def test_logging_is_directed_to_database_log_table_with_correct_values(database_fixture):
     wait_duration = 0.01 # seconds
-    t_start = timestamp()
+    t_start = utc_datetime()
     # short wait to ensure that t_start < log timestamp
     time.sleep(wait_duration)
     msg = 'This should not raise an IntegrityError'
     logger.info(msg)
     # short wait to ensure that t_stop > log timestamp
     time.sleep(wait_duration)
-    t_stop = timestamp()
+    t_stop = utc_datetime()
     with session_scope() as s:
         logs = s.query(Log).all()
         assert len(logs) == 1
