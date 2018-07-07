@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
-[![Coverage Status](https://coveralls.io/repos/github/smomni/cranio/badge.svg?branch=master)](https://coveralls.io/github/smomni/cranio?branch=master)
+[![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
+[![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
 
 # Cranio
 
