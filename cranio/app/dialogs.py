@@ -38,6 +38,7 @@ PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
                       'NOTE: Do not enter personal information, such as names.')
 SESSION_ID_TOOLTIP = ('This is a random-generated unique identifier.\n'
                       'NOTE: Value cannot be changed by the user.')
+DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
 
 
 class EditWidget(QWidget):
@@ -101,31 +102,62 @@ class ComboEditWidget(EditWidget):
         self.edit_widget.setEditText(value)
 
 
-class SessionMetaWidget(QGroupBox):
+class SpinEditWidget(EditWidget):
+    _edit_widget_cls = QSpinBox
+
+    @property
+    def value(self):
+        return self.edit_widget.value()
+
+    @value.setter
+    def value(self, value):
+        self.edit_widget.setValue(value)
+
+    def step_up(self):
+        ''' Increase value by one step. '''
+        self.edit_widget.stepUp()
+
+    def step_down(self):
+        ''' Decrease value by one step. '''
+        self.edit_widget.stepDown()
+
+    def set_range(self, min: int, max:int):
+        '''
+        Set allowed minimum and maximum values.
+
+        :param min:
+        :param max:
+        :return:
+        '''
+        self.edit_widget.setRange(min, max)
+
+
+class MetaDataWidget(QGroupBox):
     closing = QtCore.pyqtSignal()
     
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.patient_widget = ComboEditWidget('Patient', parent=self)
-        # initialize session as unique id
-        self.session_widget = EditWidget('Session', generate_unique_id(), self)
-        self.toggle_lock_button = QPushButton('Toggle Lock')
+        self.distractor_widget = SpinEditWidget('Distractor', parent=self)
+        self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
         self.enabled = True
         self.init_ui()
         
     def init_ui(self):
-        self.toggle_lock_button.clicked.connect(self.toggle_lock_button_clicked)
+        ''' Initialize ui elements. '''
+        # initialize distractor as 1 and set range between 1 and 10
+        self.distractor_widget.value = 1
+        self.distractor_widget.set_range(1, 10)
+        self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
-        self.layout.addWidget(self.session_widget)
-        self.layout.addWidget(self.toggle_lock_button)
+        self.layout.addWidget(self.distractor_widget)
+        self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
-        # disable changes to session
-        self.session_widget.setDisabled(True)
         # set tooltips
         self.patient_widget.tooltip = PATIENT_ID_TOOLTIP
-        self.session_widget.tooltip = SESSION_ID_TOOLTIP
+        self.distractor_widget.tooltip = DISTRACTOR_ID_TOOLTIP
 
     def add_patient(self, text: str):
         '''
@@ -434,7 +466,7 @@ class MainWindow(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         # add meta prompt widget
-        self.meta_widget = SessionMetaWidget()
+        self.meta_widget = MetaDataWidget()
         self.main_layout.addWidget(self.meta_widget)
         # add measurement widget
         self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
