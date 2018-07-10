@@ -20,6 +20,9 @@ Indices and tables
 * :ref:`search`
 
 
+.. include::  use_cases.rst
+
+
 
 cranio database
 ===============
