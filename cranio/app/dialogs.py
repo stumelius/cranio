@@ -109,16 +109,16 @@ class SessionMetaWidget(QGroupBox):
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         # initialize session as unique id
         self.session_widget = EditWidget('Session', generate_unique_id(), self)
-        self.toggle_lock_button = QPushButton('Toggle Lock')
+        self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
         self.enabled = True
         self.init_ui()
         
     def init_ui(self):
-        self.toggle_lock_button.clicked.connect(self.toggle_lock_button_clicked)
+        self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.session_widget)
-        self.layout.addWidget(self.toggle_lock_button)
+        self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
         # disable changes to session

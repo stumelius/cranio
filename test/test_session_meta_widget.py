@@ -31,13 +31,16 @@ def test_session_meta_widget_update_patients_from_database(session_meta_widget, 
     assert session_meta_widget.active_patient == patients[0]
 
 
-def test_session_meta_widget_lock_button(session_meta_widget):
+def test_clicking_toggle_patient_lock_button_disables_patient_edit_only(session_meta_widget):
     patient_id = 'foo'
     session_meta_widget.add_patient(patient_id)
-    # lock
-    session_meta_widget.toggle_lock_button.clicked.emit(True)
+    # lock / disable patient edit
+    session_meta_widget.toggle_patient_lock_button.clicked.emit(True)
     assert not session_meta_widget.patient_widget.isEnabled()
-    # unlock
-    session_meta_widget.toggle_lock_button.clicked.emit(True)
+    # unlock / enable patient edit
+    session_meta_widget.toggle_patient_lock_button.clicked.emit(True)
     assert session_meta_widget.patient_widget.isEnabled()
+
+
+
 

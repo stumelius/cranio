@@ -7,7 +7,7 @@ from daqstore.store import DataStore
 from cranio.app import app
 from cranio.app.dialogs import  MainWindow
 from cranio.utils import get_logging_config
-from cranio.database import init_database
+from cranio.database import init_database, Session
 
 start_time = datetime.datetime.now()
 n_seconds = 3
@@ -17,6 +17,7 @@ d = get_logging_config()
 logging.config.dictConfig(d)
 
 init_database()
+Session.init()
 
 
 def run():
