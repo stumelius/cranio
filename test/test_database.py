@@ -6,7 +6,7 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
-                             export_schema_graph, EVENT_TYPE_DISTRACTION, AnnotatedEvent, init_database)
+                             export_schema_graph, DISTRACTION_EVENT_TYPE_OBJECT, AnnotatedEvent, init_database)
 
 
 def assert_add_query_and_delete(rows, session, Table):
@@ -94,7 +94,8 @@ def test_database_init_populate_lookup_table(database_fixture):
 def test_create_query_and_delete_annotated_event(database_document_fixture):
     doc_id = Document.instance_id
     with session_scope() as s:
-        events = [AnnotatedEvent(event_type=EVENT_TYPE_DISTRACTION.event_type, event_num=i, document_id=doc_id)
+        events = [AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type, event_num=i, document_id=doc_id,
+                                 annotation_done=False)
                   for i in range(10)]
         assert_add_query_and_delete(events, s, AnnotatedEvent)
 
@@ -103,7 +104,7 @@ def test_create_query_and_delete_annotated_event(database_document_fixture):
 def test_annotated_event_foreign_key_constraint(database_fixture):
     with session_scope() as s:
         with pytest.raises(IntegrityError):
-            s.add(AnnotatedEvent(event_type=EVENT_TYPE_DISTRACTION.event_type, event_num=1, document_id=1337))
+            s.add(AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type, event_num=1, document_id=1337))
 
 
 def test_database_is_empty_after_reinitialization(database_fixture):

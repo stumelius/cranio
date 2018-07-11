@@ -244,8 +244,8 @@ class EventType(Base):
 # NOTE: Objects in EVENT_TYPES should not be inserted to the database to prevent side effects from SQLAlchemy's
 # lazy loading
 # Instead, only copies of EVENT_TYPES object are to be inserted
-EVENT_TYPE_DISTRACTION = EventType(event_type='D', event_type_description='Distraction event')
-EVENT_TYPES = (EVENT_TYPE_DISTRACTION,)
+DISTRACTION_EVENT_TYPE_OBJECT = EventType(event_type='D', event_type_description='Distraction event')
+EVENT_TYPES = (DISTRACTION_EVENT_TYPE_OBJECT,)
 
 
 class AnnotatedEvent(Base):
@@ -257,6 +257,8 @@ class AnnotatedEvent(Base):
     document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
     event_begin = Column(Numeric, comment='Allow placeholder as NULL')
     event_end = Column(Numeric, comment='Allow placeholder as NULL')
+    annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
+                                              'just a placeholder to be annotated later', nullable=False)
 
 
 def export_schema_graph(name: str) -> None:
