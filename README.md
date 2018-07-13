@@ -1,6 +1,7 @@
 [![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
 [![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
 [![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
+[![Waffle.io - Columns and their card count](https://badge.waffle.io/smomni/cranio.svg?columns=all)](https://waffle.io/smomni/cranio)
 
 # Cranio
 
