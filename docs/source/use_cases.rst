@@ -48,25 +48,18 @@ Distraction measurement
         The data recording may be started too early and artefacts from attaching the screw driver may be induced in the data. Artefacts are to be noted down in step 11 and handled in data analysis.
     Step 6/7.
         The screw driver may slip off from the distractor rod in which case artefacts from the detachment and re-attachment may be induced in the middle of the data. Artefacts are to be noted down in step 11 and handled in data analysis.
+    Step 10.
+        The software operator is in a hurry to continue the next distraction and therefore flags the distractions to be annotated later.
+        This *TODO flagging* is done as follows:
+
+            1. Insert placeholder event regions for each performed distraction
+            2. Leave "Done" checkboxes empty
+            3. Click "Ok" to continue to the notes dialog
+            4. Write notes and number of turns performed in the notes dialog
+            5. Click "Finish" to return to the main window
+
+        Data recording for the next distraction can now be started.
+        After all the distractions have been performed, the operator annotates the distractions that were not marked as "Done".
     Step 12.
         The surgeon may need to take a several-minute break between distractions if the patient becomes too distressed.
 :Postconditions: The planned distraction is performed on all distractors and correctly annotated data is stored at least locally on the laptop. The data may also be uploaded to a central remote data storage.
-
-
-TODO flagging of distraction annotations
-----------------------------------------
-
-:Use case: TODO flagging
-:Summary: After a distraction measurement, the software operator is in a hurry to continue the next distraction and therefore flags the distractions to be annotated later. For more information on the basic distraction measurement sequence, see :ref:`distraction-measurement-label`.
-:Actors: Surgeon and software operator
-:Preconditions: The surgeon has finished a distraction on one distractor; the operator has stopped the data recording and the event detection sequence has started
-:Goal for the primary users: The surgeon is able to continue distractions without delays; the operator can keep up with the surgeon
-:Basic sequence:
-    Step 1.
-        The operator inserts placeholder event regions for each performed distraction, leaves the "Done" checkboxes empty and clicks "Ok".
-    Step 2.
-        The operator writes notes and the number of turns performed in the note window and clicks "Finish".
-    Step 3.
-        The next distraction may start.
-:Exceptions: None
-:Postconditions: The surgeon continues with the next distraction while the operator is recording it. After all the distractions have been performed, the operator annotates the distractions that were not marked as "Done".
