@@ -173,5 +173,5 @@ def test_RegionPlotWidget_add_and_remove_all_buttons():
         w.add_button_clicked()
         assert len(w.region_edit_map) == count
         # remove widgets
-        w.remove_all_button_clicked()
+        w.remove_all()
         assert len(w.region_edit_map) == 0
