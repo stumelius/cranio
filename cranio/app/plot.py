@@ -120,10 +120,17 @@ class PlotWidget(pg.PlotWidget):
 class RegionEditWidget(QGroupBox):
     ''' Widget for editing a LinearRegionItem '''
     
-    def __init__(self, parent: pg.LinearRegionItem, event_number: int):
+    def __init__(self, parent: pg.LinearRegionItem, event_number: int, document: Document):
+        """
+
+        :param parent:
+        :param event_number:
+        :param document: Data parent document
+        """
         super(RegionEditWidget, self).__init__()
         self.parent = parent
         self.event_number = event_number
+        self.document = document
         # layouts
         self.main_layout = QVBoxLayout()
         self.done_layout = QHBoxLayout()
@@ -266,8 +273,14 @@ class RegionEditWidget(QGroupBox):
 class RegionPlotWidget(QWidget):
     ''' Widget for creating plots with selectable regions '''
     
-    def __init__(self, parent=None):
+    def __init__(self, document: Document, parent=None):
+        """
+
+        :param parent:
+        :param document: Data parent document
+        """
         super().__init__(parent)
+        self.document = document
         self.plot_widget = PlotWidget()
         self.main_layout = QHBoxLayout()
         self.edit_layout = QVBoxLayout()
@@ -355,7 +368,7 @@ class RegionPlotWidget(QWidget):
         item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
         # event numbering by insertion order
-        edit_widget = RegionEditWidget(item, event_number=self.region_count()+1)
+        edit_widget = RegionEditWidget(item, event_number=self.region_count()+1, document=self.document)
         edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
         self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
         self.region_edit_map[item] = edit_widget
@@ -664,10 +677,16 @@ class PlotWindow(QDialog):
 
 class RegionPlotWindow(QDialog):
     
-    def __init__(self, parent=None):
+    def __init__(self, document: Document, parent=None):
+        """
+
+        :param document: Data parent document
+        :param parent:
+        """
         super().__init__(parent)
+        self.document = document
         self.layout = QVBoxLayout()
-        self.region_widget = RegionPlotWidget()
+        self.region_widget = RegionPlotWidget(document=document)
         self.ok_button = QPushButton('Ok')
         self.init_ui()
         

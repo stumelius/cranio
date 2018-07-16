@@ -8,7 +8,7 @@ List of tests:
 * (check) Event numbering starts from one
 * (check) Event number increases by one for each added region
 * (check) Event numbering by insertion order
-* Region edit widget uses parent document id
+* (check) Region edit widget is assigned parent region plot widget document
 '''
 import pytest
 import numpy as np
@@ -23,7 +23,9 @@ region_count = 4
 
 @pytest.fixture
 def region_plot_widget():
-    widget = RegionPlotWidget()
+    # create dummy document
+    document = Document()
+    widget = RegionPlotWidget(document=document)
     # plot random data
     x = np.linspace(left_edge, right_edge, 100)
     y = np.random.rand(len(x))
@@ -105,5 +107,7 @@ def test_event_numbering_by_insertion_order(region_plot_widget):
     assert edit_widget.event_number == 3
 
 
-def test_region_edit_widget_uses_parent_document_id(database_document_fixture):
-    assert False
+def test_region_edit_widget_is_assigned_parent_region_plot_widget_document(region_plot_widget):
+    for i in range(region_count):
+        edit_widget = region_plot_widget.get_region_edit(i)
+        assert region_plot_widget.document == edit_widget.document
