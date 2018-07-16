@@ -32,10 +32,10 @@ def database_patient_fixture(database_fixture):
 @pytest.fixture(scope='function')
 def database_document_fixture(database_patient_fixture):
     try:
-        Document.init(patient_id=Patient.instance_id)
+        Document.init(patient_id=Patient.get_instance().patient_id)
     except ValueError:
         Document.reset_instance()
-        Document.init(patient_id=Patient.instance_id)
+        Document.init(patient_id=Patient.get_instance().patient_id)
 
 
 @pytest.fixture(scope='session', autouse=True)

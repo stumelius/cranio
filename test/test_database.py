@@ -43,14 +43,14 @@ def test_create_query_and_delete_session(database_fixture):
 
 def test_create_query_and_delete_document(database_patient_fixture):
     with session_scope() as s:
-        d = Document(session_id=Session.instance_id, patient_id=Patient.instance_id)
+        d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id)
         assert_add_query_and_delete([d], s, Document)
 
 
 def test_create_query_and_delete_measurement(database_document_fixture):
     with session_scope() as s:
         measurements = [Measurement(time_s=t, torque_Nm=np.random.rand(),
-                                    document_id=Document.instance_id) for t in range(10)]
+                                    document_id=Document.get_instance().document_id) for t in range(10)]
         assert_add_query_and_delete(measurements, s, Measurement)
 
 
@@ -59,7 +59,7 @@ def test_create_query_and_delete_log(database_fixture):
         # create log for all logging levels
         logs = []
         for i, level in enumerate(get_logging_levels().keys()):
-            log = Log(created_at=utc_datetime(), level=level, message=i, session_id=Session.get_instance(),
+            log = Log(created_at=utc_datetime(), level=level, message=i, session_id=Session.get_instance().session_id,
                       trace='Empty', logger='test.logger')
             logs.append(log)
         assert_add_query_and_delete(logs, s, Log)
@@ -67,7 +67,7 @@ def test_create_query_and_delete_log(database_fixture):
 
 @pytest.mark.skip('FIXME: IntegrityError is raised after add')
 def test_add_log_with_invalid_level(database_fixture):
-    log = Log(created_at=utc_datetime(), level=1337, message='foo', session_id=Session.get_instance(),
+    log = Log(created_at=utc_datetime(), level=1337, message='foo', session_id=Session.get_instance().session_id,
               trace='Empty', logger='test.logger')
     with session_scope() as s:
         with pytest.raises(IntegrityError):
@@ -92,7 +92,7 @@ def test_database_init_populate_lookup_table(database_fixture):
 
 
 def test_create_query_and_delete_annotated_event(database_document_fixture):
-    doc_id = Document.instance_id
+    doc_id = Document.get_instance().document_id
     with session_scope() as s:
         events = [AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type, event_num=i, document_id=doc_id,
                                  annotation_done=False)
@@ -109,7 +109,8 @@ def test_annotated_event_foreign_key_constraint(database_fixture):
 
 def test_database_is_empty_after_reinitialization(database_fixture):
     with session_scope() as s:
-        s.add(Log(session_id=Session.get_instance(), created_at=utc_datetime(), logger='cranio', level=0, message='foo'))
+        s.add(Log(session_id=Session.get_instance().session_id, created_at=utc_datetime(), logger='cranio',
+                  level=0, message='foo'))
     # re-initialize
     init_database()
     with session_scope() as s:
