@@ -1,6 +1,7 @@
 """
 Relational database definitions and classes/functions for database management.
 """
+from typing import Tuple, List
 from contextlib import contextmanager, closing
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -209,6 +210,15 @@ class Document(Base, InstanceBase):
             cls.set_instance(document)
         return cls.get_instance()
 
+    def get_related_time_series(self) -> Tuple[List[float], List[float]]:
+        x, y = list(), list()
+        with session_scope() as s:
+            measurements = s.query(Measurement).filter(Measurement.document_id == self.document_id).all()
+            if len(measurements) == 0:
+                return x, y
+            x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
+        return x, y
+
 
 class Measurement(Base):
     """ Measurement table. """
@@ -245,6 +255,7 @@ class EventType(Base):
     event_type_description = Column(String)
 
 
+# FIXME: expire_on_commit=False solves the issue below
 # NOTE: Objects in EVENT_TYPES should not be inserted to the database to prevent side effects from SQLAlchemy's
 # lazy loading
 # Instead, only copies of EVENT_TYPES object are to be inserted

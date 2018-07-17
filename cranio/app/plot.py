@@ -1,7 +1,7 @@
 import logging
 import pyqtgraph as pg
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, List
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
                              QHBoxLayout, QDoubleSpinBox, QLineEdit,
                              QGroupBox, QMessageBox, QSpinBox, QGridLayout,
                              QCheckBox)
-from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document
+from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope, Measurement
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -208,7 +208,7 @@ class RegionEditWidget(QGroupBox):
         """
         # only distraction events are supported
         return AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type,
-                              event_num=self.event_number, document_id=Document.get_instance(),
+                              event_num=self.event_number, document_id=self.document.document_id,
                               event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
         
     def region(self):
@@ -302,12 +302,9 @@ class RegionPlotWidget(QWidget):
         self.edit_layout.addLayout(self.add_layout)
         self.add_button.clicked.connect(self.add_button_clicked)
         self.remove_all_button.clicked.connect(self.remove_all)
-        
-    def __getattr__(self, attr):
-        ''' Object composition from self.plot_widget (PlotWidget) '''
-        if attr in {'__getstate__', '__setstate__'}:
-            return object.__getattr__(self, attr)
-        return getattr(self.plot_widget, attr)
+
+
+    ''' Object composition from self.plot_widget (PlotWidget) '''
     
     @property
     def x(self):
@@ -316,6 +313,9 @@ class RegionPlotWidget(QWidget):
     @property
     def y(self):
         return self.plot_widget.y
+
+    def plot(self, x, y, mode='o'):
+        return self.plot_widget.plot(x, y, mode)
 
     def region_count(self) -> int:
         """
@@ -437,6 +437,14 @@ class RegionPlotWidget(QWidget):
         ''' Remove all regions from the widget '''
         for edit_widget in list(self.region_edit_map.values()):
             self.remove_region(edit_widget)
+
+    def get_annotated_events(self) -> List[AnnotatedEvent]:
+        """
+        Return an AnnotatedEvent for each event region in the plot.
+
+        :return:
+        """
+        return [self.get_region_edit(i).get_annotated_event() for i in range(self.region_count())]
 
 
 class VMultiPlotWidget(QWidget):
@@ -686,25 +694,64 @@ class RegionPlotWindow(QDialog):
         super().__init__(parent)
         self.document = document
         self.layout = QVBoxLayout()
-        self.region_widget = RegionPlotWidget(document=document)
+        self.region_plot_widget = RegionPlotWidget(document=document)
         self.ok_button = QPushButton('Ok')
         self.init_ui()
-        
+
     def init_ui(self):
         self.setWindowTitle('Region window')
         self.setLayout(self.layout)
-        self.layout.addWidget(self.region_widget)
+        self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
         self.ok_button.clicked.connect(self.ok_button_clicked)
-        
-    def __getattr__(self, attr):
-        ''' Object composition from self.region_widget (RegionPlotWidget) '''
-        if attr in {'__getstate__', '__setstate__'}:
-            return object.__getattr__(self, attr)
-        return getattr(self.region_widget, attr)
+        # plot document data
+        self.plot(*self.document.get_related_time_series())
 
-    def ok_button_clicked(self):
-        n = len(self.region_edit_map)
-        msg = f'You have selected {n} regions. Are you sure you want to continue?'
-        if QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
-            self.close()
+    def ok_button_clicked(self, user_prompt: bool=True):
+        """
+
+        :param user_prompt: Indicate if user is to be prompted for verification to continue.
+        False can be used for testing purposes.
+        :return:
+        """
+        msg = f'You have selected {self.region_plot_widget.region_count()} regions. Are you sure you want to continue?'
+        if user_prompt:
+            if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
+                return
+        # insert annotated events to local database
+        events = self.region_plot_widget.get_annotated_events()
+        with session_scope() as s:
+            for e in events:
+                s.add(e)
+        self.close()
+
+    @property
+    def x(self):
+        """ Overload property. """
+        return self.region_plot_widget.x
+
+    @property
+    def y(self):
+        """ Overload property. """
+        return self.region_plot_widget.y
+
+    def plot(self, x, y):
+        """ Overload method. """
+        return self.region_plot_widget.plot(x, y)
+
+    def set_add_count(self, value: int):
+        """ Overload method. """
+        return self.region_plot_widget.set_add_count(value)
+
+    def add_button_clicked(self):
+        """ Overload method. """
+        return self.region_plot_widget.add_button_clicked()
+
+    def get_region_edit(self, index: int):
+        """ Overload method. """
+        return self.region_plot_widget.get_region_edit(index)
+
+    def region_count(self) -> int:
+        """ Overload method. """
+        return self.region_plot_widget.region_count()
+

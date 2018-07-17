@@ -185,8 +185,8 @@ def test_RegionPlotWindow_ok_button():
     assert not d.isVisible()
 
 
-def test_RegionPlotWindow_add_and_remove_all_buttons():
-    w = RegionPlotWindow(document=Document())
+def test_RegionPlotWidget_add_and_remove_all_buttons(database_fixture):
+    w = RegionPlotWidget(document=Document())
     n = 100
     w.plot(x=list(range(n)), y=list(range(n)))
     for count in range(4):

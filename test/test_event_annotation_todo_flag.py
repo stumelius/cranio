@@ -9,11 +9,14 @@ List of tests:
 * (check) Event number increases by one for each added region
 * (check) Event numbering by insertion order
 * (check) Region edit widget is assigned parent region plot widget document
+* Initialize region plot window from document
+* Annotated events are inserted to database after ok on region plot window is clicked
 '''
 import pytest
 import numpy as np
-from cranio.database import AnnotatedEvent, Document, DISTRACTION_EVENT_TYPE_OBJECT
-from cranio.app.plot import RegionPlotWidget, RegionEditWidget
+from typing import Iterable, List
+from cranio.database import AnnotatedEvent, Document, DISTRACTION_EVENT_TYPE_OBJECT, Measurement, session_scope
+from cranio.app.plot import RegionPlotWidget, RegionEditWidget, RegionPlotWindow
 
 
 left_edge = 0
@@ -111,3 +114,51 @@ def test_region_edit_widget_is_assigned_parent_region_plot_widget_document(regio
     for i in range(region_count):
         edit_widget = region_plot_widget.get_region_edit(i)
         assert region_plot_widget.document == edit_widget.document
+
+
+def insert_time_series_to_database(time_s: Iterable[float], torque_Nm: Iterable[float],
+                                   document: Document) -> List[Measurement]:
+    """ Helper function. """
+    measurements = []
+    with session_scope() as s:
+        for x, y in zip(time_s, torque_Nm):
+            m = Measurement(document_id=document.document_id, time_s=x, torque_Nm=y)
+            measurements.append(m)
+            s.add(m)
+    return measurements
+
+
+def test_region_plot_window_is_initialized_from_document_data(database_document_fixture):
+    # generate data and associate with document
+    n = 100
+    document = Document.get_instance()
+    X = np.linspace(left_edge, right_edge, n)
+    Y = np.random.rand(n)
+    insert_time_series_to_database(X, Y, document)
+    region_plot_window = RegionPlotWindow(document=document)
+    np.testing.assert_array_almost_equal(region_plot_window.x, X)
+    np.testing.assert_array_almost_equal(region_plot_window.y, Y)
+
+
+def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is_clicked():
+    # generate data and associate with document
+    n = 100
+    document = Document.get_instance()
+    X = np.linspace(left_edge, right_edge, n)
+    Y = np.random.rand(n)
+    insert_time_series_to_database(X, Y, document)
+    region_plot_window = RegionPlotWindow(document=document)
+    # add regions using add button
+    region_plot_window.set_add_count(region_count)
+    region_plot_window.add_button_clicked()
+    # click ok and bypass user prompt
+    region_plot_window.ok_button_clicked(user_prompt=False)
+    # verify that annotated events are in the database
+    with session_scope() as s:
+        events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == document.document_id).all()
+        assert region_plot_window.region_count() == len(events)
+        region_edits = [region_plot_window.get_region_edit(i) for i in range(region_plot_window.region_count())]
+        # verify region edges
+        for region_edit, event in zip(region_edits, events):
+            assert region_edit.left_edge() == event.event_begin
+            assert region_edit.right_edge() == event.event_end

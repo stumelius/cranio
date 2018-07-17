@@ -116,3 +116,22 @@ def test_database_is_empty_after_reinitialization(database_fixture):
     with session_scope() as s:
         assert len(s.query(Session).all()) == 0
 
+
+def test_get_time_series_related_to_document(database_document_fixture):
+    # generate data and associate with document
+    n = 100
+    document = Document.get_instance()
+    X = np.linspace(0, 1, n)
+    Y = np.random.rand(n)
+    with session_scope() as s:
+        for x, y in zip(X, Y):
+            s.add(Measurement(document_id=document.document_id, time_s=x, torque_Nm=y))
+    x, y = document.get_related_time_series()
+    np.testing.assert_array_almost_equal(x, X)
+    np.testing.assert_array_almost_equal(y, Y)
+
+
+def test_get_non_existing_time_series_related_to_document(database_document_fixture):
+    document = Document.get_instance()
+    x, y = document.get_related_time_series()
+    assert len(x) == 0 and len(y) == 0
