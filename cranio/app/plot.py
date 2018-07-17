@@ -1,12 +1,15 @@
 import logging
 import pyqtgraph as pg
 import pandas as pd
+from typing import Tuple, List
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
                              QDialog, QLabel, QVBoxLayout, QPushButton,
                              QHBoxLayout, QDoubleSpinBox, QLineEdit,
-                             QGroupBox, QMessageBox, QSpinBox, QGridLayout)
+                             QGroupBox, QMessageBox, QSpinBox, QGridLayout,
+                             QCheckBox)
+from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope, Measurement
 # pyqtgraph style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -14,6 +17,7 @@ pg.setConfigOption('foreground', 'k')
 # custom color palette for plots
 color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
                  (129, 114, 178), (204, 185, 116), (100, 181, 205)]
+
 
 def remove_widget_from_layout(layout: QLayout, widget: QWidget):
     '''
@@ -31,7 +35,8 @@ def remove_widget_from_layout(layout: QLayout, widget: QWidget):
     '''
     layout.removeWidget(widget)
     widget.deleteLater()
-    
+
+
 def clear_layout(layout: QLayout):
     ''' Clears a QLayout object  '''
     for i in reversed(range(layout.count())):
@@ -46,7 +51,8 @@ def clear_layout(layout: QLayout):
 
         # remove the item from layout
         layout.removeItem(item)
-    
+
+
 class PlotWidget(pg.PlotWidget):
     ''' Widget for displaying (real-time) plots '''
     
@@ -110,18 +116,28 @@ class PlotWidget(pg.PlotWidget):
         self.getPlotItem().plot(self.x, self.y, clear=True, **self.plot_configuration)
         return self
 
+
 class RegionEditWidget(QGroupBox):
     ''' Widget for editing a LinearRegionItem '''
     
-    def __init__(self, parent: pg.LinearRegionItem, name=None):
+    def __init__(self, parent: pg.LinearRegionItem, event_number: int, document: Document):
+        """
+
+        :param parent:
+        :param event_number:
+        :param document: Data parent document
+        """
         super(RegionEditWidget, self).__init__()
         self.parent = parent
+        self.event_number = event_number
+        self.document = document
+        # layouts
         self.main_layout = QVBoxLayout()
-        self.name_layout = QHBoxLayout()
+        self.done_layout = QHBoxLayout()
         self.boundary_layout = QHBoxLayout()
-        self.name_label = QLabel('Identifier')
-        self.name_edit = QLineEdit()
-        self.name = name
+        # widgets
+        self.done_label = QLabel('Done')
+        self.done_checkbox = QCheckBox()
         self.minimum_edit = QDoubleSpinBox()
         self.maximum_edit = QDoubleSpinBox()
         self.remove_button = QPushButton('Remove')
@@ -130,12 +146,12 @@ class RegionEditWidget(QGroupBox):
     def init_ui(self):
         self.setTitle('Region')
         self.setLayout(self.main_layout)
-        self.name_layout.addWidget(self.name_label)
-        self.name_layout.addWidget(self.name_edit)
-        self.main_layout.addLayout(self.name_layout)
-        self.main_layout.addLayout(self.boundary_layout)
+        self.done_layout.addWidget(self.done_label)
+        self.done_layout.addWidget(self.done_checkbox)
         self.boundary_layout.addWidget(self.minimum_edit)
         self.boundary_layout.addWidget(self.maximum_edit)
+        self.main_layout.addLayout(self.done_layout)
+        self.main_layout.addLayout(self.boundary_layout)
         self.main_layout.addWidget(self.remove_button)
         self.minimum_edit.setSingleStep(0.01)
         self.maximum_edit.setSingleStep(0.01)
@@ -149,14 +165,51 @@ class RegionEditWidget(QGroupBox):
         self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
         self.parent.sigRegionChanged.connect(self.region_changed)
         # responsibility for connecting the remove button lies in the RegionWidget
-        
-    @property
-    def name(self):
-        return self.name_edit.text()
-    
-    @name.setter
-    def name(self, value):
-        self.name_edit.setText(value)
+
+    def is_done(self) -> bool:
+        """
+        Return boolean indicating if the done checkbox state is Checked.
+
+        :return:
+        """
+        return self.done_checkbox.checkState() == QtCore.Qt.Checked
+
+    def set_done(self, state: bool):
+        """
+        Set done check box state as Checked (True) or Unchecked (False).
+
+        :param state:
+        :return:
+        """
+        state_map = {True: QtCore.Qt.Checked, False: QtCore.Qt.Unchecked}
+        self.done_checkbox.setCheckState(state_map[state])
+
+    def left_edge(self) -> float:
+        """
+        Return left edge of the region.
+
+        :return:
+        """
+        return self.region()[0]
+
+    def right_edge(self) -> float:
+        """
+        Return right edge of the region.
+
+        :return:
+        """
+        return self.region()[1]
+
+    def get_annotated_event(self) -> AnnotatedEvent:
+        """
+        Create an AnnotatedEvent table row from the edit widget data.
+
+        :return:
+        """
+        # only distraction events are supported
+        return AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type,
+                              event_num=self.event_number, document_id=self.document.document_id,
+                              event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
         
     def region(self):
         ''' Returns region as a tuple '''
@@ -164,8 +217,8 @@ class RegionEditWidget(QGroupBox):
     
     def bounds(self):
         ''' Returns bounds as a tuple '''
+        # return self.parent.bounds.left(), self.parent.bounds.right()
         raise NotImplementedError
-        return (self.parent.bounds.left(), self.parent.bounds.right())
     
     def set_region(self, edges):
         ''' Sets new region edges '''
@@ -174,8 +227,7 @@ class RegionEditWidget(QGroupBox):
     def set_bounds(self, bounds):
         ''' Set new region bounds '''
         self.parent.setBounds(bounds)
-        
-    @QtCore.pyqtSlot(object, float)
+
     def value_changed(self, widget: QDoubleSpinBox, value: float):
         '''
         Update region edges. 
@@ -199,8 +251,7 @@ class RegionEditWidget(QGroupBox):
         else:
             ValueError('Invalid widget')
         self.set_region(new_edges)
-        
-    @QtCore.pyqtSlot()
+
     def region_changed(self):
         '''
         Update region edges to minimum and maximum edit widgets.
@@ -217,18 +268,25 @@ class RegionEditWidget(QGroupBox):
         new_edges = self.region()
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
-        
+
+
 class RegionPlotWidget(QWidget):
     ''' Widget for creating plots with selectable regions '''
     
-    def __init__(self, parent=None):
+    def __init__(self, document: Document, parent=None):
+        """
+
+        :param parent:
+        :param document: Data parent document
+        """
         super().__init__(parent)
+        self.document = document
         self.plot_widget = PlotWidget()
         self.main_layout = QHBoxLayout()
         self.edit_layout = QVBoxLayout()
         self.add_layout = QGridLayout()
         # region items mapped as {LinearRegionItem: RegionEditWidget}
-        self.region_edit_map = {}
+        self.region_edit_map = dict()
         self.add_count = QSpinBox()
         self.add_button = QPushButton('Add')
         self.remove_all_button = QPushButton('Remove all')
@@ -243,13 +301,10 @@ class RegionPlotWidget(QWidget):
         self.add_layout.addWidget(self.remove_all_button, 1, 0, 1, 2)
         self.edit_layout.addLayout(self.add_layout)
         self.add_button.clicked.connect(self.add_button_clicked)
-        self.remove_all_button.clicked.connect(self.remove_all_button_clicked)
-        
-    def __getattr__(self, attr):
-        ''' Object composition from self.plot_widget (PlotWidget) '''
-        if attr in {'__getstate__', '__setstate__'}:
-            return object.__getattr__(self, attr)
-        return getattr(self.plot_widget, attr)
+        self.remove_all_button.clicked.connect(self.remove_all)
+
+
+    ''' Object composition from self.plot_widget (PlotWidget) '''
     
     @property
     def x(self):
@@ -258,6 +313,36 @@ class RegionPlotWidget(QWidget):
     @property
     def y(self):
         return self.plot_widget.y
+
+    def plot(self, x, y, mode='o'):
+        return self.plot_widget.plot(x, y, mode)
+
+    def region_count(self) -> int:
+        """
+        Return number of regions.
+
+        :return:
+        """
+        return len(self.region_edit_map)
+
+    def set_add_count(self, value: int):
+        """
+        Set integer value to the add count widget.
+
+        :param value:
+        :return:
+        """
+        self.add_count.setValue(value)
+
+    def get_region_edit(self, index: int) -> RegionEditWidget:
+        """
+        Return region edit widget for region at specified index.
+
+        :param index:
+        :return:
+        """
+        # note: edit widgets are stored in a dict and therefore are in no specific order
+        return list(self.region_edit_map.values())[index]
         
     def find_region_by_edit(self, edit_widget: RegionEditWidget) -> pg.LinearRegionItem:
         ''' Finds a LinearRegionItem paired to a RegionEditWidget '''
@@ -266,28 +351,24 @@ class RegionPlotWidget(QWidget):
         except IndexError:
             raise ValueError('No matching edit widget found')
         
-    def add_region(self, initial_values, bounds=None, movable=True):
-        '''
-        Adds a region to the plot and returns a RegionEditWidget.
-        
-        Args:
-            - initial_values: initial region edges
-            - bounds: region bounds
-            - movable: boolean
-            
-        Returns:
-            A RegionEditWidget
-            
-        Raises:
-            None
-        '''            
+    def add_region(self, edges: Tuple[float, float], bounds: Tuple[float, float]=None,
+                   movable: bool=True) -> RegionEditWidget:
+        """
+        Add a region to the plot.
+
+        :param edges: Region edges
+        :param bounds: Region bounds
+        :param movable:
+        :return:
+        """
         if bounds is None:
             bounds = [min(self.x), max(self.x)]
         alpha = 125
         color = list(color_palette[len(self.region_edit_map)]) + [alpha]
-        item = pg.LinearRegionItem(initial_values, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
+        item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
-        edit_widget = RegionEditWidget(item)
+        # event numbering by insertion order
+        edit_widget = RegionEditWidget(item, event_number=self.region_count()+1, document=self.document)
         edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
         self.edit_layout.insertWidget(self.edit_layout.count()-1, edit_widget)
         self.region_edit_map[item] = edit_widget
@@ -310,8 +391,18 @@ class RegionPlotWidget(QWidget):
         self.region_edit_map.pop(key, None)
         self.plot_widget.removeItem(key)
         remove_widget_from_layout(self.edit_layout, edit_widget)
-        
-    @QtCore.pyqtSlot()
+
+    def remove_at(self, index: int) -> RegionEditWidget:
+        """
+        Remove region at specified index.
+
+        :param index:
+        :return: RegionEditWidget of the removed region
+        """
+        edit_widget = self.get_region_edit(index)
+        self.remove_region(edit_widget)
+        return edit_widget
+
     def add_button_clicked(self):
         '''
         Adds a region to the widget. The region covers the first half of the used x-axis.
@@ -341,13 +432,21 @@ class RegionPlotWidget(QWidget):
                 low = x_min + i*interval
                 high = x_min + (i+1)*interval
                 self.add_region([low, high])
-            
-    @QtCore.pyqtSlot()
-    def remove_all_button_clicked(self):
+
+    def remove_all(self):
         ''' Remove all regions from the widget '''
         for edit_widget in list(self.region_edit_map.values()):
             self.remove_region(edit_widget)
-            
+
+    def get_annotated_events(self) -> List[AnnotatedEvent]:
+        """
+        Return an AnnotatedEvent for each event region in the plot.
+
+        :return:
+        """
+        return [self.get_region_edit(i).get_annotated_event() for i in range(self.region_count())]
+
+
 class VMultiPlotWidget(QWidget):
     '''
     A multi-plot dialog. Plots organized vertically as separate widgets.
@@ -451,7 +550,8 @@ class VMultiPlotWidget(QWidget):
         for p in self.plot_widgets:
             remove_widget_from_layout(self.main_layout, p)
         self.plot_widgets = []
-        
+
+
 class PlotWindow(QDialog):
     ''' A window for plot widgets '''
     
@@ -516,8 +616,7 @@ class PlotWindow(QDialog):
         self.producer_process.store.flush()
         data = self.producer_process.read()
         self.plot(data)
-        
-    @QtCore.pyqtSlot()
+
     def ok_button_clicked(self):
         '''
         Create and show a modal RegionWindow containing the plotted data.
@@ -582,34 +681,77 @@ class PlotWindow(QDialog):
         self.update_timer.stop()
         self.stopped.emit()
         self.ok_button.setEnabled(True)
-        
+
+
 class RegionPlotWindow(QDialog):
     
-    def __init__(self, parent=None):
+    def __init__(self, document: Document, parent=None):
+        """
+
+        :param document: Data parent document
+        :param parent:
+        """
         super().__init__(parent)
+        self.document = document
         self.layout = QVBoxLayout()
-        self.region_widget = RegionPlotWidget()
+        self.region_plot_widget = RegionPlotWidget(document=document)
         self.ok_button = QPushButton('Ok')
         self.init_ui()
-        
+
     def init_ui(self):
         self.setWindowTitle('Region window')
         self.setLayout(self.layout)
-        self.layout.addWidget(self.region_widget)
+        self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
         self.ok_button.clicked.connect(self.ok_button_clicked)
-        
-    def __getattr__(self, attr):
-        ''' Object composition from self.region_widget (RegionPlotWidget) '''
-        if attr in {'__getstate__', '__setstate__'}:
-            return object.__getattr__(self, attr)
-        return getattr(self.region_widget, attr)
-    
-    @QtCore.pyqtSlot()
-    def ok_button_clicked(self):
-        n = len(self.region_edit_map)
-        msg = f'You have selected {n} regions. Are you sure you want to continue?'
-        if QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
-            self.close()
-        
-        
+        # plot document data
+        self.plot(*self.document.get_related_time_series())
+
+    def ok_button_clicked(self, user_prompt: bool=True):
+        """
+
+        :param user_prompt: Indicate if user is to be prompted for verification to continue.
+        False can be used for testing purposes.
+        :return:
+        """
+        msg = f'You have selected {self.region_plot_widget.region_count()} regions. Are you sure you want to continue?'
+        if user_prompt:
+            if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
+                return
+        # insert annotated events to local database
+        events = self.region_plot_widget.get_annotated_events()
+        with session_scope() as s:
+            for e in events:
+                s.add(e)
+        self.close()
+
+    @property
+    def x(self):
+        """ Overload property. """
+        return self.region_plot_widget.x
+
+    @property
+    def y(self):
+        """ Overload property. """
+        return self.region_plot_widget.y
+
+    def plot(self, x, y):
+        """ Overload method. """
+        return self.region_plot_widget.plot(x, y)
+
+    def set_add_count(self, value: int):
+        """ Overload method. """
+        return self.region_plot_widget.set_add_count(value)
+
+    def add_button_clicked(self):
+        """ Overload method. """
+        return self.region_plot_widget.add_button_clicked()
+
+    def get_region_edit(self, index: int):
+        """ Overload method. """
+        return self.region_plot_widget.get_region_edit(index)
+
+    def region_count(self) -> int:
+        """ Overload method. """
+        return self.region_plot_widget.region_count()
+

@@ -18,7 +18,7 @@ def test_logging_fails_if_no_session_is_initialized():
 
 
 def test_logging_is_directed_to_database_log_table_with_correct_values(database_fixture):
-    wait_duration = 0.01 # seconds
+    wait_duration = 0.01  # seconds
     t_start = utc_datetime()
     # short wait to ensure that t_start < log timestamp
     time.sleep(wait_duration)
@@ -32,7 +32,7 @@ def test_logging_is_directed_to_database_log_table_with_correct_values(database_
         assert len(logs) == 1
         log = logs[0]
         assert log.message == msg
-        assert log.session_id == Session.get_instance()
+        assert log.session_id == Session.get_instance().session_id
         assert log.logger == logger_name
         assert log_level_to_name(log.level).lower() == 'info'
         # verify that the log entry is created between t_start and current time

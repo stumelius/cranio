@@ -24,14 +24,6 @@ from daqstore.store import DataStore
 from cranio.producer import ChannelInfo, Sensor, Producer, ProducerProcess
 
 
-@pytest.fixture
-def store():
-    DataStore.queue_cls = mp.Queue
-    store = DataStore(buffer_length=10, resampling_frequency=None)
-    yield store
-    store.cache.delete()
-
-
 def random_value_generator():
     return random.gauss(0, 1)
 
@@ -65,8 +57,8 @@ def test_producer_add_and_remove_sensors():
     assert len(p.sensors) == 0
 
 
-def test_producer_process_start_and_join(store, database_document_fixture):
-    p = ProducerProcess('test_process', store)
+def test_producer_process_start_and_join(data_store, database_document_fixture):
+    p = ProducerProcess('test_process', data_store)
     p.start()
     assert p.is_alive()
     time.sleep(1)
@@ -77,8 +69,8 @@ def test_producer_process_start_and_join(store, database_document_fixture):
     assert p.is_alive()
     p.pause()
     # read and flush store
-    store.read()
-    store.flush()
+    data_store.read()
+    data_store.flush()
     # no sensors -> empty data
     df = p.read(include_cache=True)
     assert df.empty
@@ -86,8 +78,8 @@ def test_producer_process_start_and_join(store, database_document_fixture):
     assert not p.is_alive()
 
 
-def test_producer_process_with_sensors(store, database_document_fixture):
-    p = ProducerProcess('test_process', store)
+def test_producer_process_with_sensors(data_store, database_document_fixture):
+    p = ProducerProcess('test_process', data_store)
     s = Sensor()
     s._default_value_generator = random_value_generator
     channels = [ChannelInfo('torque', 'Nm'), ChannelInfo('load', 'N'), ChannelInfo('extension', 'mm')]
@@ -99,8 +91,8 @@ def test_producer_process_with_sensors(store, database_document_fixture):
     time.sleep(1)
     p.pause()
     # read and flush store
-    store.read()
-    store.flush()
+    data_store.read()
+    data_store.flush()
     df = p.read(include_cache=True)
     for c in channels:
         assert str(c) in df

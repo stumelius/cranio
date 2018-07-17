@@ -328,10 +328,11 @@ def plug_dummy_sensor(producer_process: ProducerProcess) -> Sensor:
     :param producer_process: Producer process
     :return: Sensor object
     """
+    logging.debug('Initialize torque sensor')
     sensor = Sensor()
     sensor._default_value_generator = random_value_generator
     ch = ChannelInfo('torque', 'Nm')
     sensor.register_channel(ch)
-    producer_process.producer.register_sensor(s)
+    producer_process.producer.register_sensor(sensor)
     logging.debug('Dummy torque sensor plugged')
     return sensor

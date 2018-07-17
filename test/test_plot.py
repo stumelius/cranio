@@ -7,8 +7,21 @@ from functools import partial
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QApplication, QMessageBox
 from cranio.app import app
-from cranio.app.plot import (PlotWidget, VMultiPlotWidget, PlotWindow,
-                             RegionPlotWidget, RegionPlotWindow)
+from cranio.app.plot import PlotWidget, VMultiPlotWidget, PlotWindow, RegionPlotWidget, RegionPlotWindow
+from cranio.database import Document
+
+left_edge = 0
+right_edge = 99
+region_count = 4
+
+
+@pytest.fixture
+def region_plot_widget():
+    # create dummy document
+    document = Document()
+    widget = RegionPlotWidget(document=document)
+    yield widget
+
 
 def test_PlotWidget_overwrite():
     w = PlotWidget()
@@ -21,6 +34,7 @@ def test_PlotWidget_overwrite():
     w.clear_plot()
     assert w.x == []
     assert w.y == []
+
 
 def test_PlotWidget_append():
     w = PlotWidget()
@@ -37,6 +51,7 @@ def test_PlotWidget_append():
     w.clear_plot()
     assert w.x == []
     assert w.y == []
+
 
 def test_PlotWidget_dtypes():
     w = PlotWidget()
@@ -56,7 +71,8 @@ def test_PlotWidget_dtypes():
     y_pd = pd.Series(y)
     w.plot(x_pd, y_pd, 'o')
     _assert_plot(x_pd, y_pd)
- 
+
+
 def test_PlotWidget_x_label():
     p = PlotWidget()
     
@@ -68,6 +84,7 @@ def test_PlotWidget_x_label():
         p.x_label = i
         assert p.x_label == o, 'x_label: {} - output: {} (input: {})'.format(p.x_label, o, i)
 
+
 def test_PlotWidget_y_label():
     p = PlotWidget()
     
@@ -78,6 +95,7 @@ def test_PlotWidget_y_label():
     for i, o in label_map.items():
         p.y_label = i
         assert p.y_label == o, 'y_label: {} - output: {} (input: {})'.format(p.y_label, o, i)
+
 
 @pytest.mark.parametrize('rows', [100, 1000])
 def test_VMultiPlotWidget_plot_and_overwrite(rows):
@@ -94,45 +112,47 @@ def test_VMultiPlotWidget_plot_and_overwrite(rows):
             pw = p.find_plot_widget_by_label(c)
             assert pw.x == data[c].index.tolist()
             assert pw.y == data[c].tolist()
-            
+
+
 def test_VMultiPlotWidget_placeholder():
     p = VMultiPlotWidget()
     assert p.placeholder is not None
     plot_widget = p.add_plot_widget('foo')
     assert p.placeholder is None
     assert p.find_plot_widget_by_label('foo') == plot_widget
-            
+
+
 def test_PlotWindow_show():
     p = PlotWindow(producer_process=None)
     p.show()
-    
-def test_RegionPlotWidget_add_region():
-    region_widget = RegionPlotWidget()
+
+
+def test_RegionPlotWidget_add_region(region_plot_widget):
     n = 100
-    region_widget.plot(x=list(range(n)), y=list(range(n)))
+    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
     for top in range(0,51,10):
         region = [0, top]
-        edit_widget = region_widget.add_region(region)
+        edit_widget = region_plot_widget.add_region(region)
         assert edit_widget.region() == tuple(region)
         edit_widget.set_region([0,1])
         assert edit_widget.region() == (0,1)
-    for widget in region_widget.region_edit_map.values():
+    for widget in region_plot_widget.region_edit_map.values():
         assert widget.region() == (0,1)
-        
-def test_RegionPlotWidget_remove_region():
-    region_widget = RegionPlotWidget()
+
+
+def test_RegionPlotWidget_remove_region(region_plot_widget):
     n = 100
-    region_widget.plot(x=list(range(n)), y=list(range(n)))
-    item = region_widget.add_region([0,10])
-    assert len(region_widget.region_edit_map) == 1
-    region_widget.remove_region(item)
-    assert len(region_widget.region_edit_map) == 0
-    
-def test_RegionPlotWidget_set_bounds():
-    region_widget = RegionPlotWidget()
+    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
+    item = region_plot_widget.add_region([0,10])
+    assert len(region_plot_widget.region_edit_map) == 1
+    region_plot_widget.remove_region(item)
+    assert len(region_plot_widget.region_edit_map) == 0
+
+
+def test_RegionPlotWidget_set_bounds(region_plot_widget):
     n = 100
-    region_widget.plot(x=list(range(n)), y=list(range(n)))
-    edit_widget = region_widget.add_region([0,50])
+    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
+    edit_widget = region_plot_widget.add_region([0, 50])
     assert edit_widget.region() == (0,50)
     edit_widget.set_bounds([0,10])
     assert edit_widget.region() == (0,10)
@@ -140,7 +160,8 @@ def test_RegionPlotWidget_set_bounds():
     assert edit_widget.region() == (0,10)
     edit_widget.set_region([0,50])
     assert edit_widget.region() == (0,50)
-    
+
+
 @pytest.mark.skip('Does not work in Travis')
 def test_RegionPlotWindow_ok_button():
     d = RegionPlotWindow()
@@ -162,9 +183,10 @@ def test_RegionPlotWindow_ok_button():
     assert d.isVisible()
     d.ok_button_clicked()
     assert not d.isVisible()
-    
-def test_RegionPlotWidget_add_and_remove_all_buttons():
-    w = RegionPlotWindow()
+
+
+def test_RegionPlotWidget_add_and_remove_all_buttons(database_fixture):
+    w = RegionPlotWidget(document=Document())
     n = 100
     w.plot(x=list(range(n)), y=list(range(n)))
     for count in range(4):
@@ -173,5 +195,5 @@ def test_RegionPlotWidget_add_and_remove_all_buttons():
         w.add_button_clicked()
         assert len(w.region_edit_map) == count
         # remove widgets
-        w.remove_all_button_clicked()
+        w.remove_all()
         assert len(w.region_edit_map) == 0
