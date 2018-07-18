@@ -5,7 +5,7 @@ import logging.config
 import multiprocessing as mp
 from daqstore.store import DataStore
 from cranio.app import app
-from cranio.app.dialogs import  MainWindow
+from cranio.app.window import MainWindow
 from cranio.utils import get_logging_config
 from cranio.database import init_database, Session
 

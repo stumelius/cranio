@@ -1,5 +1,5 @@
 import pytest
-from cranio.app.dialogs import MetaDataWidget
+from cranio.app.widget import MetaDataWidget
 from cranio.database import session_scope, Patient
 
 

@@ -5,11 +5,9 @@ import pandas as pd
 from contextlib import contextmanager
 from sqlalchemy import create_engine, Table, MetaData
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.automap import automap_base
-from cranio.core import Event
-from cranio.app.plot import RegionWindow, RegionWidget as RegionWidgetParent
+from cranio.app.window import RegionPlotWindow
+from cranio.app.widget import RegionPlotWidget as RegionWidgetParent
 
-#Base = automap_base()
 SQLSession = sessionmaker()
 engine = create_engine('sqlite:///data/craniodistractor.db', echo=False)
 SQLSession.configure(bind=engine)
@@ -20,6 +18,7 @@ meta.reflect(bind=engine)
 Data = Table('data', meta, autoload=True)
 Session = Table('session', meta, autoload=True)
 Patient = Table('patient', meta, autoload=True)
+
 
 @contextmanager
 def sqlsession_scope():
@@ -33,11 +32,13 @@ def sqlsession_scope():
         raise
     finally:
         session.close()
-        
+
+
 def read_data():
     return map(lambda x: pd.read_sql_table(x.name, engine),
                (Data, Session, Patient))
-    
+
+
 def join_data(data: pd.DataFrame, session: pd.DataFrame, patient: pd.DataFrame):
     df = data.merge(session, how='left', on='session_id')
     return df.merge(patient, how='left', on='patient_id')
@@ -61,6 +62,7 @@ class RegionWidget(RegionWidgetParent):
         edit_widget.name = str(edit_widget.distraction_event)
         return edit_widget
 
+
 def run():
     ''' Graphical annotation '''
     df = join_data(*list(read_data()))
@@ -68,7 +70,7 @@ def run():
     session_id = sessions[9]
     df_session = df[df['session_id'] == session_id]
 
-    p = RegionWindow()
+    p = RegionPlotWindow()
     w = RegionWidget()
     p.add_plot(w)
     
@@ -98,6 +100,7 @@ def run():
                     & (df_data['time_s'] <= x_range[1]), 'event'] = edit_widget.name
     df_data.to_sql(str(Data), engine, if_exists='replace', index=False)
     return ret
+
 
 if __name__ == '__main__':
     sys.exit(run())

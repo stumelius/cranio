@@ -6,8 +6,9 @@ import pandas as pd
 from functools import partial
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from cranio.app.plot import PlotWidget, VMultiPlotWidget, RegionPlotWidget, RegionPlotWindow
 from cranio.database import Document
+from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget
+from cranio.app.window import RegionPlotWindow
 
 left_edge = 0
 right_edge = 99
