@@ -1,16 +1,17 @@
+"""
+.. todo:: Refactor GUI modules (#90)
+"""
 import logging
 import pyqtgraph as pg
 import pandas as pd
-from typing import Tuple, List
+from typing import Tuple, List, Iterable
 from functools import partial
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import (QLayout, QWidget, QWidgetItem, QSpacerItem,
-                             QDialog, QLabel, QVBoxLayout, QPushButton,
-                             QHBoxLayout, QDoubleSpinBox, QLineEdit,
-                             QGroupBox, QMessageBox, QSpinBox, QGridLayout,
-                             QCheckBox)
-from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope, Measurement
-# pyqtgraph style settings
+from PyQt5.QtWidgets import QLayout, QWidget, QWidgetItem, QSpacerItem, QDialog, QLabel, QVBoxLayout, QPushButton, \
+    QHBoxLayout, QDoubleSpinBox, QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
+from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope
+
+# plot style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
@@ -20,25 +21,24 @@ color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82),
 
 
 def remove_widget_from_layout(layout: QLayout, widget: QWidget):
-    '''
-    Removes a widget from a layout (calls widget.deleteLater()).
-    
-    Args:
-        - layout: QtGui.QLayout object
-        - widget: QtGui.QWidget object
-        
-    Returns:
-        None
-        
-    Raises:
-        None
-    '''
+    """
+    Remove widget from a layout.
+
+    :param layout:
+    :param widget:
+    :return:
+    """
     layout.removeWidget(widget)
     widget.deleteLater()
 
 
 def clear_layout(layout: QLayout):
-    ''' Clears a QLayout object  '''
+    """
+    Clear a layout.
+
+    :param layout:
+    :return:
+    """
     for i in reversed(range(layout.count())):
         item = layout.itemAt(i)
 
@@ -48,17 +48,12 @@ def clear_layout(layout: QLayout):
             pass
         else:
             clear_layout(item.layout())
-
-        # remove the item from layout
+        # remove item from layout
         layout.removeItem(item)
 
 
 class PlotWidget(pg.PlotWidget):
-    ''' Widget for displaying (real-time) plots '''
-    
-    # custom color palette
-    color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82), 
-                     (129, 114, 178), (204, 185, 116), (100, 181, 205)]
+    """ Widget for displaying a (real-time) plot """
     
     # default plot configuration
     plot_configuration = {'antialias': True, 'pen': pg.mkPen(color_palette[0])}
@@ -70,11 +65,13 @@ class PlotWidget(pg.PlotWidget):
         self.init_ui()
         
     def init_ui(self):
+        """ Initialize UI elements. """
         self.showGrid(True, True, 0.1)
         self.enable_interaction(False)
     
     @property
     def x_label(self):
+        """ Plot x label property. """
         return self.getAxis('bottom').labelText
     
     @x_label.setter
@@ -85,6 +82,7 @@ class PlotWidget(pg.PlotWidget):
         
     @property
     def y_label(self):
+        """ Plot y label property. """
         return self.getAxis('left').labelText
     
     @y_label.setter
@@ -93,18 +91,36 @@ class PlotWidget(pg.PlotWidget):
             value = ''
         self.setLabel('left', value)
         
-    def enable_interaction(self, bool_: bool):
-        self.setMouseEnabled(bool_, bool_)
-        self.setMenuEnabled(bool_)
+    def enable_interaction(self, enable: bool):
+        """
+        Enable/disable interaction.
+
+        :param enable:
+        :return:
+        """
+        self.setMouseEnabled(enable, enable)
+        self.setMenuEnabled(enable)
         
     def clear_plot(self):
-        ''' Clear the plot and stored x and y values '''
+        """
+        Clear the plot.
+
+        :return:
+        """
         self.x = []
         self.y = []
         return self.getPlotItem().clear()
     
-    def plot(self, x, y, mode='o'):
-        ''' Calls the plot_widget.plot method with x and y input parameters '''
+    def plot(self, x: Iterable[float], y: Iterable[float], mode: str='o'):
+        """
+        Plot (x, y) data.
+
+        :param x:
+        :param y:
+        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :return:
+        :raises ValueError: if invalid plot mode argument
+        """
         if mode == 'o':
             self.x = list(x)
             self.y = list(y)
@@ -118,7 +134,7 @@ class PlotWidget(pg.PlotWidget):
 
 
 class RegionEditWidget(QGroupBox):
-    ''' Widget for editing a LinearRegionItem '''
+    """ Widget for editing a LinearRegionItem and editing event meta data. """
     
     def __init__(self, parent: pg.LinearRegionItem, event_number: int, document: Document):
         """
@@ -144,6 +160,7 @@ class RegionEditWidget(QGroupBox):
         self.init_ui()
         
     def init_ui(self):
+        """ Initialize UI elements. """
         self.setTitle('Region')
         self.setLayout(self.main_layout)
         self.done_layout.addWidget(self.done_label)
@@ -184,6 +201,14 @@ class RegionEditWidget(QGroupBox):
         state_map = {True: QtCore.Qt.Checked, False: QtCore.Qt.Unchecked}
         self.done_checkbox.setCheckState(state_map[state])
 
+    def region(self) -> Tuple[float, float]:
+        """
+        Return region edges.
+
+        :return:
+        """
+        return self.parent.getRegion()
+
     def left_edge(self) -> float:
         """
         Return left edge of the region.
@@ -210,39 +235,34 @@ class RegionEditWidget(QGroupBox):
         return AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type,
                               event_num=self.event_number, document_id=self.document.document_id,
                               event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
-        
-    def region(self):
-        ''' Returns region as a tuple '''
-        return self.parent.getRegion()
     
-    def bounds(self):
-        ''' Returns bounds as a tuple '''
-        # return self.parent.bounds.left(), self.parent.bounds.right()
-        raise NotImplementedError
-    
-    def set_region(self, edges):
-        ''' Sets new region edges '''
+    def set_region(self, edges: Tuple[float, float]):
+        """
+        Set region edges.
+
+        :param edges:
+        :return:
+        """
         self.parent.setRegion(edges)
-        
-    def set_bounds(self, bounds):
-        ''' Set new region bounds '''
+
+    def set_bounds(self, bounds: Tuple[float, float]):
+        """
+        Set region bounds.
+
+        :param bounds:
+        :return:
+        """
         self.parent.setBounds(bounds)
 
     def value_changed(self, widget: QDoubleSpinBox, value: float):
-        '''
-        Update region edges. 
-        Called when a region edit widgets are manipulated.
-        
-        Args:
-            - widget: RegionWidget object
-            - value: changed edge value
-            
-        Returns:
-            None
-            
-        Raises:
-            ValueError: Invalid widget
-        '''
+        """
+        Update region edges.
+
+        :param widget:
+        :param value:
+        :return:
+        :raises ValueError: if invalid widget argument
+        """
         old_edges = self.region()
         if widget == self.minimum_edit:
             new_edges = (max(old_edges), value)
@@ -253,31 +273,23 @@ class RegionEditWidget(QGroupBox):
         self.set_region(new_edges)
 
     def region_changed(self):
-        '''
-        Update region edges to minimum and maximum edit widgets.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
+        """
+        Update minimum and maximum edit widget values.
+
+        :return:
+        """
         new_edges = self.region()
         self.minimum_edit.setValue(min(new_edges))
         self.maximum_edit.setValue(max(new_edges))
 
 
 class RegionPlotWidget(QWidget):
-    ''' Widget for creating plots with selectable regions '''
+    """ Plot widget with region selection and edit functionality. """
     
     def __init__(self, document: Document, parent=None):
         """
-
-        :param parent:
         :param document: Data parent document
+        :param parent:
         """
         super().__init__(parent)
         self.document = document
@@ -293,6 +305,7 @@ class RegionPlotWidget(QWidget):
         self.init_ui()
         
     def init_ui(self):
+        """ Initialize UI elements. """
         self.setLayout(self.main_layout)
         self.main_layout.addWidget(self.plot_widget)
         self.main_layout.addLayout(self.edit_layout)
@@ -302,19 +315,26 @@ class RegionPlotWidget(QWidget):
         self.edit_layout.addLayout(self.add_layout)
         self.add_button.clicked.connect(self.add_button_clicked)
         self.remove_all_button.clicked.connect(self.remove_all)
-
-
-    ''' Object composition from self.plot_widget (PlotWidget) '''
     
     @property
     def x(self):
+        """ Plot x values property. """
         return self.plot_widget.x
     
     @property
     def y(self):
+        """ Plot y values property. """
         return self.plot_widget.y
 
     def plot(self, x, y, mode='o'):
+        """
+        Plot (x, y) data.
+
+        :param x:
+        :param y:
+        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :return:
+        """
         return self.plot_widget.plot(x, y, mode)
 
     def region_count(self) -> int:
@@ -345,7 +365,13 @@ class RegionPlotWidget(QWidget):
         return list(self.region_edit_map.values())[index]
         
     def find_region_by_edit(self, edit_widget: RegionEditWidget) -> pg.LinearRegionItem:
-        ''' Finds a LinearRegionItem paired to a RegionEditWidget '''
+        """
+        Find a linear region item that corresponds to a specified region edit widget.
+
+        :param edit_widget:
+        :return:
+        :raises ValueError: if no matching region edit widget was found
+        """
         try:
             return [key for key, value in self.region_edit_map.items() if value == edit_widget][0]
         except IndexError:
@@ -375,18 +401,12 @@ class RegionPlotWidget(QWidget):
         return edit_widget
     
     def remove_region(self, edit_widget: RegionEditWidget):
-        '''
-        Removes a region from the plot.
-        
-        Args:
-            - edit_widget: a RegionEditWidget object
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
+        """
+        Remove specified region from the plot.
+
+        :param edit_widget:
+        :return:
+        """
         key = self.find_region_by_edit(edit_widget)
         self.region_edit_map.pop(key, None)
         self.plot_widget.removeItem(key)
@@ -404,23 +424,13 @@ class RegionPlotWidget(QWidget):
         return edit_widget
 
     def add_button_clicked(self):
-        '''
-        Adds a region to the widget. The region covers the first half of the used x-axis.
-        Called when add button is clicked.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
+        """
+        Add a number of regions to the plot matching the number in the add spin box.
+        The region edges are initialized so that the region widths are constant and the regions do not overlap.
+
+        :return:
+        """
         if len(self.x) == 0:
-            # Exceptions in a PyQt slot will result in qFatal() and crash the app
-            # Therefore, error is logged
-            # More info here: https://stackoverflow.com/questions/43641638/unhandled-exceptions-in-pyqt5
             logging.error('Unable to add region to empty plot')
             return 0
         count = self.add_count.value()
@@ -434,7 +444,11 @@ class RegionPlotWidget(QWidget):
                 self.add_region([low, high])
 
     def remove_all(self):
-        ''' Remove all regions from the widget '''
+        """
+        Remove all regions from the plot.
+
+        :return:
+        """
         for edit_widget in list(self.region_edit_map.values()):
             self.remove_region(edit_widget)
 
@@ -448,9 +462,7 @@ class RegionPlotWidget(QWidget):
 
 
 class VMultiPlotWidget(QWidget):
-    '''
-    A multi-plot dialog. Plots organized vertically as separate widgets.
-    '''
+    """ Display multiple plots in a vertical layout. """
     
     def __init__(self, parent=None):
         super(VMultiPlotWidget, self).__init__(parent=parent)
@@ -463,12 +475,14 @@ class VMultiPlotWidget(QWidget):
         self.main_layout.addWidget(self.placeholder)
 
     def init_ui(self):
+        """ Initialize UI elements. """
         self.setLayout(self.main_layout)
         self.title_label.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
         self.main_layout.addWidget(self.title_label)
         
     @property
     def title(self):
+        """ Plot title property. """
         return self.title_label.text()
     
     @title.setter
@@ -476,13 +490,24 @@ class VMultiPlotWidget(QWidget):
         self.title_label.setText(value)
     
     def find_plot_widget_by_label(self, label: str):
-        ''' Finds a plot widget by its label (i.e., y axis name) '''
+        """
+        Find plot by its label.
+
+        :param label: Plot label, or y-axis name
+        :return:
+        """
         for p in self.plot_widgets:
             if p.y_label == label:
                 return p
     
     def add_plot_widget(self, label: str):
-        ''' Adds a plot widget by a label (i.e., y axis name) '''
+        """
+        Add a plot.
+
+        :param label: Plot label, or y-axis name
+        :return:
+        :raises ValueError: if a plot with the specified label already exists
+        """
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
         # if placeholder exists, use it
@@ -498,21 +523,15 @@ class VMultiPlotWidget(QWidget):
         self.plot_widgets.append(plot_widget)
         return plot_widget
 
-    def plot(self, data, title='', mode='o'):
-        '''
-        Plots the input pandas.DataFrame into a figure grid.
-        
-        Args:
-            - data: pandas.DataFrame where index is the x column
-            - title: plot title, string ('' by default)
-            - mode: 'o' (overwrite) or 'a' (append)
-        
-        Returns:
-            None
-            
-        Raises:
-            ValueError: Invalid mode
-        '''
+    def plot(self, df: pd.DataFrame, title: str='', mode: str='o'):
+        """
+        Plot a dataframe.
+
+        :param df: Pandas DataFrame where index is the x axis.
+        :param title: Plot title.
+        :param mode:
+        :return:
+        """
         # Data is stored as a DataFrame
         # The dataframe is appended during recording
         # Ideally, the real-time plot is updated automatically once the dataframe is updated
@@ -525,165 +544,40 @@ class VMultiPlotWidget(QWidget):
         # def update(self):
         #     data = devices.output()
         #     self.figure_window.update(data)
-        
-        
         self.title = title
         # find already initialized columns
-        initialized_columns = [p.y_label for p in self.plot_widgets if p.y_label in data]
+        initialized_columns = [p.y_label for p in self.plot_widgets if p.y_label in df]
         # leftover columns need to be initialized
-        non_initialized_columns = filter(lambda c: c not in initialized_columns, data.columns)
+        non_initialized_columns = filter(lambda c: c not in initialized_columns, df.columns)
         for c in non_initialized_columns:
             self.add_plot_widget(c)
-        
         # plot each column
-        for c in data:
+        for c in df:
             plot_widget = self.find_plot_widget_by_label(c)
-            plot_widget.plot(x=data.index, y=data[c], mode=mode)
+            plot_widget.plot(x=df.index, y=df[c], mode=mode)
     
     def clear(self):
-        ''' Clears all plot widgets '''
+        """
+        Clear all plots.
+
+        :return:
+        """
         for p in self.plot_widgets:
             p.clear()
             
     def reset(self):
-        ''' Removes all plot widgets from the window '''
+        """
+        Remove all plots from the layout.
+
+        :return:
+        """
         for p in self.plot_widgets:
             remove_widget_from_layout(self.main_layout, p)
         self.plot_widgets = []
 
 
-class PlotWindow(QDialog):
-    ''' A window for plot widgets '''
-    
-    started = QtCore.pyqtSignal()
-    stopped = QtCore.pyqtSignal()
-    
-    def __init__(self, producer_process=None, parent=None):
-        super(PlotWindow, self).__init__(parent)
-        self.producer_process = producer_process
-        self.main_layout = QVBoxLayout()
-        self.plot_layout = QHBoxLayout()
-        self.start_stop_layout = QVBoxLayout()
-        self.multiplot_widget = VMultiPlotWidget()
-        self.ok_button = QPushButton('Ok')
-        self.start_button = QPushButton('Start')
-        self.stop_button = QPushButton('Stop')
-        self.update_timer = QtCore.QTimer()
-        self.update_interval = 0.05 # seconds
-        self.init_ui()
-        
-    def init_ui(self):
-        self.setWindowTitle('Plot window')
-        self.resize(800,800)
-        self.plot_layout.addWidget(self.multiplot_widget)
-        self.plot_layout.addLayout(self.start_stop_layout)
-        self.start_stop_layout.addWidget(self.start_button)
-        self.start_stop_layout.addWidget(self.stop_button)
-        self.main_layout.addLayout(self.plot_layout)
-        self.main_layout.addWidget(self.ok_button)
-        self.setLayout(self.main_layout)
-        # connect signals
-        self.ok_button.clicked.connect(self.ok_button_clicked)
-        self.start_button.clicked.connect(self.start_button_clicked)
-        self.stop_button.clicked.connect(self.stop_button_clicked)
-        self.update_timer.timeout.connect(self.update)
-        
-    def plot(self, df: pd.DataFrame):
-        self.multiplot_widget.plot(df)
-        
-    def add_plot(self, label: str):
-        ''' Adds a plot widget to the window '''
-        return self.multiplot_widget.add_plot_widget(label)
-    
-    def get_plot(self, label: str):
-        ''' Alternative for plot_window[index] '''
-        return self.multiplot_widget.find_plot_widget_by_label(label)
-    
-    def update(self):
-        '''
-        Reads data from a producer and appends that to the plot.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
-        self.producer_process.store.read()
-        self.producer_process.store.flush()
-        data = self.producer_process.read()
-        self.plot(data)
-
-    def ok_button_clicked(self):
-        '''
-        Create and show a modal RegionWindow containing the plotted data.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
-        window = RegionPlotWindow(self)
-        if len(self.multiplot_widget.plot_widgets) > 1:
-            raise NotImplementedError('No support for over 2-dimensional data')
-        for p in self.multiplot_widget.plot_widgets:
-            # copy plot widget
-            p_new = window.plot(x=p.x, y=p.y)
-            p_new.y_label = p.y_label
-        window.exec_()
-    
-    def start_button_clicked(self):
-        '''
-        Starts the producer process if is not None. Otherwise, nothing happens.
-        Ok button is disabled. Emits signal: started.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
-        if self.producer_process is None:
-            QMessageBox.critical(self, 'Error', 'No producer process defined')
-            return
-        self.update_timer.start(self.update_interval * 1000)
-        self.producer_process.start()
-        self.started.emit()
-        self.ok_button.setEnabled(False)
-        
-    def stop_button_clicked(self):
-        '''
-        Stop the producer process if is not None. Otherwise, nothing happens.
-        Ok button is enabled. Emits signal: stopped.
-        
-        Args:
-            None
-            
-        Returns:
-            None
-            
-        Raises:
-            None
-        '''
-        if self.producer_process is None:
-            return
-        self.producer_process.pause()
-        self.update_timer.stop()
-        self.stopped.emit()
-        self.ok_button.setEnabled(True)
-
-
 class RegionPlotWindow(QDialog):
+    """ Dialog with a region plot widget and an "Ok" button. """
     
     def __init__(self, document: Document, parent=None):
         """
@@ -699,6 +593,7 @@ class RegionPlotWindow(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """ Initialize UI elements. """
         self.setWindowTitle('Region window')
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_plot_widget)
