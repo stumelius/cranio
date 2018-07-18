@@ -16,7 +16,8 @@ import pytest
 import numpy as np
 from typing import Iterable, List
 from cranio.database import AnnotatedEvent, Document, DISTRACTION_EVENT_TYPE_OBJECT, Measurement, session_scope
-from cranio.app.plot import RegionPlotWidget, RegionEditWidget, RegionPlotWindow
+from cranio.app.widget import RegionPlotWidget, RegionEditWidget
+from cranio.app.window import RegionPlotWindow
 
 
 left_edge = 0

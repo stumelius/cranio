@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 from functools import partial
 from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QApplication, QMessageBox
-from cranio.app import app
-from cranio.app.plot import PlotWidget, VMultiPlotWidget, PlotWindow, RegionPlotWidget, RegionPlotWindow
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from cranio.database import Document
+from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget
+from cranio.app.window import RegionPlotWindow
 
 left_edge = 0
 right_edge = 99
@@ -120,11 +120,6 @@ def test_VMultiPlotWidget_placeholder():
     plot_widget = p.add_plot_widget('foo')
     assert p.placeholder is None
     assert p.find_plot_widget_by_label('foo') == plot_widget
-
-
-def test_PlotWindow_show():
-    p = PlotWindow(producer_process=None)
-    p.show()
 
 
 def test_RegionPlotWidget_add_region(region_plot_widget):

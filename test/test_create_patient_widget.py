@@ -1,5 +1,5 @@
 import pytest
-from cranio.app.dialogs import PatientWidget
+from cranio.app.widget import PatientWidget
 from sqlalchemy import exists
 from sqlalchemy.exc import IntegrityError
 from cranio.database import Patient, session_scope, init_database

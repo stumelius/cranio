@@ -31,7 +31,14 @@ cranio utils
 .. automodule:: cranio.producer
    :members:
 
-cranio.app
-----------
+cranio widget
+-------------
 
-.. todo:: To be documented
+.. automodule:: cranio.app.widget
+   :members:
+
+cranio window
+-------------
+
+.. automodule:: cranio.app.window
+   :members:
