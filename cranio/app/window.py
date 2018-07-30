@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout,
 from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, plug_dummy_sensor
 from cranio.imada import plug_imada
-from cranio.database import Document, session_scope, Patient
+from cranio.database import Document, session_scope, Patient, Session
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget
 
 
@@ -100,6 +100,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.document = Document(session_id=Session.get_instance().session_id)
         self.setWindowTitle('Craniodistractor')
         self.store = DataStore(buffer_length=10, resampling_frequency=None)
         self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
@@ -109,10 +110,10 @@ class MainWindow(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         # add meta prompt widget
-        self.meta_widget = MetaDataWidget()
+        self.meta_widget = MetaDataWidget(document=self.document)
         self.main_layout.addWidget(self.meta_widget)
         # add measurement widget
-        self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
+        self.measurement_widget = MeasurementWidget(document=self.document, producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
         # add File menu
         self.file_menu = self.menuBar().addMenu('File')
@@ -156,3 +157,47 @@ class MainWindow(QMainWindow):
         dialog.setLayout(layout)
         dialog.exec_()
         self.meta_widget.update_patients_from_database()
+
+    def set_patient(self, patient_id: str, lock: bool=False):
+        """
+        Set active patient.
+
+        :param patient_id:
+        :param lock: lock patient
+        :return:
+        """
+        self.meta_widget.active_patient = patient_id
+        self.meta_widget.lock_patient(lock)
+
+    def get_patient(self) -> str:
+        """
+        Return active patient id.
+
+        :return:
+        """
+        return self.meta_widget.active_patient
+
+    def start_measurement(self):
+        """
+        Measure until stopped.
+
+        :return:
+        """
+        return self.measurement_widget.start_button_clicked()
+
+    def stop_measurement(self):
+        """
+        Stop measurement.
+
+        :return:
+        """
+        return self.measurement_widget.stop_button_clicked()
+
+    def click_ok(self):
+        """
+        Click Ok button.
+
+        :return:
+        """
+        return self.measurement_widget.ok_button_clicked()
+

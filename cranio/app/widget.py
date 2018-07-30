@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
 from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope, Patient
+from cranio.core import utc_datetime
 
 # plot style settings
 pg.setConfigOption('background', 'w')
@@ -200,8 +201,9 @@ class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
     closing = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, document: Document, parent=None):
         super().__init__(parent=parent)
+        self.document = document
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.distractor_widget = SpinEditWidget('Distractor', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
@@ -216,8 +218,8 @@ class MetaDataWidget(QGroupBox):
         :return:
         """
         # initialize distractor as 1 and set range between 1 and 10
-        self.distractor_widget.value = 1
         self.distractor_widget.set_range(1, 10)
+        self.active_distractor = 1
         self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.distractor_widget)
@@ -264,8 +266,29 @@ class MetaDataWidget(QGroupBox):
         return self.patient_widget.value
 
     @active_patient.setter
-    def active_patient(self, value: str):
-        self.patient_widget.value = value
+    def active_patient(self, patient_id: str):
+        self.patient_widget.value = patient_id
+        self.document.patient_id = patient_id
+
+    @property
+    def active_distractor(self) -> int:
+        return self.distractor_widget.value
+
+    @active_distractor.setter
+    def active_distractor(self, distractor_id: int):
+        self.distractor_widget.value = distractor_id
+        self.document.distractor_id = distractor_id
+
+    def lock_patient(self, lock: bool):
+        """
+        Lock patient edit widget.
+
+        :param lock:
+        :return:
+        """
+        self.enabled = not lock
+        self.patient_widget.setEnabled(self.enabled)
+        logging.debug(f'Patient lock = {lock}')
 
     def toggle_lock_button_clicked(self):
         """
@@ -273,9 +296,7 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
-        self.enabled = not self.enabled
-        self.patient_widget.setEnabled(self.enabled)
-        logging.debug(f'Toggle Lock button clicked (enabled={self.enabled})')
+        self.lock_patient(self.enabled)
 
 
 def add_patient(patient_id: str) -> Patient:
@@ -383,9 +404,12 @@ class MeasurementWidget(QWidget):
     started = QtCore.pyqtSignal()
     stopped = QtCore.pyqtSignal()
 
-    def __init__(self, producer_process=None, parent=None):
+    def __init__(self, producer_process=None, parent=None, document: Document=None):
+        from cranio.app.window import RegionPlotWindow
         super().__init__(parent)
         self.producer_process = producer_process
+        self.document = document
+        self.region_plot_window = RegionPlotWindow(document=self.document, parent=self)
         self.main_layout = QVBoxLayout()
         self.plot_layout = QHBoxLayout()
         self.start_stop_layout = QVBoxLayout()
@@ -461,15 +485,13 @@ class MeasurementWidget(QWidget):
 
         :return:
         """
-        from cranio.app.window import RegionPlotWindow
-        window = RegionPlotWindow(self)
         if len(self.multiplot_widget.plot_widgets) > 1:
             raise NotImplementedError('No support for over 2-dimensional data')
         for p in self.multiplot_widget.plot_widgets:
             # copy plot widget
-            p_new = window.plot(x=p.x, y=p.y)
+            p_new = self.region_plot_window.plot(x=p.x, y=p.y)
             p_new.y_label = p.y_label
-        window.exec_()
+        return self.region_plot_window.exec_()
 
     def start_button_clicked(self):
         """
@@ -482,6 +504,7 @@ class MeasurementWidget(QWidget):
             QMessageBox.critical(self, 'Error', 'No producer process defined')
             return
         self.update_timer.start(self.update_interval * 1000)
+        self.document.started_at = utc_datetime()
         self.producer_process.start()
         self.started.emit()
         self.ok_button.setEnabled(False)
