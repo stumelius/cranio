@@ -1,10 +1,13 @@
 import pytest
 import time
 import multiprocessing as mp
+from functools import partial
 from PyQt5.QtCore import QTimer
 from daqstore.store import DataStore
 from cranio.database import Patient, Document, Session
-from cranio.app.window import MainWindow, RegionPlotWindow
+from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
+
+wait_msec = 500
 
 
 def test_main_window_click_ok_triggers_event_detection_sequence(database_patient_fixture):
@@ -19,15 +22,14 @@ def test_main_window_click_ok_triggers_event_detection_sequence(database_patient
     window.start_measurement()
     time.sleep(1)
     window.stop_measurement()
-    # set timer to stop event detection sequence and click ok
-    msec = 500
-    QTimer.singleShot(msec, window.measurement_widget.region_plot_window.close)
+    # set timer to close region plot window and click ok
+    QTimer.singleShot(wait_msec, window.measurement_widget.region_plot_window.close)
     window.click_ok()
     # kill producer
     window.producer_process.join()
 
 
-def test_event_detection_sequence_click_ok_opens_notes_window(database_patient_fixture):
+def test_event_detection_sequence_click_ok_triggers_notes_window(database_patient_fixture):
     document = Document(patient_id=Patient.get_instance().patient_id, session_id=Session.get_instance().session_id,
                         distractor_id=1)
     window = RegionPlotWindow(document=document)
@@ -36,5 +38,17 @@ def test_event_detection_sequence_click_ok_opens_notes_window(database_patient_f
     window.add_button_clicked()
     for i in range(window.region_count()):
         window.get_region_edit(i).set_done(True)
+    # set timer to close notes window and click ok
+    QTimer.singleShot(wait_msec, window.notes_window.close)
     window.ok_button_clicked(user_prompt=False)
-    assert window.notes_window.is_open()
+
+
+def test_event_detection_notes_window_click_ok_closes_the_window(database_patient_fixture):
+    document = Document(patient_id=Patient.get_instance().patient_id, session_id=Session.get_instance().session_id,
+                        distractor_id=1)
+    notes_window = NotesWindow(document)
+    notes_window.open()
+    assert notes_window.isVisible()
+    notes_window.ok_button_clicked(False)
+    assert not notes_window.isVisible()
+

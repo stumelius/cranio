@@ -197,6 +197,30 @@ class SpinEditWidget(EditWidget):
         self.edit_widget.setRange(min, max)
 
 
+class DoubleSpinEditWidget(SpinEditWidget):
+    """ EditWidget variant with a spin box instead of a line edit. """
+    _edit_widget_cls = QDoubleSpinBox
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.edit_widget.setSingleStep(0.1)
+
+
+class CheckBoxEditWidget(EditWidget):
+    """ EditWidget variant with a spin box instead of a line edit. """
+    _edit_widget_cls = QCheckBox
+    state_map = {True: QtCore.Qt.Checked, False: QtCore.Qt.Unchecked}
+
+    @property
+    def value(self):
+        """ Check box state property. """
+        return self.edit_widget.checkState() == QtCore.Qt.Checked
+
+    @value.setter
+    def value(self, state: bool):
+        self.edit_widget.setCheckState(self.state_map[state])
+
+
 class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
     closing = QtCore.pyqtSignal()
