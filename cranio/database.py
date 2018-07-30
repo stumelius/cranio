@@ -177,7 +177,7 @@ class Document(Base, InstanceBase):
     session_id = Column(String, ForeignKey('dim_session.session_id'), nullable=False)
     patient_id = Column(String, ForeignKey('dim_patient.patient_id'), nullable=False)
     distractor_id = Column(Integer, comment='Distractor identifier (e.g., 1 or 2)')
-    started_at = Column(DateTime, comment='Data collection start date and time')
+    started_at = Column(DateTime, comment='Data collection start date and time (UTC+0)')
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
     distraction_achieved = Column(Numeric, comment='Achieved distraction in millimeters')

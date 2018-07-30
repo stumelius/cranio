@@ -1,5 +1,4 @@
 import sys
-import datetime
 import logging
 import logging.config
 import multiprocessing as mp
@@ -9,27 +8,28 @@ from cranio.app.window import MainWindow
 from cranio.utils import get_logging_config
 from cranio.database import init_database, Session
 
-start_time = datetime.datetime.now()
-n_seconds = 3
-
 # logging configuration
 d = get_logging_config()
 logging.config.dictConfig(d)
-
+# initialize database and session
 init_database()
 Session.init()
 
 
 def run():
-    ''' Runs the craniodistractor application '''
-    # initialize database
+    """
+    Run the craniodistractor application.
+
+    :return: 
+    """
+    # use multiprocessing queue
     DataStore.queue_cls = mp.Queue
     w = MainWindow()
     logging.info('Opening main window ...')
     w.show()
-    sys.exit(app.exec_())
+    ret = app.exec_()
     logging.info('Exiting application ...')
-    return 0
+    return ret
 
 
 if __name__ == '__main__':

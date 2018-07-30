@@ -15,6 +15,7 @@ List of tests:
 import pytest
 import numpy as np
 from typing import Iterable, List
+from PyQt5.QtCore import QTimer
 from cranio.database import AnnotatedEvent, Document, DISTRACTION_EVENT_TYPE_OBJECT, Measurement, session_scope
 from cranio.app.widget import RegionPlotWidget, RegionEditWidget
 from cranio.app.window import RegionPlotWindow
@@ -23,6 +24,7 @@ from cranio.app.window import RegionPlotWindow
 left_edge = 0
 right_edge = 99
 region_count = 4
+wait_msec = 500
 
 
 @pytest.fixture
@@ -152,6 +154,8 @@ def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is
     # add regions using add button
     region_plot_window.set_add_count(region_count)
     region_plot_window.add_button_clicked()
+    # set timer to close notes window
+    QTimer.singleShot(wait_msec, region_plot_window.notes_window.close)
     # click ok and bypass user prompt
     region_plot_window.ok_button_clicked(user_prompt=False)
     # verify that annotated events are in the database

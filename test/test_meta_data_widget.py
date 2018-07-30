@@ -1,11 +1,11 @@
 import pytest
 from cranio.app.widget import MetaDataWidget
-from cranio.database import session_scope, Patient
+from cranio.database import session_scope, Patient, Document
 
 
 @pytest.fixture(scope='function')
-def session_meta_widget():
-    widget = MetaDataWidget()
+def session_meta_widget(database_document_fixture):
+    widget = MetaDataWidget(document=Document.get_instance())
     return widget
 
 
@@ -15,7 +15,7 @@ def test_session_meta_widget_add_patient(session_meta_widget):
     assert session_meta_widget.active_patient == patient_id
 
 
-def test_session_meta_widget_update_patients_from_database(session_meta_widget, database_document_fixture):
+def test_session_meta_widget_update_patients_from_database(session_meta_widget):
     n = 10
     # add patients to database
     with session_scope() as s:
@@ -80,6 +80,18 @@ def test_distractor_widget_up_has_no_effect_when_distractor_is_ten(session_meta_
     session_meta_widget.distractor_widget.value = 10
     session_meta_widget.distractor_widget.step_up()
     assert session_meta_widget.distractor_widget.value == 10
+
+
+def test_document_patient_id_is_active_patient(session_meta_widget):
+    patient_id = 'foo'
+    session_meta_widget.active_patient = patient_id
+    assert session_meta_widget.document.patient_id == patient_id
+
+
+def test_document_distractor_id_is_active_distractor(session_meta_widget):
+    distractor_id = 1
+    session_meta_widget.active_distractor = distractor_id
+    assert session_meta_widget.document.distractor_id == distractor_id
 
 
 

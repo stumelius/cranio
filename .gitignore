@@ -18,3 +18,4 @@ _cache/
 
 sandbox/
 **/app.log
+.coverage*
