@@ -250,8 +250,9 @@ class MetaDataWidget(QGroupBox):
         with session_scope() as s:
             for p in s.query(Patient).all():
                 # populate patient widget
-                logging.debug(f'patient_id = {p.patient_id}')
                 self.patient_widget.add_item(p.patient_id)
+        # update active patient
+        self.active_patient = self.active_patient
 
     def patients(self) -> List[str]:
         """
@@ -505,6 +506,9 @@ class MeasurementWidget(QWidget):
             return
         self.update_timer.start(self.update_interval * 1000)
         self.document.started_at = utc_datetime()
+        # insert document to database
+        with session_scope() as s:
+            s.add(self.document)
         self.producer_process.start()
         self.started.emit()
         self.ok_button.setEnabled(False)

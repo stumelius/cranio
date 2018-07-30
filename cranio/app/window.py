@@ -43,7 +43,7 @@ class RegionPlotWindow(QDialog):
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
-        self.ok_button.clicked.connect(self.ok_button_clicked)
+        self.ok_button.clicked.connect(partial(self.ok_button_clicked, True))
         # plot document data
         self.plot(*self.document.get_related_time_series())
 
@@ -58,10 +58,17 @@ class RegionPlotWindow(QDialog):
             if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
                 return
         # insert annotated events to local database
+        logging.debug('Get annotated events')
         events = self.region_plot_widget.get_annotated_events()
-        with session_scope() as s:
-            for e in events:
-                s.add(e)
+        for event in events:
+            logging.debug(str(event.__dict__))
+        logging.debug('Insert annotated events to database')
+        try:
+            with session_scope() as s:
+                for e in events:
+                    s.add(e)
+        except Exception as e:
+            logging.error(str(e))
         self.close()
 
     @property
