@@ -2,9 +2,11 @@
 .. todo:: Combine with the core module
 """
 import os
+import sys
 import time
 import logging
 import random
+import traceback
 from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
@@ -64,3 +66,21 @@ def log_level_to_name(level: int) -> str:
 def random_value_generator() -> float:
     """ Generate a random value. """
     return random.gauss(0, 1)
+
+
+def default_excepthook(exctype: Exception, value: str, tb):
+    """
+    Global function to catch unhandled exceptions.
+
+    :param exctype:
+    :param value:
+    :param tb:
+    :return:
+    """
+    logging.error(f'UNHANDLED {exctype.__name__}: {value}.\nTraceback:{"".join(traceback.format_tb(tb))}')
+
+
+def attach_excepthook(excepthook=None):
+    if excepthook is None:
+        excepthook = default_excepthook
+    sys.excepthook = excepthook

@@ -225,9 +225,8 @@ class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
     closing = QtCore.pyqtSignal()
 
-    def __init__(self, document: Document, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
-        self.document = document
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.distractor_widget = SpinEditWidget('Distractor', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
@@ -275,8 +274,6 @@ class MetaDataWidget(QGroupBox):
             for p in s.query(Patient).all():
                 # populate patient widget
                 self.patient_widget.add_item(p.patient_id)
-        # update active patient
-        self.active_patient = self.active_patient
 
     def patients(self) -> List[str]:
         """
@@ -293,7 +290,6 @@ class MetaDataWidget(QGroupBox):
     @active_patient.setter
     def active_patient(self, patient_id: str):
         self.patient_widget.value = patient_id
-        self.document.patient_id = patient_id
 
     @property
     def active_distractor(self) -> int:
@@ -302,7 +298,6 @@ class MetaDataWidget(QGroupBox):
     @active_distractor.setter
     def active_distractor(self, distractor_id: int):
         self.distractor_widget.value = distractor_id
-        self.document.distractor_id = distractor_id
 
     def lock_patient(self, lock: bool):
         """
@@ -425,16 +420,11 @@ class PatientWidget(QWidget):
 
 
 class MeasurementWidget(QWidget):
-    """ Multiplot widget and buttons to start and stop data recording. Ok button to continue. """
-    started = QtCore.pyqtSignal()
-    stopped = QtCore.pyqtSignal()
+    """ Multiplot measurement widget and buttons to start and stop data recording. Ok button to continue. """
 
-    def __init__(self, producer_process=None, parent=None, document: Document=None):
-        from cranio.app.window import RegionPlotWindow
+    def __init__(self, producer_process=None, parent=None):
         super().__init__(parent)
         self.producer_process = producer_process
-        self.document = document
-        self.region_plot_window = RegionPlotWindow(document=self.document, parent=self)
         self.main_layout = QVBoxLayout()
         self.plot_layout = QHBoxLayout()
         self.start_stop_layout = QVBoxLayout()
@@ -460,9 +450,6 @@ class MeasurementWidget(QWidget):
         self.main_layout.addWidget(self.ok_button)
         self.setLayout(self.main_layout)
         # connect signals
-        self.ok_button.clicked.connect(self.ok_button_clicked)
-        self.start_button.clicked.connect(self.start_button_clicked)
-        self.stop_button.clicked.connect(self.stop_button_clicked)
         self.update_timer.timeout.connect(self.update)
 
     def plot(self, df: pd.DataFrame):
@@ -502,54 +489,6 @@ class MeasurementWidget(QWidget):
         self.producer_process.store.flush()
         data = self.producer_process.read()
         self.plot(data)
-
-    @QtCore.pyqtSlot()
-    def ok_button_clicked(self):
-        """
-        Start the event detection sequence after "Stop" is clicked.
-
-        :return:
-        """
-        if len(self.multiplot_widget.plot_widgets) > 1:
-            raise NotImplementedError('No support for over 2-dimensional data')
-        for p in self.multiplot_widget.plot_widgets:
-            # copy plot widget
-            p_new = self.region_plot_window.plot(x=p.x, y=p.y)
-            p_new.y_label = p.y_label
-        return self.region_plot_window.exec_()
-
-    def start_button_clicked(self):
-        """
-        Start the producer process, disable "Ok" button and emit `started` signal.
-        If producer process is None, an error box is shown.
-
-        :return:
-        """
-        if self.producer_process is None:
-            QMessageBox.critical(self, 'Error', 'No producer process defined')
-            return
-        self.update_timer.start(self.update_interval * 1000)
-        self.document.started_at = utc_datetime()
-        # insert document to database
-        with session_scope() as s:
-            s.add(self.document)
-        self.producer_process.start()
-        self.started.emit()
-        self.ok_button.setEnabled(False)
-
-    def stop_button_clicked(self):
-        """
-        Stop the producer process, enable "Ok" button and emit `stopped` signal.
-        If producer process is None, nothing happens.
-
-        :return:
-        """
-        if self.producer_process is None:
-            return
-        self.producer_process.pause()
-        self.update_timer.stop()
-        self.stopped.emit()
-        self.ok_button.setEnabled(True)
 
 
 class PlotWidget(pg.PlotWidget):

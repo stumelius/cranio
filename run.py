@@ -1,12 +1,10 @@
 import sys
 import logging
 import logging.config
-import multiprocessing as mp
-from daqstore.store import DataStore
 from cranio.app import app
-from cranio.app.window import MainWindow
-from cranio.utils import get_logging_config
+from cranio.utils import get_logging_config, attach_excepthook
 from cranio.database import init_database, Session
+from cranio.state import MyStateMachine
 
 # logging configuration
 d = get_logging_config()
@@ -14,6 +12,8 @@ logging.config.dictConfig(d)
 # initialize database and session
 init_database()
 Session.init()
+# attach default excepthook
+attach_excepthook()
 
 
 def run():
@@ -23,10 +23,11 @@ def run():
     :return: 
     """
     # use multiprocessing queue
-    DataStore.queue_cls = mp.Queue
-    w = MainWindow()
+
+    machine = MyStateMachine()
+    machine.start()
     logging.info('Opening main window ...')
-    w.show()
+    machine.main_window.show()
     ret = app.exec_()
     logging.info('Exiting application ...')
     return ret

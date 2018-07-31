@@ -171,7 +171,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.document = Document(session_id=Session.get_instance().session_id)
         self.setWindowTitle('Craniodistractor')
         self.store = DataStore(buffer_length=10, resampling_frequency=None)
         self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
@@ -181,10 +180,10 @@ class MainWindow(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         # add meta prompt widget
-        self.meta_widget = MetaDataWidget(document=self.document)
+        self.meta_widget = MetaDataWidget()
         self.main_layout.addWidget(self.meta_widget)
         # add measurement widget
-        self.measurement_widget = MeasurementWidget(document=self.document, producer_process=self.producer_process)
+        self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
         # add File menu
         self.file_menu = self.menuBar().addMenu('File')
@@ -207,6 +206,10 @@ class MainWindow(QMainWindow):
         self.connect_dummy_sensor_action.triggered.connect(partial(plug_dummy_sensor, self.producer_process))
         self.connect_menu.addAction(self.connect_torque_sensor_action)
         self.connect_menu.addAction(self.connect_dummy_sensor_action)
+        # signals
+        self.signal_start = self.measurement_widget.start_button.clicked
+        self.signal_stop = self.measurement_widget.stop_button.clicked
+        self.signal_ok = self.measurement_widget.ok_button.clicked
         self.init_ui()
 
     def init_ui(self):
@@ -254,7 +257,7 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.start_button_clicked()
+        return self.measurement_widget.start_button.clicked.emit(True)
 
     def stop_measurement(self):
         """
@@ -262,7 +265,7 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.stop_button_clicked()
+        return self.measurement_widget.stop_button.clicked.emit(True)
 
     def click_ok(self):
         """
@@ -270,5 +273,5 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.ok_button_clicked()
+        return self.measurement_widget.ok_button.clicked.emit(True)
 
