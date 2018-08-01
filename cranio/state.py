@@ -21,6 +21,7 @@ class MyStateMachine(QStateMachine):
         self.document = None
         self.annotated_events = None
         # states
+        # TODO: implement self.s1 as InitialState object
         self.s1 = MyState('s1')
         self.s2 = MeasurementState()
         self.s3 = EventDetectionState()
