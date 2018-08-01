@@ -1,12 +1,11 @@
 import pytest
 import numpy as np
-from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
-from cranio.database import (Patient, Session, Document, Measurement, Log, LogLevel, session_scope,
-                             export_schema_graph, DISTRACTION_EVENT_TYPE_OBJECT, AnnotatedEvent, init_database)
+from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
+    AnnotatedEvent, init_database, EventType
 
 
 def assert_add_query_and_delete(rows, session, Table):
@@ -81,20 +80,28 @@ def test_export_schema_graph():
     try_remove(name)
 
 
-def test_database_init_populate_lookup_table(database_fixture):
+def test_database_init_populate_lookup_tables(database_fixture):
     logging_levels = get_logging_levels()
     with session_scope() as s:
+        # log levels
         levels = s.query(LogLevel).all()
         assert len(levels) == len(logging_levels)
         for log_level in s.query(LogLevel).all():
             assert log_level.level in logging_levels.keys()
             assert log_level.level_name in logging_levels.values()
+        # event types
+        event_types = s.query(EventType).all()
+        targets = EventType.event_types()
+        assert len(event_types) == len(targets)
+        for real, target in zip(event_types, targets):
+            assert real.event_type == target.event_type
+            assert real.event_type_description == target.event_type_description
 
 
 def test_create_query_and_delete_annotated_event(database_document_fixture):
     doc_id = Document.get_instance().document_id
     with session_scope() as s:
-        events = [AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type, event_num=i, document_id=doc_id,
+        events = [AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i, document_id=doc_id,
                                  annotation_done=False)
                   for i in range(10)]
         assert_add_query_and_delete(events, s, AnnotatedEvent)
@@ -104,7 +111,7 @@ def test_create_query_and_delete_annotated_event(database_document_fixture):
 def test_annotated_event_foreign_key_constraint(database_fixture):
     with session_scope() as s:
         with pytest.raises(IntegrityError):
-            s.add(AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type, event_num=1, document_id=1337))
+            s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=1, document_id=1337))
 
 
 def test_database_is_empty_after_reinitialization(database_fixture):

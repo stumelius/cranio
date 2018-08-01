@@ -2,12 +2,13 @@
 .. todo:: To be documented.
 """
 import logging
+from typing import List
 from functools import partial
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton, QMessageBox
 from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, plug_dummy_sensor
 from cranio.imada import plug_imada
-from cranio.database import Document, session_scope, Patient, Session
+from cranio.database import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
     DoubleSpinEditWidget, CheckBoxEditWidget
 
@@ -25,17 +26,15 @@ def load_document():
 class RegionPlotWindow(QDialog):
     """ Dialog with a region plot widget and an "Ok" button. """
 
-    def __init__(self, document: Document, parent=None):
+    def __init__(self, parent=None):
         """
 
-        :param document: Data parent document
         :param parent:
         """
         super().__init__(parent)
-        self.document = document
         self.layout = QVBoxLayout()
-        self.region_plot_widget = RegionPlotWidget(document=self.document)
-        self.notes_window = NotesWindow(document=self.document)
+        self.region_plot_widget = RegionPlotWidget()
+        self.notes_window = NotesWindow()
         self.ok_button = QPushButton('Ok')
         self.init_ui()
 
@@ -45,44 +44,19 @@ class RegionPlotWindow(QDialog):
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
-        self.ok_button.clicked.connect(partial(self.ok_button_clicked, True))
-        # plot document data
-        self.plot(*self.document.get_related_time_series())
-
-    def ok_button_clicked(self, user_prompt: bool = True):
-        """
-        :param user_prompt: Indicate if user is to be prompted for verification to continue.
-            False can be used for testing purposes.
-        :return:
-        """
-        msg = f'You have selected {self.region_plot_widget.region_count()} regions. Are you sure you want to continue?'
-        if user_prompt:
-            if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
-                return
-        # insert annotated events to local database
-        logging.debug('Get annotated events')
-        events = self.region_plot_widget.get_annotated_events()
-        for event in events:
-            logging.debug(str(event.__dict__))
-        logging.debug('Insert annotated events to database')
-        try:
-            with session_scope() as s:
-                for e in events:
-                    s.add(e)
-        except Exception as e:
-            logging.error(str(e))
-        self.close()
-        return self.notes_window.exec_()
 
     @property
-    def x(self):
+    def x_arr(self):
         """ Overload property. """
-        return self.region_plot_widget.x
+        return self.region_plot_widget.x_arr
 
     @property
-    def y(self):
+    def y_arr(self):
         """ Overload property. """
-        return self.region_plot_widget.y
+        return self.region_plot_widget.y_arr
+
+    def get_annotated_events(self) -> List[AnnotatedEvent]:
+        return self.region_plot_widget.get_annotated_events()
 
     def plot(self, x, y):
         """ Overload method. """
@@ -107,14 +81,19 @@ class RegionPlotWindow(QDialog):
 
 class NotesWindow(QDialog):
 
-    def __init__(self, document: Document):
+    def __init__(self):
         super().__init__()
-        self.document = document
+        # layout and widgets
         self.layout = QVBoxLayout()
         self.notes_widget = EditWidget('Notes')
         self.distraction_achieved_widget = DoubleSpinEditWidget('Distraction achieved (mm)')
         self.distraction_plan_followed_widget = CheckBoxEditWidget('Distraction plan followed')
         self.ok_button = QPushButton('Ok')
+        # properties
+        self.notes = self.notes_widget.value
+        self.distraction_achieved = self.distraction_achieved_widget.value
+        self.distraction_plan_followed = self.distraction_plan_followed_widget.value
+        # initialize ui
         self.init_ui()
 
     def init_ui(self):
@@ -128,42 +107,7 @@ class NotesWindow(QDialog):
         self.layout.addWidget(self.distraction_achieved_widget)
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)
-        self.ok_button.clicked.connect(partial(self.ok_button_clicked, True))
         self.setLayout(self.layout)
-
-    @property
-    def notes(self):
-        return self.notes_widget.value
-
-    @notes.setter
-    def notes(self, value: str):
-        self.notes_widget.value = value
-        self.document.notes = value
-
-    @property
-    def distraction_achieved(self):
-        return self.distraction_achieved_widget.value
-
-    @distraction_achieved.setter
-    def distraction_achieved(self, value: float):
-        self.distraction_achieved_widget.value = value
-        self.document.distraction_achieved = value
-
-    @property
-    def distraction_plan_followed(self):
-        return self.distraction_plan_followed_widget.value
-
-    @distraction_plan_followed.setter
-    def distraction_plan_followed(self, state: bool):
-        self.distraction_plan_followed_widget.value = state
-        self.document.distraction_plan_followed = state
-
-    def ok_button_clicked(self, user_prompt: bool=True):
-        msg = 'Are you sure you want to continue?'
-        if user_prompt:
-            if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
-                return
-        self.close()
 
 
 class MainWindow(QMainWindow):
@@ -171,7 +115,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.document = Document(session_id=Session.get_instance().session_id)
         self.setWindowTitle('Craniodistractor')
         self.store = DataStore(buffer_length=10, resampling_frequency=None)
         self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
@@ -181,10 +124,10 @@ class MainWindow(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         # add meta prompt widget
-        self.meta_widget = MetaDataWidget(document=self.document)
+        self.meta_widget = MetaDataWidget()
         self.main_layout.addWidget(self.meta_widget)
         # add measurement widget
-        self.measurement_widget = MeasurementWidget(document=self.document, producer_process=self.producer_process)
+        self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
         # add File menu
         self.file_menu = self.menuBar().addMenu('File')
@@ -207,6 +150,10 @@ class MainWindow(QMainWindow):
         self.connect_dummy_sensor_action.triggered.connect(partial(plug_dummy_sensor, self.producer_process))
         self.connect_menu.addAction(self.connect_torque_sensor_action)
         self.connect_menu.addAction(self.connect_dummy_sensor_action)
+        # signals
+        self.signal_start = self.measurement_widget.start_button.clicked
+        self.signal_stop = self.measurement_widget.stop_button.clicked
+        self.signal_ok = self.measurement_widget.ok_button.clicked
         self.init_ui()
 
     def init_ui(self):
@@ -254,7 +201,7 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.start_button_clicked()
+        return self.measurement_widget.start_button.clicked.emit(True)
 
     def stop_measurement(self):
         """
@@ -262,7 +209,7 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.stop_button_clicked()
+        return self.measurement_widget.stop_button.clicked.emit(True)
 
     def click_ok(self):
         """
@@ -270,5 +217,5 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        return self.measurement_widget.ok_button_clicked()
+        return self.measurement_widget.ok_button.clicked.emit(True)
 
