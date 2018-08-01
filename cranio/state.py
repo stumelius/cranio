@@ -1,9 +1,7 @@
 import logging
-import multiprocessing as mp
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
-from daqstore.store import DataStore
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
 from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent
 from cranio.core import utc_datetime
@@ -13,22 +11,19 @@ class MyStateMachine(QStateMachine):
 
     def __init__(self):
         super().__init__()
-        # use multiprocessing queue
-        # TODO: move this somewhere else
-        DataStore.queue_cls = mp.Queue
         # context
         self.main_window = MainWindow()
         self.document = None
         self.annotated_events = None
         # states
-        # TODO: implement self.s1 as InitialState object
-        self.s1 = MyState('s1')
+        self.s1 = InitialState()
         self.s2 = MeasurementState()
         self.s3 = EventDetectionState()
-        self.s4 = AreYouSureState()
+        self.s4 = AreYouSureState('You have selected {region_count} regions. '
+                                  'Are you sure you want to continue?')
         self.s5 = EnterAnnotatedEventsState()
         self.s6 = NoteState()
-        self.s7 = AreYouSureState()
+        self.s7 = AreYouSureState('Are you sure you want to continue?')
         self.s8 = UpdateDocumentState()
         # transitions
         self.transition_map = {self.s1: {self.s2: self.main_window.signal_start, self.s3: self.main_window.signal_ok},
@@ -64,7 +59,6 @@ class MyStateMachine(QStateMachine):
 
 
 class MyState(QState):
-
     def __init__(self, name: str, parent=None):
         super().__init__(parent)
         self.name = name
@@ -98,8 +92,16 @@ class MyState(QState):
         logging.debug(f'Exit {self.name}')
 
 
-class MeasurementState(MyState):
+class InitialState(MyState):
+    def __init__(self, parent=None):
+        super().__init__(name=type(self).__name__, parent=parent)
 
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        self.main_window.show()
+
+
+class MeasurementState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
 
@@ -187,8 +189,14 @@ class EventDetectionState(MyState):
 
 class AreYouSureState(MyState):
 
-    def __init__(self, parent=None):
+    def __init__(self, text_template: str, parent=None):
+        """
+
+        :param text: Text shown in the dialog
+        :param parent:
+        """
         super().__init__(name=type(self).__name__, parent=parent)
+        self.template = text_template
         self.dialog = QMessageBox()
         self.yes_button = self.dialog.addButton('Yes', QMessageBox.YesRole)
         self.no_button = self.dialog.addButton('No', QMessageBox.NoRole)
@@ -198,8 +206,18 @@ class AreYouSureState(MyState):
         self.signal_yes = self.yes_button.clicked
         self.signal_no = self.no_button.clicked
 
+    def namespace(self) -> dict:
+        """ Return template namespace. """
+        try:
+            region_count = len(self.annotated_events)
+        except AttributeError:
+            # object has no attribute 'annotated_events'
+            region_count = None
+        return {'region_count': region_count}
+
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        self.dialog.setText(self.template.format(**self.namespace()))
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -259,12 +277,3 @@ class UpdateDocumentState(MyState):
             document.distraction_achieved = self.document.distraction_achieved
             document.distraction_plan_followed = self.document.distraction_plan_followed
         self.signal_finished.emit()
-
-
-
-
-
-
-
-
-

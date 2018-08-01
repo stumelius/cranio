@@ -95,8 +95,7 @@ class Sensor:
     
     def __init__(self):
         self.channels = []
-        # TODO: rename _default_value_generator
-        self._default_value_generator = nan_value_generator
+        self.value_generator = nan_value_generator
     
     def open(self):
         """ Dummy method. """
@@ -146,7 +145,7 @@ class Sensor:
             return None
         values = {}
         for c in self.channels:
-            values[str(c)] = self._default_value_generator()
+            values[str(c)] = self.value_generator()
         # sleep for 10 ms to slow down the sampling
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
@@ -330,7 +329,7 @@ def plug_dummy_sensor(producer_process: ProducerProcess) -> Sensor:
     """
     logging.debug('Initialize torque sensor')
     sensor = Sensor()
-    sensor._default_value_generator = random_value_generator
+    sensor.value_generator = random_value_generator
     ch = ChannelInfo('torque', 'Nm')
     sensor.register_channel(ch)
     producer_process.producer.register_sensor(sensor)

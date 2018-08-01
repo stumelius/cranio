@@ -59,7 +59,7 @@ def test_producer_process_start_and_join(producer_process, database_document_fix
 def test_producer_process_with_sensors(producer_process, database_document_fixture):
     p = producer_process
     s = Sensor()
-    s._default_value_generator = random_value_generator
+    s.value_generator = random_value_generator
     channels = [ChannelInfo('torque', 'Nm'), ChannelInfo('load', 'N'), ChannelInfo('extension', 'mm')]
     for c in channels:
         s.register_channel(c)

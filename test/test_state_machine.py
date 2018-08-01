@@ -52,7 +52,6 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
 
 
 def test_event_detection_state_flow(machine):
-    attach_excepthook()
     # assign and enter document
     machine.document = machine.s2.create_document()
     with session_scope() as s:
@@ -125,7 +124,7 @@ def test_event_detection_state_flow(machine):
 
 def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
     event = QEvent(QEvent.None_)
-    state = AreYouSureState()
+    state = AreYouSureState('foo')
     state.onEntry(event)
     assert state.dialog.isVisible()
     state.onExit(event)

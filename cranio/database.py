@@ -57,8 +57,9 @@ def init_database(engine_str: str='sqlite://') -> None:
         for level, level_name in get_logging_levels().items():
             s.add(LogLevel(level=level, level_name=level_name))
         # event types
-        for obj in EVENT_TYPES:
-            s.add(EventType(event_type=obj.event_type, event_type_description=obj.event_type_description))
+        for event_type in EventType.event_types():
+            s.add(event_type)
+            #s.add(EventType(event_type=obj.event_type, event_type_description=obj.event_type_description))
 
 
 def clear_database() -> None:
@@ -254,13 +255,15 @@ class EventType(Base):
     event_type = Column(String, primary_key=True, comment='Event type identifier (e.g., "D" for distraction)')
     event_type_description = Column(String)
 
+    @classmethod
+    def distraction_event_type(cls):
+        """ Return EventType for distraction event. """
+        return cls(event_type='D', event_type_description='Distraction event')
 
-# FIXME: expire_on_commit=False solves the issue below
-# NOTE: Objects in EVENT_TYPES should not be inserted to the database to prevent side effects from SQLAlchemy's
-# lazy loading
-# Instead, only copies of EVENT_TYPES object are to be inserted
-DISTRACTION_EVENT_TYPE_OBJECT = EventType(event_type='D', event_type_description='Distraction event')
-EVENT_TYPES = (DISTRACTION_EVENT_TYPE_OBJECT,)
+    @classmethod
+    def event_types(cls) -> List:
+        """ Return list of supported event types. """
+        return [cls.distraction_event_type()]
 
 
 class AnnotatedEvent(Base):

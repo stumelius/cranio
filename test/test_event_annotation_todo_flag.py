@@ -15,8 +15,7 @@ List of tests:
 import pytest
 import numpy as np
 from typing import Iterable, List
-from PyQt5.QtCore import QTimer
-from cranio.database import AnnotatedEvent, Document, DISTRACTION_EVENT_TYPE_OBJECT, Measurement, session_scope
+from cranio.database import AnnotatedEvent, Document, Measurement, session_scope, EventType
 from cranio.app.widget import RegionPlotWidget, RegionEditWidget
 from cranio.app.window import RegionPlotWindow
 
@@ -47,7 +46,7 @@ def add_dummy_region(widget: RegionPlotWidget) -> RegionEditWidget:
 
 def test_annotated_event_can_be_flagged_as_undone(database_document_fixture):
     document_id = Document.get_instance()
-    event_type = DISTRACTION_EVENT_TYPE_OBJECT.event_type
+    event_type = EventType.distraction_event_type().event_type
     annotated_event = AnnotatedEvent(event_num=1, event_type=event_type, document_id=document_id, annotation_done=False)
     assert not annotated_event.annotation_done
 
@@ -132,8 +131,8 @@ def test_region_plot_window_can_be_initialized_from_document_data(database_docum
     insert_time_series_to_database(X, Y, document)
     region_plot_window = RegionPlotWindow()
     region_plot_window.plot(*document.get_related_time_series())
-    np.testing.assert_array_almost_equal(region_plot_window.x, X)
-    np.testing.assert_array_almost_equal(region_plot_window.y, Y)
+    np.testing.assert_array_almost_equal(region_plot_window.x_arr, X)
+    np.testing.assert_array_almost_equal(region_plot_window.y_arr, Y)
 
 
 def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is_clicked():

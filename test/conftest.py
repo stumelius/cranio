@@ -1,6 +1,5 @@
 import pytest
 import logging.config
-import multiprocessing as mp
 from daqstore.store import DataStore
 from cranio.database import init_database, Session, Patient, Document
 from cranio.utils import get_logging_config
@@ -46,7 +45,6 @@ def logging_fixture():
 
 @pytest.fixture
 def data_store():
-    DataStore.queue_cls = mp.Queue
     ds = DataStore(buffer_length=10, resampling_frequency=None)
     yield ds
     ds.cache.delete()

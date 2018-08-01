@@ -11,8 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, DISTRACTION_EVENT_TYPE_OBJECT, Document, session_scope, Patient
-from cranio.core import utc_datetime
+from cranio.database import AnnotatedEvent, session_scope, Patient, EventType
 
 # plot style settings
 pg.setConfigOption('background', 'w')
@@ -587,12 +586,9 @@ class RegionEditWidget(QGroupBox):
         self.event_number = event_number
         # layouts
         self.main_layout = QVBoxLayout()
-        self.done_layout = QHBoxLayout()
         self.boundary_layout = QHBoxLayout()
         # widgets
-        # TODO: employ CheckBoxEditWidget
-        self.done_label = QLabel('Done')
-        self.done_checkbox = QCheckBox()
+        self.done_widget = CheckBoxEditWidget('Done')
         self.minimum_edit = QDoubleSpinBox()
         self.maximum_edit = QDoubleSpinBox()
         self.remove_button = QPushButton('Remove')
@@ -602,11 +598,9 @@ class RegionEditWidget(QGroupBox):
         """ Initialize UI elements. """
         self.setTitle('Region')
         self.setLayout(self.main_layout)
-        self.done_layout.addWidget(self.done_label)
-        self.done_layout.addWidget(self.done_checkbox)
         self.boundary_layout.addWidget(self.minimum_edit)
         self.boundary_layout.addWidget(self.maximum_edit)
-        self.main_layout.addLayout(self.done_layout)
+        self.main_layout.addWidget(self.done_widget)
         self.main_layout.addLayout(self.boundary_layout)
         self.main_layout.addWidget(self.remove_button)
         self.minimum_edit.setSingleStep(0.01)
@@ -615,7 +609,6 @@ class RegionEditWidget(QGroupBox):
         # self.minimum_edit.setRange(self.region.bounds.left(), self.region.bounds.right())
         self.minimum_edit.setValue(self.region()[0])
         self.maximum_edit.setValue(self.region()[1])
-
         # connect signals
         self.minimum_edit.valueChanged.connect(partial(self.value_changed, self.minimum_edit))
         self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
@@ -628,7 +621,7 @@ class RegionEditWidget(QGroupBox):
 
         :return:
         """
-        return self.done_checkbox.checkState() == QtCore.Qt.Checked
+        return self.done_widget.value
 
     def set_done(self, state: bool):
         """
@@ -637,8 +630,7 @@ class RegionEditWidget(QGroupBox):
         :param state:
         :return:
         """
-        state_map = {True: QtCore.Qt.Checked, False: QtCore.Qt.Unchecked}
-        self.done_checkbox.setCheckState(state_map[state])
+        self.done_widget.value = state
 
     def region(self) -> Tuple[float, float]:
         """
@@ -672,7 +664,7 @@ class RegionEditWidget(QGroupBox):
         """
         # only distraction events are supported
         # NOTE: document_is is left empty (i.e,. None)
-        return AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type,
+        return AnnotatedEvent(event_type=EventType.distraction_event_type().event_type,
                               event_num=self.event_number, document_id=None,
                               event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
 
@@ -756,18 +748,16 @@ class RegionPlotWidget(QWidget):
         self.remove_all_button.clicked.connect(self.remove_all)
 
     @property
-    def x(self):
+    def x_arr(self):
         """ Plot x values property. """
-        # TODO: rename x -> x_arr
         return self.plot_widget.x
 
     @property
-    def y(self):
+    def y_arr(self):
         """ Plot y values property. """
-        # TODO: rename y -> y_arr
         return self.plot_widget.y
 
-    def plot(self, x, y, mode='o'):
+    def plot(self, x_arr, y_arr, mode='o'):
         """
         Plot (x, y) data.
 
@@ -776,7 +766,7 @@ class RegionPlotWidget(QWidget):
         :param mode: Plot mode ('o' = overwrite, 'a' = append)
         :return:
         """
-        return self.plot_widget.plot(x, y, mode)
+        return self.plot_widget.plot(x_arr, y_arr, mode)
 
     def region_count(self) -> int:
         """
@@ -829,7 +819,7 @@ class RegionPlotWidget(QWidget):
         :return:
         """
         if bounds is None:
-            bounds = [min(self.x), max(self.x)]
+            bounds = [min(self.x_arr), max(self.x_arr)]
         alpha = 125
         color = list(color_palette[len(self.region_edit_map)]) + [alpha]
         item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
@@ -871,13 +861,13 @@ class RegionPlotWidget(QWidget):
 
         :return:
         """
-        if len(self.x) == 0:
+        if len(self.x_arr) == 0:
             logging.error('Unable to add region to empty plot')
             return 0
         count = self.add_count.value()
         if count > 0:
-            x_min = min(self.x)
-            interval = (max(self.x) - x_min) / count
+            x_min = min(self.x_arr)
+            interval = (max(self.x_arr) - x_min) / count
             for i in range(count):
                 # insert at uniform intervals
                 low = x_min + i * interval

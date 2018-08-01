@@ -22,12 +22,8 @@ def run():
 
     :return: 
     """
-    # use multiprocessing queue
-
     machine = MyStateMachine()
     machine.start()
-    logging.info('Opening main window ...')
-    machine.main_window.show()
     ret = app.exec_()
     logging.info('Exiting application ...')
     return ret

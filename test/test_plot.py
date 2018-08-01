@@ -121,7 +121,7 @@ def test_vmulti_plot_widget_placeholder():
 
 def test_region_plot_widget_add_region(region_plot_widget):
     n = 100
-    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
+    region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     for top in range(0,51,10):
         region = [0, top]
         edit_widget = region_plot_widget.add_region(region)
@@ -134,7 +134,7 @@ def test_region_plot_widget_add_region(region_plot_widget):
 
 def test_region_plot_widget_remove_region(region_plot_widget):
     n = 100
-    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
+    region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     item = region_plot_widget.add_region([0,10])
     assert len(region_plot_widget.region_edit_map) == 1
     region_plot_widget.remove_region(item)
@@ -143,7 +143,7 @@ def test_region_plot_widget_remove_region(region_plot_widget):
 
 def test_region_plot_widget_set_bounds(region_plot_widget):
     n = 100
-    region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
+    region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     edit_widget = region_plot_widget.add_region([0, 50])
     assert edit_widget.region() == (0,50)
     edit_widget.set_bounds([0,10])
@@ -158,7 +158,7 @@ def test_region_plot_widget_set_bounds(region_plot_widget):
 def test_region_plot_window_ok_button_closes_the_window():
     d = RegionPlotWindow()
     n = 100
-    d.plot(x=list(range(n)), y=list(range(n)))
+    d.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     assert len(d.region_edit_map) == 0
     d.add_button_clicked()
     assert len(d.region_edit_map) == 1
@@ -181,7 +181,7 @@ def test_region_plot_window_ok_button_closes_the_window():
 def test_region_plot_widget_add_and_remove_all_buttons(database_fixture):
     w = RegionPlotWidget()
     n = 100
-    w.plot(x=list(range(n)), y=list(range(n)))
+    w.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     for count in range(4):
         # add widgets
         w.add_count.setValue(count)

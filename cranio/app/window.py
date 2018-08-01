@@ -46,16 +46,14 @@ class RegionPlotWindow(QDialog):
         self.layout.addWidget(self.ok_button)
 
     @property
-    def x(self):
+    def x_arr(self):
         """ Overload property. """
-        # TODO: rename x -> x_arr
-        return self.region_plot_widget.x
+        return self.region_plot_widget.x_arr
 
     @property
-    def y(self):
+    def y_arr(self):
         """ Overload property. """
-        # TODO: rename y -> y_arr
-        return self.region_plot_widget.y
+        return self.region_plot_widget.y_arr
 
     def get_annotated_events(self) -> List[AnnotatedEvent]:
         return self.region_plot_widget.get_annotated_events()
@@ -109,15 +107,7 @@ class NotesWindow(QDialog):
         self.layout.addWidget(self.distraction_achieved_widget)
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)
-        self.ok_button.clicked.connect(partial(self.ok_button_clicked, True))
         self.setLayout(self.layout)
-
-    def ok_button_clicked(self, user_prompt: bool=True):
-        msg = 'Are you sure you want to continue?'
-        if user_prompt:
-            if not QMessageBox.question(self, 'Are you sure?', msg) == QMessageBox.Yes:
-                return
-        self.close()
 
 
 class MainWindow(QMainWindow):
