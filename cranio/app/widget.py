@@ -575,7 +575,7 @@ class PlotWidget(pg.PlotWidget):
 class RegionEditWidget(QGroupBox):
     """ Widget for editing a LinearRegionItem and editing event meta data. """
 
-    def __init__(self, parent: pg.LinearRegionItem, event_number: int, document: Document):
+    def __init__(self, parent: pg.LinearRegionItem, event_number: int):
         """
 
         :param parent:
@@ -585,12 +585,12 @@ class RegionEditWidget(QGroupBox):
         super(RegionEditWidget, self).__init__()
         self.parent = parent
         self.event_number = event_number
-        self.document = document
         # layouts
         self.main_layout = QVBoxLayout()
         self.done_layout = QHBoxLayout()
         self.boundary_layout = QHBoxLayout()
         # widgets
+        # TODO: employ CheckBoxEditWidget
         self.done_label = QLabel('Done')
         self.done_checkbox = QCheckBox()
         self.minimum_edit = QDoubleSpinBox()
@@ -671,8 +671,9 @@ class RegionEditWidget(QGroupBox):
         :return:
         """
         # only distraction events are supported
+        # NOTE: document_is is left empty (i.e,. None)
         return AnnotatedEvent(event_type=DISTRACTION_EVENT_TYPE_OBJECT.event_type,
-                              event_num=self.event_number, document_id=self.document.document_id,
+                              event_num=self.event_number, document_id=None,
                               event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
 
     def set_region(self, edges: Tuple[float, float]):
@@ -725,13 +726,12 @@ class RegionEditWidget(QGroupBox):
 class RegionPlotWidget(QWidget):
     """ Plot widget with region selection and edit functionality. """
 
-    def __init__(self, document: Document, parent=None):
+    def __init__(self, parent=None):
         """
-        :param document: Data parent document
+
         :param parent:
         """
         super().__init__(parent)
-        self.document = document
         self.plot_widget = PlotWidget()
         self.main_layout = QHBoxLayout()
         self.edit_layout = QVBoxLayout()
@@ -758,11 +758,13 @@ class RegionPlotWidget(QWidget):
     @property
     def x(self):
         """ Plot x values property. """
+        # TODO: rename x -> x_arr
         return self.plot_widget.x
 
     @property
     def y(self):
         """ Plot y values property. """
+        # TODO: rename y -> y_arr
         return self.plot_widget.y
 
     def plot(self, x, y, mode='o'):
@@ -833,7 +835,7 @@ class RegionPlotWidget(QWidget):
         item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
         # event numbering by insertion order
-        edit_widget = RegionEditWidget(item, event_number=self.region_count() + 1, document=self.document)
+        edit_widget = RegionEditWidget(item, event_number=self.region_count() + 1)
         edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
         self.edit_layout.insertWidget(self.edit_layout.count() - 1, edit_widget)
         self.region_edit_map[item] = edit_widget

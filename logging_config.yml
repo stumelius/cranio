@@ -15,7 +15,7 @@ handlers:
     level: DEBUG
     formatter: default
     filename: app.log
-    maxBytes: 100000
+    maxBytes: 1000000
     backupCount: 3
   database:
     class: cranio.handler.DatabaseHandler

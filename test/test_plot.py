@@ -6,7 +6,6 @@ import pandas as pd
 from functools import partial
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from cranio.database import Document
 from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget
 from cranio.app.window import RegionPlotWindow
 
@@ -17,13 +16,11 @@ region_count = 4
 
 @pytest.fixture
 def region_plot_widget():
-    # create dummy document
-    document = Document()
-    widget = RegionPlotWidget(document=document)
+    widget = RegionPlotWidget()
     yield widget
 
 
-def test_PlotWidget_overwrite():
+def test_plot_widget_overwrite_plot_data():
     w = PlotWidget()
     for i in range(10):
         x = np.random.rand(i)
@@ -36,7 +33,7 @@ def test_PlotWidget_overwrite():
     assert w.y == []
 
 
-def test_PlotWidget_append():
+def test_plot_widget_append_plot_data():
     w = PlotWidget()
     X = []
     Y = []
@@ -53,7 +50,7 @@ def test_PlotWidget_append():
     assert w.y == []
 
 
-def test_PlotWidget_dtypes():
+def test_plot_widget_dtypes():
     w = PlotWidget()
     x = [random.random() for _ in range(10)]
     y = [random.random() for _ in range(10)]
@@ -73,7 +70,7 @@ def test_PlotWidget_dtypes():
     _assert_plot(x_pd, y_pd)
 
 
-def test_PlotWidget_x_label():
+def test_plot_widget_x_label():
     p = PlotWidget()
     
     label_map = {None: ''}
@@ -85,7 +82,7 @@ def test_PlotWidget_x_label():
         assert p.x_label == o, 'x_label: {} - output: {} (input: {})'.format(p.x_label, o, i)
 
 
-def test_PlotWidget_y_label():
+def test_plot_widget_y_label():
     p = PlotWidget()
     
     label_map = {None: ''}
@@ -98,7 +95,7 @@ def test_PlotWidget_y_label():
 
 
 @pytest.mark.parametrize('rows', [100, 1000])
-def test_VMultiPlotWidget_plot_and_overwrite(rows):
+def test_vmulti_plot_widget_plot_and_overwrite(rows):
     p = VMultiPlotWidget()
     for _ in range(2):
         data = pd.DataFrame(np.random.rand(rows, 4), 
@@ -114,7 +111,7 @@ def test_VMultiPlotWidget_plot_and_overwrite(rows):
             assert pw.y == data[c].tolist()
 
 
-def test_VMultiPlotWidget_placeholder():
+def test_vmulti_plot_widget_placeholder():
     p = VMultiPlotWidget()
     assert p.placeholder is not None
     plot_widget = p.add_plot_widget('foo')
@@ -122,7 +119,7 @@ def test_VMultiPlotWidget_placeholder():
     assert p.find_plot_widget_by_label('foo') == plot_widget
 
 
-def test_RegionPlotWidget_add_region(region_plot_widget):
+def test_region_plot_widget_add_region(region_plot_widget):
     n = 100
     region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
     for top in range(0,51,10):
@@ -135,7 +132,7 @@ def test_RegionPlotWidget_add_region(region_plot_widget):
         assert widget.region() == (0,1)
 
 
-def test_RegionPlotWidget_remove_region(region_plot_widget):
+def test_region_plot_widget_remove_region(region_plot_widget):
     n = 100
     region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
     item = region_plot_widget.add_region([0,10])
@@ -144,7 +141,7 @@ def test_RegionPlotWidget_remove_region(region_plot_widget):
     assert len(region_plot_widget.region_edit_map) == 0
 
 
-def test_RegionPlotWidget_set_bounds(region_plot_widget):
+def test_region_plot_widget_set_bounds(region_plot_widget):
     n = 100
     region_plot_widget.plot(x=list(range(n)), y=list(range(n)))
     edit_widget = region_plot_widget.add_region([0, 50])
@@ -158,13 +155,14 @@ def test_RegionPlotWidget_set_bounds(region_plot_widget):
 
 
 @pytest.mark.skip('Does not work in Travis')
-def test_RegionPlotWindow_ok_button():
+def test_region_plot_window_ok_button_closes_the_window():
     d = RegionPlotWindow()
     n = 100
     d.plot(x=list(range(n)), y=list(range(n)))
     assert len(d.region_edit_map) == 0
     d.add_button_clicked()
     assert len(d.region_edit_map) == 1
+
     def click_button(standard_button):
         w = QApplication.activeWindow()
         b = w.button(standard_button)
@@ -180,8 +178,8 @@ def test_RegionPlotWindow_ok_button():
     assert not d.isVisible()
 
 
-def test_RegionPlotWidget_add_and_remove_all_buttons(database_fixture):
-    w = RegionPlotWidget(document=Document())
+def test_region_plot_widget_add_and_remove_all_buttons(database_fixture):
+    w = RegionPlotWidget()
     n = 100
     w.plot(x=list(range(n)), y=list(range(n)))
     for count in range(4):

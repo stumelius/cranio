@@ -1,7 +1,7 @@
 """
 Relational database definitions and classes/functions for database management.
 """
-from typing import Tuple, List
+from typing import Tuple, List, Iterable
 from contextlib import contextmanager, closing
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -289,3 +289,15 @@ def export_schema_graph(name: str) -> None:
     graph = create_schema_graph(metadata=Base.metadata, show_datatypes=False, show_indexes=False,
                                 rankdir='TB', concentrate=False)
     graph.write_png(name)
+
+
+def insert_time_series_to_database(time_s: Iterable[float], torque_Nm: Iterable[float],
+                                   document: Document) -> List[Measurement]:
+    """ Helper function. """
+    measurements = []
+    with session_scope() as s:
+        for x, y in zip(time_s, torque_Nm):
+            m = Measurement(document_id=document.document_id, time_s=x, torque_Nm=y)
+            measurements.append(m)
+            s.add(m)
+    return measurements
