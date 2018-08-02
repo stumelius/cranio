@@ -4,6 +4,7 @@
 import logging
 from typing import List
 from functools import partial
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton, QMessageBox
 from daqstore.store import DataStore
 from cranio.producer import ProducerProcess, plug_dummy_sensor
@@ -41,6 +42,8 @@ class RegionPlotWindow(QDialog):
     def init_ui(self):
         """ Initialize UI elements. """
         self.setWindowTitle('Region window')
+        # add maximize button
+        self.setWindowFlag(Qt.WindowMinMaxButtonsHint)
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)

@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from functools import partial
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget
 from cranio.app.window import RegionPlotWindow
@@ -190,3 +190,8 @@ def test_region_plot_widget_add_and_remove_all_buttons(database_fixture):
         # remove widgets
         w.remove_all()
         assert len(w.region_edit_map) == 0
+
+
+def test_region_plot_window_has_maximize_button():
+    region_plot_window = RegionPlotWindow()
+    assert int(region_plot_window.windowFlags() & Qt.WindowMaximizeButtonHint)
