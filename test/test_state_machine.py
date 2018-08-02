@@ -32,6 +32,10 @@ def test_start_measurement_inserts_document_to_database(machine):
     with session_scope() as s:
         document = s.query(Document).first()
         assert document.document_id == machine.document.document_id
+        # verify patient, distractor and operator
+        assert document.patient_id == machine.active_patient
+        assert document.distractor_id == machine.active_distractor
+        assert document.operator == machine.active_operator
 
 
 def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(machine):

@@ -54,6 +54,10 @@ class MyStateMachine(QStateMachine):
         return self.main_window.meta_widget.active_distractor
 
     @property
+    def active_operator(self):
+        return self.main_window.meta_widget.active_operator
+
+    @property
     def producer_process(self):
         return self.main_window.producer_process
 
@@ -117,7 +121,7 @@ class MeasurementState(MyState):
         if not patient_id:
             raise ValueError(f'Invalid patient "{patient_id}"')
         return Document(session_id=Session.get_instance().session_id, patient_id=patient_id,
-                        distractor_id=self.machine().active_distractor,
+                        distractor_id=self.machine().active_distractor, operator=self.machine().active_operator,
                         started_at=utc_datetime())
 
     def onEntry(self, event: QEvent):

@@ -228,6 +228,7 @@ class MetaDataWidget(QGroupBox):
         super().__init__(parent=parent)
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.distractor_widget = SpinEditWidget('Distractor', parent=self)
+        self.operator_widget = EditWidget('Operator', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
         self.enabled = True
@@ -245,6 +246,7 @@ class MetaDataWidget(QGroupBox):
         self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.distractor_widget)
+        self.layout.addWidget(self.operator_widget)
         self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
@@ -297,6 +299,14 @@ class MetaDataWidget(QGroupBox):
     @active_distractor.setter
     def active_distractor(self, distractor_id: int):
         self.distractor_widget.value = distractor_id
+
+    @property
+    def active_operator(self) -> str:
+        return self.operator_widget.value
+
+    @active_operator.setter
+    def active_operator(self, operator: str):
+        self.operator_widget.value = str(operator)
 
     def lock_patient(self, lock: bool):
         """
