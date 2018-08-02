@@ -101,8 +101,8 @@ def test_database_init_populate_lookup_tables(database_fixture):
 def test_create_query_and_delete_annotated_event(database_document_fixture):
     doc_id = Document.get_instance().document_id
     with session_scope() as s:
-        events = [AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i, document_id=doc_id,
-                                 annotation_done=False)
+        events = [AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i,
+                                 document_id=doc_id, annotation_done=False, recorded=True)
                   for i in range(10)]
         assert_add_query_and_delete(events, s, AnnotatedEvent)
 
@@ -111,7 +111,8 @@ def test_create_query_and_delete_annotated_event(database_document_fixture):
 def test_annotated_event_foreign_key_constraint(database_fixture):
     with session_scope() as s:
         with pytest.raises(IntegrityError):
-            s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=1, document_id=1337))
+            s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type,
+                                 event_num=1, document_id=1337))
 
 
 def test_database_is_empty_after_reinitialization(database_fixture):

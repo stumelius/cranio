@@ -243,6 +243,7 @@ class EnterAnnotatedEventsState(MyState):
         with session_scope() as s:
             for e in self.annotated_events:
                 s.add(e)
+                logging.debug(str(e.__dict__))
         self.signal_finished.emit()
 
 
