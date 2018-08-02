@@ -277,6 +277,9 @@ class AnnotatedEvent(Base):
     event_end = Column(Numeric, comment='Allow placeholder as NULL')
     annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
                                               'just a placeholder to be annotated later', nullable=False)
+    recorded = Column(Boolean, comment='Indicates if the event was recorded. '
+                                       'If false, the event did occur but the operator failed to record it.',
+                      nullable=False)
 
 
 def export_schema_graph(name: str) -> None:

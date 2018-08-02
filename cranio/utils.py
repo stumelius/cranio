@@ -77,7 +77,8 @@ def default_excepthook(exctype: Exception, value: str, tb):
     :param tb:
     :return:
     """
-    logging.error(f'UNHANDLED {exctype.__name__}: {value}.\nTraceback:{"".join(traceback.format_tb(tb))}')
+    logging.exception(f'UNHANDLED {exctype.__name__}: {value}', exc_info=(exctype, value, tb))
+    sys.__excepthook__(exctype, value, tb)
 
 
 def attach_excepthook(excepthook=None):

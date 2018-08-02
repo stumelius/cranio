@@ -23,9 +23,10 @@ class DatabaseHandler(logging.Handler):
             # no instance set
             session_id = None
         trace = None
-        exc = record.__dict__['exc_info']
-        if exc:
-            trace = traceback.format_exc(exc)
+        exc_info = record.__dict__['exc_info']
+        if exc_info:
+            # format_tb returns a list
+            trace = ''.join(traceback.format_tb(exc_info[2]))
         dt = datetime.strptime(record.__dict__['asctime'], DEFAULT_DATEFMT) + \
              timedelta(milliseconds=record.__dict__['msecs'])
         log = Log(logger=record.__dict__['name'], level=record.__dict__['levelno'],

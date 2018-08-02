@@ -1,11 +1,12 @@
 import pytest
 import time
+import logging
 from PyQt5.QtCore import QEvent
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
-    AnnotatedEvent
-from cranio.utils import attach_excepthook
+    AnnotatedEvent, Log
+from cranio.producer import plug_dummy_sensor
 
 wait_sec = 0.5
 
@@ -24,14 +25,39 @@ def machine(database_patient_fixture):
     state_machine.stop()
 
 
+@pytest.fixture
+def machine_without_patient(database_fixture):
+    state_machine = MyStateMachine()
+    state_machine.start()
+    app.processEvents()
+    yield state_machine
+    # kill producer
+    if state_machine.producer_process.is_alive():
+        state_machine.producer_process.join()
+    state_machine.stop()
+
+
+def caught_exceptions():
+    """ Return caught exceptions from log database. """
+    with session_scope() as s:
+        errors = s.query(Log).filter(Log.level == logging.ERROR).all()
+    return errors
+
+
 def test_start_measurement_inserts_document_to_database(machine):
+    # connect dummy sensor
+    plug_dummy_sensor(machine.producer_process)
     # start measurement
-    machine.transition_map[machine.s1][machine.s2].emit()
+    machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
     assert machine.document is not None
     with session_scope() as s:
         document = s.query(Document).first()
         assert document.document_id == machine.document.document_id
+        # verify patient, distractor and operator
+        assert document.patient_id == machine.active_patient
+        assert document.distractor_id == machine.active_distractor
+        assert document.operator == machine.active_operator
 
 
 def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(machine):
@@ -39,7 +65,7 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
     machine.main_window.connect_dummy_sensor_action.triggered.emit()
     app.processEvents()
     # start measurement for 2 seconds
-    machine.transition_map[machine.s1][machine.s2].emit()
+    machine.main_window.measurement_widget.start_button.clicked.emit()
     time.sleep(2)
     app.processEvents()
     # stop measurement
@@ -49,6 +75,29 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
     with session_scope() as s:
         measurements = s.query(Measurement).filter(Measurement.document_id == machine.document.document_id).all()
         assert len(measurements) > 0
+
+
+def test_prevent_measurement_start_if_no_patient_is_selected(machine_without_patient):
+    machine = machine_without_patient
+    machine.active_patient = ''
+    # start measurement
+    machine.main_window.measurement_widget.start_button.clicked.emit()
+    app.processEvents()
+    errors = caught_exceptions()
+    assert len(errors) == 1
+    assert 'Invalid patient' in errors[0].message
+
+
+def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
+    # start measurement
+    machine.main_window.measurement_widget.start_button.clicked.emit()
+    app.processEvents()
+    errors = caught_exceptions()
+    assert len(errors) == 1
+    assert 'No sensors connected' in errors[0].message
+    # machine rolled back to initial state
+    assert not machine.in_state(machine.s2)
+    assert machine.in_state(machine.s1)
 
 
 def test_event_detection_state_flow(machine):
@@ -129,8 +178,3 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
     assert state.dialog.isVisible()
     state.onExit(event)
     assert not state.dialog.isVisible()
-
-
-
-
-

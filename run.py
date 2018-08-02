@@ -12,7 +12,7 @@ logging.config.dictConfig(d)
 # initialize database and session
 init_database()
 Session.init()
-# attach default excepthook
+# attach custom excepthook
 attach_excepthook()
 
 
@@ -23,9 +23,11 @@ def run():
     :return: 
     """
     machine = MyStateMachine()
+    logging.info('Start state machine')
     machine.start()
     ret = app.exec_()
-    logging.info('Exiting application ...')
+    logging.info('Stop state machine')
+    machine.stop()
     return ret
 
 

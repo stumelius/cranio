@@ -228,6 +228,7 @@ class MetaDataWidget(QGroupBox):
         super().__init__(parent=parent)
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.distractor_widget = SpinEditWidget('Distractor', parent=self)
+        self.operator_widget = EditWidget('Operator', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
         self.enabled = True
@@ -245,6 +246,7 @@ class MetaDataWidget(QGroupBox):
         self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.distractor_widget)
+        self.layout.addWidget(self.operator_widget)
         self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
@@ -297,6 +299,14 @@ class MetaDataWidget(QGroupBox):
     @active_distractor.setter
     def active_distractor(self, distractor_id: int):
         self.distractor_widget.value = distractor_id
+
+    @property
+    def active_operator(self) -> str:
+        return self.operator_widget.value
+
+    @active_operator.setter
+    def active_operator(self, operator: str):
+        self.operator_widget.value = str(operator)
 
     def lock_patient(self, lock: bool):
         """
@@ -589,6 +599,7 @@ class RegionEditWidget(QGroupBox):
         self.boundary_layout = QHBoxLayout()
         # widgets
         self.done_widget = CheckBoxEditWidget('Done')
+        self.recorded_widget = CheckBoxEditWidget('Recorded')
         self.minimum_edit = QDoubleSpinBox()
         self.maximum_edit = QDoubleSpinBox()
         self.remove_button = QPushButton('Remove')
@@ -601,8 +612,11 @@ class RegionEditWidget(QGroupBox):
         self.boundary_layout.addWidget(self.minimum_edit)
         self.boundary_layout.addWidget(self.maximum_edit)
         self.main_layout.addWidget(self.done_widget)
+        self.main_layout.addWidget(self.recorded_widget)
         self.main_layout.addLayout(self.boundary_layout)
         self.main_layout.addWidget(self.remove_button)
+        # set recorded to True
+        self.set_recorded(True)
         self.minimum_edit.setSingleStep(0.01)
         self.maximum_edit.setSingleStep(0.01)
         # FIXME: region.bounds is always (0,0)
@@ -631,6 +645,23 @@ class RegionEditWidget(QGroupBox):
         :return:
         """
         self.done_widget.value = state
+
+    def is_recorded(self) -> bool:
+        """
+        Return boolean indicating if the recorded checkbox state is Checked.
+
+        :return:
+        """
+        return self.recorded_widget.value
+
+    def set_recorded(self, state: bool):
+        """
+        Set recorded check box state as Checked (True) or Unchecked (False).
+
+        :param state:
+        :return:
+        """
+        self.recorded_widget.value = state
 
     def region(self) -> Tuple[float, float]:
         """
@@ -666,7 +697,8 @@ class RegionEditWidget(QGroupBox):
         # NOTE: document_is is left empty (i.e,. None)
         return AnnotatedEvent(event_type=EventType.distraction_event_type().event_type,
                               event_num=self.event_number, document_id=None,
-                              event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done())
+                              event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done(),
+                              recorded=self.is_recorded())
 
     def set_region(self, edges: Tuple[float, float]):
         """
