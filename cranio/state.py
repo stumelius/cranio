@@ -1,65 +1,10 @@
 import logging
 from typing import List
-from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal
+from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
 from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent
 from cranio.core import utc_datetime
-
-
-class MyStateMachine(QStateMachine):
-
-    def __init__(self):
-        super().__init__()
-        # context
-        self.main_window = MainWindow()
-        self.document = None
-        self.annotated_events = None
-        # states
-        self.s1 = InitialState()
-        self.s2 = MeasurementState()
-        self.s3 = EventDetectionState()
-        self.s4 = AreYouSureState('You have selected {region_count} regions. '
-                                  'Are you sure you want to continue?')
-        self.s5 = EnterAnnotatedEventsState()
-        self.s6 = NoteState()
-        self.s7 = AreYouSureState('Are you sure you want to continue?')
-        self.s8 = UpdateDocumentState()
-        # transitions
-        self.transition_map = {self.s1: {self.s2: self.main_window.signal_start, self.s3: self.main_window.signal_ok},
-                               self.s2: {self.s1: self.main_window.signal_stop},
-                               self.s3: {self.s4: self.s3.signal_ok},
-                               self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
-                               self.s5: {self.s6: self.s5.signal_finished},
-                               self.s6: {self.s7: self.s6.signal_ok},
-                               self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
-                               self.s8: {self.s1: self.s8.signal_finished}}
-        for source, targets in self.transition_map.items():
-            for target, signal in targets.items():
-                source.addTransition(signal, target)
-        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8):
-            self.addState(s)
-        self.setInitialState(self.s1)
-
-    @property
-    def active_patient(self):
-        return self.main_window.meta_widget.active_patient
-
-    @active_patient.setter
-    def active_patient(self, patient_id: str):
-        self.main_window.meta_widget.active_patient = patient_id
-
-    @property
-    def active_distractor(self):
-        return self.main_window.meta_widget.active_distractor
-
-    @property
-    def active_operator(self):
-        return self.main_window.meta_widget.active_operator
-
-    @property
-    def producer_process(self):
-        return self.main_window.producer_process
 
 
 class MyState(QState):
@@ -116,19 +61,15 @@ class MeasurementState(MyState):
         :return:
         :raises ValueError: if active patient is invalid
         """
-        patient_id = self.machine().active_patient
-        logging.debug(f'Active patient = {patient_id}')
-        if not patient_id:
-            raise ValueError(f'Invalid patient "{patient_id}"')
-        return Document(session_id=Session.get_instance().session_id, patient_id=patient_id,
+        return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
                         distractor_id=self.machine().active_distractor, operator=self.machine().active_operator,
                         started_at=utc_datetime())
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval * 1000)
         # create new document
         self.document = self.create_document()
+        self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
         # insert document to database
         logging.debug(f'Enter document: {str(self.document.__dict__)}')
         with session_scope() as s:
@@ -282,3 +223,95 @@ class UpdateDocumentState(MyState):
             document.distraction_achieved = self.document.distraction_achieved
             document.distraction_plan_followed = self.document.distraction_plan_followed
         self.signal_finished.emit()
+
+
+class StartMeasurementTransition(QSignalTransition):
+
+    def __init__(self, signal: pyqtSignal, source_state: QState=None):
+        """
+
+        :param source_state:
+        """
+        super().__init__(signal, source_state)
+
+    def eventTest(self, event: QEvent) -> bool:
+        if not super().eventTest(event):
+            return False
+        # invalid patient
+        if not self.sourceState().machine().active_patient:
+            logging.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
+            return False
+        # no sensor connected
+        if len(self.sourceState().machine().producer_process.sensors) == 0:
+            logging.error('No sensors connected')
+            return False
+        return True
+
+
+class MyStateMachine(QStateMachine):
+
+    def __init__(self):
+        super().__init__()
+        # context
+        self.main_window = MainWindow()
+        self.document = None
+        self.annotated_events = None
+        # states
+        self.s1 = InitialState()
+        self.s2 = MeasurementState()
+        self.s3 = EventDetectionState()
+        self.s4 = AreYouSureState('You have selected {region_count} regions. '
+                                  'Are you sure you want to continue?')
+        self.s5 = EnterAnnotatedEventsState()
+        self.s6 = NoteState()
+        self.s7 = AreYouSureState('Are you sure you want to continue?')
+        self.s8 = UpdateDocumentState()
+        # transitions
+        self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
+        self.start_measurement_transition.setTargetState(self.s2)
+        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok},
+                               self.s2: {self.s1: self.main_window.signal_stop},
+                               self.s3: {self.s4: self.s3.signal_ok},
+                               self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
+                               self.s5: {self.s6: self.s5.signal_finished},
+                               self.s6: {self.s7: self.s6.signal_ok},
+                               self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
+                               self.s8: {self.s1: self.s8.signal_finished}}
+        for source, targets in self.transition_map.items():
+            for target, signal in targets.items():
+                if type(signal) == StartMeasurementTransition:
+                    source.addTransition(signal)
+                else:
+                    source.addTransition(signal, target)
+        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8):
+            self.addState(s)
+        self.setInitialState(self.s1)
+
+    @property
+    def active_patient(self):
+        return self.main_window.meta_widget.active_patient
+
+    @active_patient.setter
+    def active_patient(self, patient_id: str):
+        self.main_window.meta_widget.active_patient = patient_id
+
+    @property
+    def active_distractor(self):
+        return self.main_window.meta_widget.active_distractor
+
+    @property
+    def active_operator(self):
+        return self.main_window.meta_widget.active_operator
+
+    @property
+    def producer_process(self):
+        return self.main_window.producer_process
+
+    def in_state(self, state: QState) -> bool:
+        """
+        Determine if the state machine in a specified state.
+
+        :param state:
+        :return:
+        """
+        return state in self.configuration()

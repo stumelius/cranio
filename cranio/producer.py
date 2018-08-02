@@ -229,6 +229,10 @@ class ProducerProcess:
         """
         return self._process.name
 
+    @property
+    def sensors(self) -> List[Sensor]:
+        return self.producer.sensors
+
     def is_alive(self) -> bool:
         """
         Return process is_alive status.
