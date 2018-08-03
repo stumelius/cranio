@@ -1,10 +1,10 @@
 import pytest
 import logging.config
 from daqstore.store import DataStore
-from cranio.database import init_database, Session, Patient, Document
+from cranio.database import init_database, Session, Patient, Document, SensorInfo, session_scope
 from cranio.utils import get_logging_config
 from cranio.core import generate_unique_id
-from cranio.producer import ProducerProcess
+from cranio.producer import ProducerProcess, Sensor
 
 
 @pytest.fixture(scope='function')
@@ -31,11 +31,14 @@ def database_patient_fixture(database_fixture):
 
 @pytest.fixture(scope='function')
 def database_document_fixture(database_patient_fixture):
+    Sensor.enter_info_to_database()
     try:
-        Document.init(patient_id=Patient.get_instance().patient_id)
+        Document.init(patient_id=Patient.get_instance().patient_id,
+                      sensor_serial_number=Sensor.sensor_info.sensor_serial_number)
     except ValueError:
         Document.reset_instance()
-        Document.init(patient_id=Patient.get_instance().patient_id)
+        Document.init(patient_id=Patient.get_instance().patient_id,
+                      sensor_serial_number=Sensor.sensor_info.sensor_serial_number)
 
 
 @pytest.fixture(scope='session', autouse=True)

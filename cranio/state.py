@@ -1,9 +1,10 @@
 import logging
+from copy import copy
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
-from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent
+from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo
 from cranio.core import utc_datetime
 
 
@@ -63,16 +64,20 @@ class MeasurementState(MyState):
         """
         return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
                         distractor_id=self.machine().active_distractor, operator=self.machine().active_operator,
-                        started_at=utc_datetime())
+                        started_at=utc_datetime(),
+                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number)
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        # MeasurementStateTransition ensures that only one sensor is connected
+        sensor = self.machine().sensor
         # create new document
         self.document = self.create_document()
         self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
-        # insert document to database
-        logging.debug(f'Enter document: {str(self.document.__dict__)}')
+        # insert sensor info and document to database
+        sensor.enter_info_to_database()
         with session_scope() as s:
+            logging.debug(f'Enter document: {str(self.document.__dict__)}')
             s.add(self.document)
         self.main_window.measurement_widget.producer_process.start()
 
@@ -203,7 +208,7 @@ class NoteState(MyState):
         super().onExit(event)
         # update document and close window
         self.document.notes = self.dialog.notes
-        self.document.distraction_achieved = self.dialog.distraction_achieved
+        self.document.full_turn_count = self.dialog.full_turn_count
         self.document.distraction_plan_followed = self.dialog.distraction_plan_followed
         self.dialog.close()
 
@@ -220,8 +225,9 @@ class UpdateDocumentState(MyState):
         with session_scope() as s:
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
-            document.distraction_achieved = self.document.distraction_achieved
+            document.full_turn_count = self.document.full_turn_count
             document.distraction_plan_followed = self.document.distraction_plan_followed
+            logging.debug(str(document.__dict__))
         self.signal_finished.emit()
 
 
@@ -244,6 +250,10 @@ class StartMeasurementTransition(QSignalTransition):
         # no sensor connected
         if len(self.sourceState().machine().producer_process.sensors) == 0:
             logging.error('No sensors connected')
+            return False
+        # too many sensors connected
+        if len(self.sourceState().machine().producer_process.sensors) > 1:
+            logging.error('More than one sensor connected')
             return False
         return True
 
@@ -306,6 +316,12 @@ class MyStateMachine(QStateMachine):
     @property
     def producer_process(self):
         return self.main_window.producer_process
+
+    @property
+    def sensor(self):
+        if len(self.producer_process.sensors) != 1:
+            raise ValueError('Too many sensors connected')
+        return self.producer_process.sensors[0]
 
     def in_state(self, state: QState) -> bool:
         """

@@ -89,12 +89,12 @@ class NotesWindow(QDialog):
         # layout and widgets
         self.layout = QVBoxLayout()
         self.notes_widget = EditWidget('Notes')
-        self.distraction_achieved_widget = DoubleSpinEditWidget('Distraction achieved (mm)')
+        self.full_turn_count_widget = DoubleSpinEditWidget('Number of full turns')
         self.distraction_plan_followed_widget = CheckBoxEditWidget('Distraction plan followed')
         self.ok_button = QPushButton('Ok')
         # properties
         self.notes = self.notes_widget.value
-        self.distraction_achieved = self.distraction_achieved_widget.value
+        self.full_turn_count = self.full_turn_count_widget.value
         self.distraction_plan_followed = self.distraction_plan_followed_widget.value
         # initialize ui
         self.init_ui()
@@ -107,7 +107,7 @@ class NotesWindow(QDialog):
         """
         self.setWindowTitle('Notes')
         self.layout.addWidget(self.distraction_plan_followed_widget)
-        self.layout.addWidget(self.distraction_achieved_widget)
+        self.layout.addWidget(self.full_turn_count_widget)
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)
         self.setLayout(self.layout)

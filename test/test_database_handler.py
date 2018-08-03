@@ -7,7 +7,7 @@ def test_database_handler(database_document_fixture):
     logger = logging.getLogger('cranio')
     logger.info('foo')
     with session_scope() as s:
-        logs = s.query(Log).all()
+        logs = s.query(Log).filter(Log.level == logging.INFO).all()
         assert len(logs) == 1
         log = logs[0]
         assert log.message == 'foo'
