@@ -181,7 +181,7 @@ class Document(Base, InstanceBase):
     started_at = Column(DateTime, comment='Data collection start date and time (UTC+0)')
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
-    distraction_achieved = Column(Numeric, comment='Achieved distraction in millimeters')
+    full_turn_count = Column(Numeric, comment='Number of performed full turns (decimals supported)')
     missed_distractors = Column(String, comment='Comma-separated list of missed distractor identifiers')
     distraction_plan_followed = Column(Boolean, comment='Boolean indicating if the distraction plan was followed')
     # global instance

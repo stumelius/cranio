@@ -203,7 +203,7 @@ class NoteState(MyState):
         super().onExit(event)
         # update document and close window
         self.document.notes = self.dialog.notes
-        self.document.distraction_achieved = self.dialog.distraction_achieved
+        self.document.full_turn_count = self.dialog.full_turn_count
         self.document.distraction_plan_followed = self.dialog.distraction_plan_followed
         self.dialog.close()
 
@@ -220,8 +220,9 @@ class UpdateDocumentState(MyState):
         with session_scope() as s:
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
-            document.distraction_achieved = self.document.distraction_achieved
+            document.full_turn_count = self.document.full_turn_count
             document.distraction_plan_followed = self.document.distraction_plan_followed
+            logging.debug(str(document.__dict__))
         self.signal_finished.emit()
 
 

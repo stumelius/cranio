@@ -152,10 +152,10 @@ def test_event_detection_state_flow(machine):
     app.processEvents()
     # enter data in NotesWindow
     notes = 'foo'
-    distraction_achieved = 1.2
+    full_turn_count = 1.2
     distraction_plan_followed = True
     machine.s6.dialog.notes = notes
-    machine.s6.dialog.distraction_achieved = distraction_achieved
+    machine.s6.dialog.full_turn_count = full_turn_count
     machine.s6.dialog.distraction_plan_followed = distraction_plan_followed
     # trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
     machine.s6.signal_ok.emit()
@@ -168,7 +168,7 @@ def test_event_detection_state_flow(machine):
         document = s.query(Document).filter(Document.document_id == machine.document.document_id).first()
         assert document.notes == notes
         assert document.distraction_plan_followed == distraction_plan_followed
-        assert float(document.distraction_achieved) == distraction_achieved
+        assert float(document.full_turn_count) == full_turn_count
 
 
 def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
