@@ -5,7 +5,8 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
-    AnnotatedEvent, init_database, EventType
+    AnnotatedEvent, init_database, EventType, SensorInfo
+from cranio.producer import Sensor
 
 
 def assert_add_query_and_delete(rows, session, Table):
@@ -41,8 +42,10 @@ def test_create_query_and_delete_session(database_fixture):
 
 
 def test_create_query_and_delete_document(database_patient_fixture):
+    Sensor.enter_info_to_database()
     with session_scope() as s:
-        d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id)
+        d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id,
+                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number)
         assert_add_query_and_delete([d], s, Document)
 
 
@@ -143,3 +146,8 @@ def test_get_non_existing_time_series_related_to_document(database_document_fixt
     document = Document.get_instance()
     x, y = document.get_related_time_series()
     assert len(x) == 0 and len(y) == 0
+
+
+def test_document_has_sensor_serial_number_column():
+    document = Document()
+    assert hasattr(document, 'sensor_serial_number')

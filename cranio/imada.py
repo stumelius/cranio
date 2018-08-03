@@ -10,6 +10,7 @@ from typing import Tuple
 from serial.tools.list_ports_common import ListPortInfo
 from cranio.producer import Sensor, ChannelInfo, ProducerProcess
 from cranio.core import Packet
+from cranio.database import SensorInfo
 
 IMADA_EOL = '\r'
 
@@ -63,6 +64,7 @@ def decode_telegram(telegram: str) -> Tuple[str, str, str, str]:
         raise TelegramError('Invalid telegram: ' + str_)
     return value, unit, mode, condition
 
+
 # RS232 communication protocol configuration
 RS232Configuration = namedtuple('RS232Configuration', ['baudrate', 'bytesize', 'parity', 'stopbits', 'timeout'])
 
@@ -70,12 +72,12 @@ RS232Configuration = namedtuple('RS232Configuration', ['baudrate', 'bytesize', '
 class Imada(Sensor):
     """ Imada HTG2-4 digital torque gauge with USB serial (RS-232) interface. """
     rs232_config = RS232Configuration(19200, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, 1/50)
-    serial_number = 'FTSLQ6QIA'
-    
+    sensor_info = SensorInfo(sensor_serial_number='FTSLQ6QIA')
+
     def __init__(self):
         super().__init__()
         self.serial = serial.Serial(port=None, **self.rs232_config._asdict())
-        self.serial.port = get_com_port(self.serial_number)
+        self.serial.port = get_com_port(self.sensor_info.sensor_serial_number)
         self.register_channel(ChannelInfo('torque', 'Nm'))
     
     def open(self):

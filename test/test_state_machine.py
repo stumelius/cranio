@@ -5,15 +5,19 @@ from PyQt5.QtCore import QEvent
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
-    AnnotatedEvent, Log
+    AnnotatedEvent, Log, SensorInfo
 from cranio.producer import plug_dummy_sensor
+from cranio.utils import attach_excepthook
 
 wait_sec = 0.5
+attach_excepthook()
 
 
-@pytest.fixture
+@pytest.fixture(scope='function')
 def machine(database_patient_fixture):
     state_machine = MyStateMachine()
+    # connect dummy sensor
+    plug_dummy_sensor(state_machine.producer_process)
     # set active patient
     state_machine.active_patient = Patient.get_instance().patient_id
     state_machine.start()
@@ -44,9 +48,7 @@ def caught_exceptions():
     return errors
 
 
-def test_start_measurement_inserts_document_to_database(machine):
-    # connect dummy sensor
-    plug_dummy_sensor(machine.producer_process)
+def test_start_measurement_inserts_document_and_sensor_info_to_database(machine):
     # start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
@@ -58,18 +60,18 @@ def test_start_measurement_inserts_document_to_database(machine):
         assert document.patient_id == machine.active_patient
         assert document.distractor_id == machine.active_distractor
         assert document.operator == machine.active_operator
+        assert document.sensor_serial_number
+        sensor_info = s.query(SensorInfo).filter(SensorInfo.sensor_serial_number == document.sensor_serial_number).all()
+        assert len(sensor_info) == 1
 
 
 def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(machine):
-    # attach dummy sensor
-    machine.main_window.connect_dummy_sensor_action.triggered.emit()
-    app.processEvents()
     # start measurement for 2 seconds
     machine.main_window.measurement_widget.start_button.clicked.emit()
     time.sleep(2)
     app.processEvents()
     # stop measurement
-    machine.transition_map[machine.s2][machine.s1].emit()
+    machine.main_window.measurement_widget.stop_button.clicked.emit()
     app.processEvents()
     assert machine.producer_process.is_alive()
     with session_scope() as s:
@@ -89,6 +91,10 @@ def test_prevent_measurement_start_if_no_patient_is_selected(machine_without_pat
 
 
 def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
+    # unregister sensors
+    producer = machine.producer_process.producer
+    for sensor in producer.sensors:
+        producer.unregister_sensor(sensor)
     # start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
@@ -101,8 +107,10 @@ def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
 
 
 def test_event_detection_state_flow(machine):
-    # assign and enter document
+    # assign document
     machine.document = machine.s2.create_document()
+    # enter sensor info and document
+    machine.sensor.enter_info_to_database()
     with session_scope() as s:
         s.add(machine.document)
     # generate and enter data

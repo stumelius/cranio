@@ -10,9 +10,10 @@ import numpy as np
 from queue import Queue
 from typing import Union, Iterable, List
 from contextlib import contextmanager
+from daqstore.store import DataStore
 from cranio.core import Packet
 from cranio.utils import random_value_generator
-from daqstore.store import DataStore
+from cranio.database import SensorInfo, session_scope
 
 
 class SensorError(Exception):
@@ -92,6 +93,8 @@ class Sensor:
     Channels are stored as ChannelInfo objects.
     Open(), close() and read() method must be overloaded.
     """
+    # dummy sensor info
+    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW')
     
     def __init__(self):
         self.channels = []
@@ -151,6 +154,14 @@ class Sensor:
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
         return Packet([datetime.datetime.now()], values)
+
+    @classmethod
+    def enter_info_to_database(cls):
+        """ Enter copy of self.sensor_info to the database. """
+        with session_scope() as s:
+            # FIXME: insertion fails for the original sensor_info object
+            logging.debug(f'Enter sensor info: {str(cls.sensor_info.__dict__)}')
+            s.add(cls.sensor_info.copy())
 
 
 class Producer:
