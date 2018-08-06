@@ -10,7 +10,7 @@ from cranio.state import MyStateMachine
 d = get_logging_config()
 logging.config.dictConfig(d)
 # initialize database and session
-init_database()
+init_database('sqlite:///cranio.db')
 Session.init()
 # attach custom excepthook
 attach_excepthook()

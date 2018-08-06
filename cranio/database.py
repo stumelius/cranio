@@ -55,11 +55,10 @@ def init_database(engine_str: str='sqlite://') -> None:
     with session_scope() as s:
         # log levels
         for level, level_name in get_logging_levels().items():
-            s.add(LogLevel(level=level, level_name=level_name))
+            enter_if_not_exists(s, LogLevel(level=level, level_name=level_name))
         # event types
         for event_type in EventType.event_types():
-            s.add(event_type)
-            #s.add(EventType(event_type=obj.event_type, event_type_description=obj.event_type_description))
+            enter_if_not_exists(s, event_type)
 
 
 def clear_database() -> None:
@@ -75,6 +74,17 @@ def clear_database() -> None:
         for table in reversed(Base.metadata.sorted_tables):
             con.execute(table.delete())
         trans.commit()
+
+
+def enter_if_not_exists(session: SQLSession, row: Base):
+    """
+    Enter row to database if it doesn't already exist.
+
+    :param session:
+    :param row:
+    :return:
+    """
+    session.merge(row)
 
 
 @contextmanager
@@ -170,6 +180,22 @@ class Session(Base, InstanceBase):
         return cls.get_instance()
 
 
+class AnnotatedEvent(Base):
+    """ Annotated events table. """
+    __tablename__ = 'fact_annotated_event'
+    event_type = Column(String, ForeignKey('dim_event_type.event_type'), primary_key=True,
+                        comment='Event type identifier')
+    event_num = Column(Integer, primary_key=True, comment='Event number')
+    document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
+    event_begin = Column(Numeric, comment='Allow placeholder as NULL')
+    event_end = Column(Numeric, comment='Allow placeholder as NULL')
+    annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
+                                              'just a placeholder to be annotated later', nullable=False)
+    recorded = Column(Boolean, comment='Indicates if the event was recorded. '
+                                       'If false, the event did occur but the operator failed to record it.',
+                      nullable=False)
+
+
 class Document(Base, InstanceBase):
     """ Document table. """
     __tablename__ = 'dim_document'
@@ -224,6 +250,16 @@ class Document(Base, InstanceBase):
             x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         return x, y
 
+    def get_related_events(self) -> List[AnnotatedEvent]:
+        """
+        Return list of annotated events related to the document.
+
+        :return:
+        """
+        with session_scope() as s:
+            events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == self.document_id).all()
+        return events
+
 
 class Measurement(Base):
     """ Measurement table. """
@@ -268,22 +304,6 @@ class EventType(Base):
     def event_types(cls) -> List:
         """ Return list of supported event types. """
         return [cls.distraction_event_type()]
-
-
-class AnnotatedEvent(Base):
-    """ Annotated events table. """
-    __tablename__ = 'fact_annotated_event'
-    event_type = Column(String, ForeignKey('dim_event_type.event_type'), primary_key=True,
-                        comment='Event type identifier')
-    event_num = Column(Integer, primary_key=True, comment='Event number')
-    document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
-    event_begin = Column(Numeric, comment='Allow placeholder as NULL')
-    event_end = Column(Numeric, comment='Allow placeholder as NULL')
-    annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
-                                              'just a placeholder to be annotated later', nullable=False)
-    recorded = Column(Boolean, comment='Indicates if the event was recorded. '
-                                       'If false, the event did occur but the operator failed to record it.',
-                      nullable=False)
 
 
 class SensorInfo(Base):

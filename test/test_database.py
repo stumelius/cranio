@@ -5,7 +5,7 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
-    AnnotatedEvent, init_database, EventType, SensorInfo
+    AnnotatedEvent, init_database, EventType, enter_if_not_exists
 from cranio.producer import Sensor
 
 
@@ -151,3 +151,23 @@ def test_get_non_existing_time_series_related_to_document(database_document_fixt
 def test_document_has_sensor_serial_number_column():
     document = Document()
     assert hasattr(document, 'sensor_serial_number')
+
+
+def test_enter_if_not_exists(database_document_fixture):
+    document = Document.get_instance()
+    for _ in range(10):
+        with session_scope() as s:
+            enter_if_not_exists(s, document)
+    with session_scope() as s:
+        n = s.query(Document).filter(Document.document_id == document.document_id).count()
+    assert n == 1
+
+
+def test_document_get_related_events_count_is_correct(database_document_fixture):
+    document = Document.get_instance()
+    n = 10
+    with session_scope() as s:
+        for i in range(n):
+            s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i,
+                                 document_id=document.document_id, annotation_done=False, recorded=True))
+    assert len(document.get_related_events()) == n
