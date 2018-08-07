@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from daqstore.store import DataStore
 from cranio.core import Packet
 from cranio.utils import random_value_generator
-from cranio.database import SensorInfo, session_scope
+from cranio.database import SensorInfo, session_scope, enter_if_not_exists
 
 
 class SensorError(Exception):
@@ -159,9 +159,8 @@ class Sensor:
     def enter_info_to_database(cls):
         """ Enter copy of self.sensor_info to the database. """
         with session_scope() as s:
-            # FIXME: insertion fails for the original sensor_info object
             logging.debug(f'Enter sensor info: {str(cls.sensor_info.__dict__)}')
-            s.add(cls.sensor_info.copy())
+            enter_if_not_exists(s, cls.sensor_info)
 
 
 class Producer:

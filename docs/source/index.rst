@@ -11,6 +11,7 @@ Welcome to cranio's documentation!
    :caption: Contents:
 
    use_cases.rst
+   data_model.rst
    api.rst
 
 
