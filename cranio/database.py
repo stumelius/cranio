@@ -138,7 +138,7 @@ class Patient(Base, InstanceBase):
     @classmethod
     def init(cls, patient_id: str) -> str:
         """
-        Initialize and insert Patient row to database.
+        Initialize and insert Patienc row to database.
 
         :param patient_id: Patient identifier
         :return: Patient identifier
@@ -210,6 +210,7 @@ class Document(Base, InstanceBase):
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
     full_turn_count = Column(Numeric, comment='Number of performed full turns (decimals supported)')
+    # TODO: remodel missed_distractors (comma-separated list is stupid)
     missed_distractors = Column(String, comment='Comma-separated list of missed distractor identifiers')
     distraction_plan_followed = Column(Boolean, comment='Boolean indicating if the distraction plan was followed')
     # global instance
