@@ -59,6 +59,9 @@ def init_database(engine_str: str='sqlite://') -> None:
         # event types
         for event_type in EventType.event_types():
             enter_if_not_exists(s, event_type)
+        # distractor info
+        for distractor_info in DistractorInfo.distractor_infos():
+            enter_if_not_exists(s, distractor_info)
 
 
 def clear_database() -> None:
@@ -222,7 +225,8 @@ class Document(Base, InstanceBase, DictMixin):
     patient_id = Column(String, ForeignKey('dim_patient.patient_id'), nullable=False)
     sensor_serial_number = Column(String, ForeignKey('dim_hw_sensor.sensor_serial_number'), nullable=False,
                                   comment='Sensor serial number (e.g., FTSLQ6QIA)')
-    distractor_id = Column(Integer, comment='Distractor identifier (e.g., 1 or 2)')
+    distractor_number = Column(Integer, comment='Distractor number')
+    distractor_type = Column(String, ForeignKey('dim_hw_distractor.distractor_type'), nullable=False)
     started_at = Column(DateTime, comment='Data collection start date and time (UTC+0)')
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
@@ -234,7 +238,7 @@ class Document(Base, InstanceBase, DictMixin):
     instance = None
 
     @classmethod
-    def init(cls, sensor_serial_number: str, patient_id: str=None) -> str:
+    def init(cls, sensor_serial_number: str, distractor_type: str, patient_id: str=None) -> str:
         """
         Initialize and insert Document row to database.
 
@@ -254,7 +258,7 @@ class Document(Base, InstanceBase, DictMixin):
             raise ValueError('Patient must be initialized before Document')
         with session_scope() as s:
             document = cls(session_id=Session.get_instance().session_id, patient_id=patient_id,
-                           sensor_serial_number=sensor_serial_number)
+                           sensor_serial_number=sensor_serial_number, distractor_type=distractor_type)
             s.add(document)
             cls.set_instance(document)
         return cls.get_instance()
@@ -330,8 +334,6 @@ class SensorInfo(Base, DictMixin):
     # serial number as natural primary key
     sensor_serial_number = Column(String, primary_key=True, comment='Sensor serial number')
     sensor_name = Column(String, comment='Sensor name')
-    displacement_mm_per_full_turn = Column(Numeric, comment='Sensor-specific displacement (mm) per full turn. '
-                                                            'The value is determined during hardware calibration.')
     turns_in_full_turn = Column(Numeric, comment='Sensor-specific number of turns in one full turn.')
 
 
@@ -360,3 +362,23 @@ def insert_time_series_to_database(time_s: Iterable[float], torque_Nm: Iterable[
             measurements.append(m)
             s.add(m)
     return measurements
+
+
+class DistractorType:
+    KLS = 'KLS Arnaud'
+    RED = 'Rigid External Distractor'
+
+
+class DistractorInfo(Base, DictMixin):
+    """ Distractor information table. """
+    __tablename__ = 'dim_hw_distractor'
+    distractor_type = Column(String, primary_key=True)
+    displacement_mm_per_full_turn = Column(Numeric, nullable=False,
+                                           comment='Distractor-specific displacement (mm) per full turn. '
+                                                   'The value is determined during hardware calibration.')
+
+    @classmethod
+    def distractor_infos(cls):
+        # TODO: Update displacement_mm_per_full_turn after calibration
+        return [cls(distractor_type=DistractorType.KLS, displacement_mm_per_full_turn=0.00),
+                cls(distractor_type=DistractorType.RED, displacement_mm_per_full_turn=0.00)]

@@ -297,8 +297,8 @@ class MetaDataWidget(QGroupBox):
         return self.distractor_widget.value
 
     @active_distractor.setter
-    def active_distractor(self, distractor_id: int):
-        self.distractor_widget.value = distractor_id
+    def active_distractor(self, distractor_number: int):
+        self.distractor_widget.value = distractor_number
 
     @property
     def active_operator(self) -> str:

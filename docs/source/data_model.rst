@@ -52,9 +52,14 @@ dim_hw_sensor
 ^^^^^^^^^^^^^
 
 Sensor hardware information. The ``sensor_serial_number`` is automatically detected from the connected sensor.
+Column ``turns_in_full_turn`` is the sensor-specific number of turns in one full turn.
+
+dim_hw_distractor
+^^^^^^^^^^^^^^^^^
+
+Distractor hardware information.
 Column ``displacement_mm_per_full_turn`` describes the amount of displacement generated from one full distractor turn
 and is determined during hardware calibration.
-Column ``turns_in_full_turn`` is the sensor-specific number of turns in one full turn.
 
 fact_annotated_event
 ^^^^^^^^^^^^^^^^^^^^

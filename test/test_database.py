@@ -5,7 +5,7 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
-    AnnotatedEvent, init_database, EventType, enter_if_not_exists
+    AnnotatedEvent, init_database, EventType, enter_if_not_exists, DistractorInfo, DistractorType
 from cranio.producer import Sensor
 
 
@@ -45,7 +45,7 @@ def test_create_query_and_delete_document(database_patient_fixture):
     Sensor.enter_info_to_database()
     with session_scope() as s:
         d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id,
-                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number)
+                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number, distractor_type=DistractorType.KLS)
         assert_add_query_and_delete([d], s, Document)
 
 
@@ -99,6 +99,12 @@ def test_database_init_populate_lookup_tables(database_fixture):
         for real, target in zip(event_types, targets):
             assert real.event_type == target.event_type
             assert real.event_type_description == target.event_type_description
+        # distractor types
+        distractor_infos = s.query(DistractorInfo).all()
+        assert len(distractor_infos) == len(DistractorInfo.distractor_infos())
+        distractor_types = [d.distractor_type for d in distractor_infos]
+        assert DistractorType.KLS in distractor_types
+        assert DistractorType.RED in distractor_types
 
 
 def test_create_query_and_delete_annotated_event(database_document_fixture):
@@ -188,3 +194,7 @@ def test_measurement_copy_returns_new_instance_with_same_attributes():
     m2 = m1.copy()
     assert m2.as_dict() == m1.as_dict()
     assert m1 != m2
+
+
+def test_distractor_info_takes_distractor_type_and_displacement_mm_per_full_turn_as_args():
+    distractor_info = DistractorInfo(distractor_type='KLS Arnaud', displacement_mm_per_full_turn=1.15)

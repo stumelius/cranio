@@ -4,7 +4,7 @@ from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
-from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo
+from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.core import utc_datetime
 
 
@@ -62,10 +62,12 @@ class MeasurementState(MyState):
         :return:
         :raises ValueError: if active patient is invalid
         """
+        # FIXME: KLS distractor by default
         return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
-                        distractor_id=self.machine().active_distractor, operator=self.machine().active_operator,
+                        distractor_number=self.machine().active_distractor, operator=self.machine().active_operator,
                         started_at=utc_datetime(),
-                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number)
+                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+                        distractor_type=DistractorType.KLS)
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)

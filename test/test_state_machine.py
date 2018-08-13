@@ -58,7 +58,7 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
         assert document.document_id == machine.document.document_id
         # verify patient, distractor and operator
         assert document.patient_id == machine.active_patient
-        assert document.distractor_id == machine.active_distractor
+        assert document.distractor_number == machine.active_distractor
         assert document.operator == machine.active_operator
         assert document.sensor_serial_number
         sensor_info = s.query(SensorInfo).filter(SensorInfo.sensor_serial_number == document.sensor_serial_number).all()
