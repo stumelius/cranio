@@ -126,7 +126,24 @@ class InstanceBase:
         cls.instance = None
 
 
-class Patient(Base, InstanceBase):
+class DictMixin:
+
+    def as_dict(self) -> dict:
+        """
+        Return self as a {column: value} dictionary.
+        :return:
+        """
+        return {key: value for key, value in self.__dict__.items() if not key.startswith('_')}
+
+    def copy(self):
+        return type(self)(**self.as_dict())
+
+    def __str__(self):
+        arg_str = ', '.join([f'{key} = {value}' for key, value in self.as_dict().items()])
+        return f'{type(self).__name__}({arg_str})'
+
+
+class Patient(Base, InstanceBase, DictMixin):
     """ Patient table. """
     __tablename__ = 'dim_patient'
     patient_id = Column(String, CheckConstraint('patient_id != ""'), primary_key=True,
@@ -153,7 +170,7 @@ class Patient(Base, InstanceBase):
         return cls.get_instance()
 
 
-class Session(Base, InstanceBase):
+class Session(Base, InstanceBase, DictMixin):
     """ Session table. """
     __tablename__ = 'dim_session'
     session_id = Column(String, primary_key=True, default=generate_unique_id,
@@ -180,7 +197,7 @@ class Session(Base, InstanceBase):
         return cls.get_instance()
 
 
-class AnnotatedEvent(Base):
+class AnnotatedEvent(Base, DictMixin):
     """ Annotated events table. """
     __tablename__ = 'fact_annotated_event'
     event_type = Column(String, ForeignKey('dim_event_type.event_type'), primary_key=True,
@@ -196,7 +213,7 @@ class AnnotatedEvent(Base):
                       nullable=False)
 
 
-class Document(Base, InstanceBase):
+class Document(Base, InstanceBase, DictMixin):
     """ Document table. """
     __tablename__ = 'dim_document'
     document_id = Column(String, primary_key=True, default=generate_unique_id,
@@ -262,7 +279,7 @@ class Document(Base, InstanceBase):
         return events
 
 
-class Measurement(Base):
+class Measurement(Base, DictMixin):
     """ Measurement table. """
     __tablename__ = 'fact_measurement'
     measurement_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -271,14 +288,14 @@ class Measurement(Base):
     torque_Nm = Column(Numeric, nullable=False, comment='Torque measured from the screwdriver')
 
 
-class LogLevel(Base):
+class LogLevel(Base, DictMixin):
     """ Log level Lookup table. """
     __tablename__ = 'dim_log_level'
     level = Column(Integer, primary_key=True, comment='Level priority')
     level_name = Column(String, nullable=False, comment='E.g. ERROR or INFO')
 
 
-class Log(Base):
+class Log(Base, DictMixin):
     """ Log table. """
     __tablename__ = 'fact_log'
     log_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -290,7 +307,7 @@ class Log(Base):
     message = Column(String, nullable=False, comment='Log entry')
 
 
-class EventType(Base):
+class EventType(Base, DictMixin):
     """ Event types lookup table. """
     __tablename__ = 'dim_event_type'
     event_type = Column(String, primary_key=True, comment='Event type identifier (e.g., "D" for distraction)')
@@ -307,7 +324,7 @@ class EventType(Base):
         return [cls.distraction_event_type()]
 
 
-class SensorInfo(Base):
+class SensorInfo(Base, DictMixin):
     """ Sensor information table. """
     __tablename__ = 'dim_hw_sensor'
     # serial number as natural primary key
@@ -316,9 +333,6 @@ class SensorInfo(Base):
     displacement_mm_per_full_turn = Column(Numeric, comment='Sensor-specific displacement (mm) per full turn. '
                                                             'The value is determined during hardware calibration.')
     turns_in_full_turn = Column(Numeric, comment='Sensor-specific number of turns in one full turn.')
-
-    def copy(self):
-        return SensorInfo(**{key: value for key, value in self.__dict__.items() if not key.startswith('_')})
 
 
 def export_schema_graph(name: str) -> None:

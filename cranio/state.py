@@ -77,7 +77,7 @@ class MeasurementState(MyState):
         # insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:
-            logging.debug(f'Enter document: {str(self.document.__dict__)}')
+            logging.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
         self.main_window.measurement_widget.producer_process.start()
 
@@ -133,7 +133,7 @@ class EventDetectionState(MyState):
         for e in self.annotated_events:
             e.document_id = self.document.document_id
         for event in self.annotated_events:
-            logging.debug(str(event.__dict__))
+            logging.debug(str(event))
         self.dialog.close()
 
 
@@ -189,7 +189,7 @@ class EnterAnnotatedEventsState(MyState):
         with session_scope() as s:
             for e in self.annotated_events:
                 s.add(e)
-                logging.debug(str(e.__dict__))
+                logging.debug(str(e))
         self.signal_finished.emit()
 
 
@@ -227,7 +227,7 @@ class UpdateDocumentState(MyState):
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
             document.distraction_plan_followed = self.document.distraction_plan_followed
-            logging.debug(str(document.__dict__))
+            logging.debug(str(document))
         self.signal_finished.emit()
 
 

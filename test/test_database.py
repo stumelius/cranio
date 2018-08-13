@@ -171,3 +171,20 @@ def test_document_get_related_events_count_is_correct(database_document_fixture)
             s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i,
                                  document_id=document.document_id, annotation_done=False, recorded=True))
     assert len(document.get_related_events()) == n
+
+
+def test_measurement_as_dict_returns_only_table_columns():
+    m = Measurement(measurement_id=1, document_id=1, time_s=1, torque_Nm=1)
+    d = m.as_dict()
+    print(str(m))
+    cols = ('measurement_id', 'document_id', 'time_s', 'torque_Nm')
+    assert len(d) == len(cols)
+    for col in cols:
+        assert col in d
+
+
+def test_measurement_copy_returns_new_instance_with_same_attributes():
+    m1 = Measurement(measurement_id=1, document_id=1, time_s=1, torque_Nm=1)
+    m2 = m1.copy()
+    assert m2.as_dict() == m1.as_dict()
+    assert m1 != m2

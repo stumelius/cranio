@@ -112,6 +112,8 @@ Log level lookup table. Populated with the following values during database init
 Example SQL queries
 -------------------
 
+.. todo: Include queries as .sql files
+
 Calculate average torque for all events::
 
     SELECT patient_id, b.document_id, b.started_at, distractor_id, event_num, event_type, AVG(a.torque_Nm) as `avg. torque` FROM fact_measurement as a

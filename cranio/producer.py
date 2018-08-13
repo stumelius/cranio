@@ -159,7 +159,7 @@ class Sensor:
     def enter_info_to_database(cls):
         """ Enter copy of self.sensor_info to the database. """
         with session_scope() as s:
-            logging.debug(f'Enter sensor info: {str(cls.sensor_info.__dict__)}')
+            logging.debug(f'Enter sensor info: {str(cls.sensor_info)}')
             enter_if_not_exists(s, cls.sensor_info)
 
 
