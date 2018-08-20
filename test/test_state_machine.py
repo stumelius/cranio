@@ -121,11 +121,7 @@ def test_event_detection_state_flow(machine):
     # trigger transition from s1 to s3 (EventDetectionState)
     machine.transition_map[machine.s1][machine.s3].emit()
     app.processEvents()
-    # select regions
-    region_count = 2
-    machine.s3.dialog.set_add_count(region_count)
-    machine.s3.dialog.add_button_clicked()
-    app.processEvents()
+    region_count = machine.s3.region_count()
     # trigger transition from s3 to s4
     machine.transition_map[machine.s3][machine.s4].emit()
     app.processEvents()
@@ -196,11 +192,24 @@ def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times
             s.add(AnnotatedEvent(document_id=state.document.document_id, event_begin=0, event_end=1,
                                  event_num=i+1, annotation_done=True, recorded=True,
                                  event_type=EventType.distraction_event_type().event_type))
-        # get sensor info for turns_in_full_turn
-        sensor_info = s.query(SensorInfo).\
-            filter(SensorInfo.sensor_serial_number == state.document.sensor_serial_number).first()
+    sensor_info = state.document.get_related_sensor_info()
     # trigger entry with dummy event
     event = QEvent(QEvent.None_)
     state.onEntry(event)
     assert state.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)
     assert state.dialog.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)
+
+
+def test_event_detection_state_default_region_count_equals_turns_in_full_turn(database_document_fixture):
+    state_machine = MyStateMachine()
+    state_machine.document = Document.get_instance()
+    state = state_machine.s3
+    sensor_info = state.document.get_related_sensor_info()
+    # generate and enter data
+    n = 10
+    insert_time_series_to_database(list(range(n)), list(range(n)), state.document)
+    # trigger entry with dummy event
+    event = QEvent(QEvent.None_)
+    state.onEntry(event)
+    app.processEvents()
+    assert state.region_count() == int(sensor_info.turns_in_full_turn)

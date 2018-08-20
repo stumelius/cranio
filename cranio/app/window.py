@@ -81,6 +81,9 @@ class RegionPlotWindow(QDialog):
         """ Overload method. """
         return self.region_plot_widget.region_count()
 
+    def clear_regions(self):
+        return self.region_plot_widget.remove_all()
+
 
 class NotesWindow(QDialog):
 

@@ -216,6 +216,15 @@ class AnnotatedEvent(Base, DictMixin):
                       nullable=False)
 
 
+class SensorInfo(Base, DictMixin):
+    """ Sensor information table. """
+    __tablename__ = 'dim_hw_sensor'
+    # serial number as natural primary key
+    sensor_serial_number = Column(String, primary_key=True, comment='Sensor serial number')
+    sensor_name = Column(String, comment='Sensor name')
+    turns_in_full_turn = Column(Numeric, comment='Sensor-specific number of turns in one full turn.')
+
+
 class Document(Base, InstanceMixin, DictMixin):
     """ Document table. """
     __tablename__ = 'dim_document'
@@ -279,6 +288,13 @@ class Document(Base, InstanceMixin, DictMixin):
             events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == self.document_id).all()
         return events
 
+    def get_related_sensor_info(self) -> SensorInfo:
+        with session_scope() as s:
+            sensor_info = s.query(SensorInfo). \
+                filter(SensorInfo.sensor_serial_number == self.sensor_serial_number).first()
+        return sensor_info
+
+
 
 class Measurement(Base, DictMixin):
     """ Measurement table. """
@@ -323,15 +339,6 @@ class EventType(Base, DictMixin):
     def event_types(cls) -> List:
         """ Return list of supported event types. """
         return [cls.distraction_event_type()]
-
-
-class SensorInfo(Base, DictMixin):
-    """ Sensor information table. """
-    __tablename__ = 'dim_hw_sensor'
-    # serial number as natural primary key
-    sensor_serial_number = Column(String, primary_key=True, comment='Sensor serial number')
-    sensor_name = Column(String, comment='Sensor name')
-    turns_in_full_turn = Column(Numeric, comment='Sensor-specific number of turns in one full turn.')
 
 
 def export_schema_graph(name: str) -> None:

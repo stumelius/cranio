@@ -125,6 +125,12 @@ class EventDetectionState(MyState):
         """
         super().onEntry(event)
         self.dialog.plot(*self.document.get_related_time_series())
+        # clear existing regions
+        self.dialog.clear_regions()
+        # add as many regions as there are turns in one full turn
+        sensor_info = self.document.get_related_sensor_info()
+        self.dialog.set_add_count(int(sensor_info.turns_in_full_turn))
+        self.dialog.add_button_clicked()
         self.dialog.show()
 
     def onExit(self, event: QEvent):
@@ -137,6 +143,9 @@ class EventDetectionState(MyState):
         for event in self.annotated_events:
             logging.debug(str(event))
         self.dialog.close()
+
+    def region_count(self):
+        return self.dialog.region_count()
 
 
 class AreYouSureState(MyState):
