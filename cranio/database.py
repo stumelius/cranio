@@ -231,8 +231,6 @@ class Document(Base, InstanceMixin, DictMixin):
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
     full_turn_count = Column(Numeric, comment='Number of performed full turns (decimals supported)')
-    # TODO: remodel missed_distractors (comma-separated list is stupid)
-    missed_distractors = Column(String, comment='Comma-separated list of missed distractor identifiers')
     distraction_plan_followed = Column(Boolean, comment='Boolean indicating if the distraction plan was followed')
     # global instance
     instance = None
