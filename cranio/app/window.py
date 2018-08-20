@@ -81,6 +81,9 @@ class RegionPlotWindow(QDialog):
         """ Overload method. """
         return self.region_plot_widget.region_count()
 
+    def clear_regions(self):
+        return self.region_plot_widget.remove_all()
+
 
 class NotesWindow(QDialog):
 
@@ -90,12 +93,10 @@ class NotesWindow(QDialog):
         self.layout = QVBoxLayout()
         self.notes_widget = EditWidget('Notes')
         self.full_turn_count_widget = DoubleSpinEditWidget('Number of full turns')
-        self.distraction_plan_followed_widget = CheckBoxEditWidget('Distraction plan followed')
         self.ok_button = QPushButton('Ok')
         # properties
         self.notes = self.notes_widget.value
         self.full_turn_count = self.full_turn_count_widget.value
-        self.distraction_plan_followed = self.distraction_plan_followed_widget.value
         # initialize ui
         self.init_ui()
 
@@ -106,7 +107,6 @@ class NotesWindow(QDialog):
         :return:
         """
         self.setWindowTitle('Notes')
-        self.layout.addWidget(self.distraction_plan_followed_widget)
         self.layout.addWidget(self.full_turn_count_widget)
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)

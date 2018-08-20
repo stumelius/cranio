@@ -5,7 +5,7 @@ from sqlalchemy.inspection import inspect
 from cranio.core import generate_unique_id, utc_datetime
 from cranio.utils import try_remove, get_logging_levels
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
-    AnnotatedEvent, init_database, EventType, enter_if_not_exists
+    AnnotatedEvent, init_database, EventType, enter_if_not_exists, DistractorInfo, DistractorType
 from cranio.producer import Sensor
 
 
@@ -45,7 +45,7 @@ def test_create_query_and_delete_document(database_patient_fixture):
     Sensor.enter_info_to_database()
     with session_scope() as s:
         d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id,
-                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number)
+                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number, distractor_type=DistractorType.KLS)
         assert_add_query_and_delete([d], s, Document)
 
 
@@ -99,6 +99,12 @@ def test_database_init_populate_lookup_tables(database_fixture):
         for real, target in zip(event_types, targets):
             assert real.event_type == target.event_type
             assert real.event_type_description == target.event_type_description
+        # distractor types
+        distractor_infos = s.query(DistractorInfo).all()
+        assert len(distractor_infos) == len(DistractorInfo.distractor_infos())
+        distractor_types = [d.distractor_type for d in distractor_infos]
+        assert DistractorType.KLS in distractor_types
+        assert DistractorType.RED in distractor_types
 
 
 def test_create_query_and_delete_annotated_event(database_document_fixture):
@@ -171,3 +177,24 @@ def test_document_get_related_events_count_is_correct(database_document_fixture)
             s.add(AnnotatedEvent(event_type=EventType.distraction_event_type().event_type, event_num=i,
                                  document_id=document.document_id, annotation_done=False, recorded=True))
     assert len(document.get_related_events()) == n
+
+
+def test_measurement_as_dict_returns_only_table_columns():
+    m = Measurement(measurement_id=1, document_id=1, time_s=1, torque_Nm=1)
+    d = m.as_dict()
+    print(str(m))
+    cols = ('measurement_id', 'document_id', 'time_s', 'torque_Nm')
+    assert len(d) == len(cols)
+    for col in cols:
+        assert col in d
+
+
+def test_measurement_copy_returns_new_instance_with_same_attributes():
+    m1 = Measurement(measurement_id=1, document_id=1, time_s=1, torque_Nm=1)
+    m2 = m1.copy()
+    assert m2.as_dict() == m1.as_dict()
+    assert m1 != m2
+
+
+def test_distractor_info_takes_distractor_type_and_displacement_mm_per_full_turn_as_args():
+    distractor_info = DistractorInfo(distractor_type='KLS Arnaud', displacement_mm_per_full_turn=1.15)

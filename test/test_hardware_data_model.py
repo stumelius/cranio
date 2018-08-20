@@ -1,7 +1,7 @@
 import pytest
 from cranio.imada import Imada
 from cranio.producer import Sensor
-from cranio.database import Document, SensorInfo
+from cranio.database import Document, SensorInfo, DistractorInfo, DistractorType
 """
 List of tests:
 
@@ -13,11 +13,11 @@ turns performed
 """
 
 
-def test_sensor_table_contains_conversion_factor_for_calculating_distraction_achieved_from_number_of_full_turns(database_document_fixture):
+def test_distractor_table_contains_conversion_factor_for_calculating_distraction_achieved_from_number_of_full_turns(database_document_fixture):
     document = Document.get_instance()
     document.full_turn_count = 1
-    sensor_info = SensorInfo(sensor_serial_number='foo', displacement_mm_per_full_turn=1.2)
-    distraction_achieved_mm = document.full_turn_count * sensor_info.displacement_mm_per_full_turn
+    distractor_info = DistractorInfo(distractor_type=DistractorType.KLS, displacement_mm_per_full_turn=1.2)
+    distraction_achieved_mm = document.full_turn_count * distractor_info.displacement_mm_per_full_turn
     assert distraction_achieved_mm == 1.2
 
 

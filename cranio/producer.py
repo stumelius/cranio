@@ -94,7 +94,7 @@ class Sensor:
     Open(), close() and read() method must be overloaded.
     """
     # dummy sensor info
-    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW')
+    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW', turns_in_full_turn=3)
     
     def __init__(self):
         self.channels = []
@@ -159,7 +159,7 @@ class Sensor:
     def enter_info_to_database(cls):
         """ Enter copy of self.sensor_info to the database. """
         with session_scope() as s:
-            logging.debug(f'Enter sensor info: {str(cls.sensor_info.__dict__)}')
+            logging.debug(f'Enter sensor info: {str(cls.sensor_info)}')
             enter_if_not_exists(s, cls.sensor_info)
 
 

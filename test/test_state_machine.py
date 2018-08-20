@@ -5,7 +5,7 @@ from PyQt5.QtCore import QEvent
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
-    AnnotatedEvent, Log, SensorInfo
+    AnnotatedEvent, Log, SensorInfo, EventType
 from cranio.producer import plug_dummy_sensor
 from cranio.utils import attach_excepthook
 
@@ -58,7 +58,7 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
         assert document.document_id == machine.document.document_id
         # verify patient, distractor and operator
         assert document.patient_id == machine.active_patient
-        assert document.distractor_id == machine.active_distractor
+        assert document.distractor_number == machine.active_distractor
         assert document.operator == machine.active_operator
         assert document.sensor_serial_number
         sensor_info = s.query(SensorInfo).filter(SensorInfo.sensor_serial_number == document.sensor_serial_number).all()
@@ -121,11 +121,7 @@ def test_event_detection_state_flow(machine):
     # trigger transition from s1 to s3 (EventDetectionState)
     machine.transition_map[machine.s1][machine.s3].emit()
     app.processEvents()
-    # select regions
-    region_count = 2
-    machine.s3.dialog.set_add_count(region_count)
-    machine.s3.dialog.add_button_clicked()
-    app.processEvents()
+    region_count = machine.s3.region_count()
     # trigger transition from s3 to s4
     machine.transition_map[machine.s3][machine.s4].emit()
     app.processEvents()
@@ -161,10 +157,8 @@ def test_event_detection_state_flow(machine):
     # enter data in NotesWindow
     notes = 'foo'
     full_turn_count = 1.2
-    distraction_plan_followed = True
     machine.s6.dialog.notes = notes
     machine.s6.dialog.full_turn_count = full_turn_count
-    machine.s6.dialog.distraction_plan_followed = distraction_plan_followed
     # trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
     machine.s6.signal_ok.emit()
     app.processEvents()
@@ -175,7 +169,6 @@ def test_event_detection_state_flow(machine):
     with session_scope() as s:
         document = s.query(Document).filter(Document.document_id == machine.document.document_id).first()
         assert document.notes == notes
-        assert document.distraction_plan_followed == distraction_plan_followed
         assert float(document.full_turn_count) == full_turn_count
 
 
@@ -186,3 +179,37 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
     assert state.dialog.isVisible()
     state.onExit(event)
     assert not state.dialog.isVisible()
+
+
+def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times_per_turns_in_full_turn(database_document_fixture):
+    state_machine = MyStateMachine()
+    state_machine.document = Document.get_instance()
+    state = state_machine.s6
+    event_count = 3
+    with session_scope() as s:
+        # insert annotated events
+        for i in range(event_count):
+            s.add(AnnotatedEvent(document_id=state.document.document_id, event_begin=0, event_end=1,
+                                 event_num=i+1, annotation_done=True, recorded=True,
+                                 event_type=EventType.distraction_event_type().event_type))
+    sensor_info = state.document.get_related_sensor_info()
+    # trigger entry with dummy event
+    event = QEvent(QEvent.None_)
+    state.onEntry(event)
+    assert state.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)
+    assert state.dialog.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)
+
+
+def test_event_detection_state_default_region_count_equals_turns_in_full_turn(database_document_fixture):
+    state_machine = MyStateMachine()
+    state_machine.document = Document.get_instance()
+    state = state_machine.s3
+    sensor_info = state.document.get_related_sensor_info()
+    # generate and enter data
+    n = 10
+    insert_time_series_to_database(list(range(n)), list(range(n)), state.document)
+    # trigger entry with dummy event
+    event = QEvent(QEvent.None_)
+    state.onEntry(event)
+    app.processEvents()
+    assert state.region_count() == int(sensor_info.turns_in_full_turn)

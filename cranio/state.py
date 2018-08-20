@@ -4,7 +4,7 @@ from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
-from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo
+from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.core import utc_datetime
 
 
@@ -62,10 +62,12 @@ class MeasurementState(MyState):
         :return:
         :raises ValueError: if active patient is invalid
         """
+        # FIXME: KLS distractor by default
         return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
-                        distractor_id=self.machine().active_distractor, operator=self.machine().active_operator,
+                        distractor_number=self.machine().active_distractor, operator=self.machine().active_operator,
                         started_at=utc_datetime(),
-                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number)
+                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+                        distractor_type=DistractorType.KLS)
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -77,7 +79,7 @@ class MeasurementState(MyState):
         # insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:
-            logging.debug(f'Enter document: {str(self.document.__dict__)}')
+            logging.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
         self.main_window.measurement_widget.producer_process.start()
 
@@ -123,6 +125,12 @@ class EventDetectionState(MyState):
         """
         super().onEntry(event)
         self.dialog.plot(*self.document.get_related_time_series())
+        # clear existing regions
+        self.dialog.clear_regions()
+        # add as many regions as there are turns in one full turn
+        sensor_info = self.document.get_related_sensor_info()
+        self.dialog.set_add_count(int(sensor_info.turns_in_full_turn))
+        self.dialog.add_button_clicked()
         self.dialog.show()
 
     def onExit(self, event: QEvent):
@@ -133,8 +141,11 @@ class EventDetectionState(MyState):
         for e in self.annotated_events:
             e.document_id = self.document.document_id
         for event in self.annotated_events:
-            logging.debug(str(event.__dict__))
+            logging.debug(str(event))
         self.dialog.close()
+
+    def region_count(self):
+        return self.dialog.region_count()
 
 
 class AreYouSureState(MyState):
@@ -189,7 +200,7 @@ class EnterAnnotatedEventsState(MyState):
         with session_scope() as s:
             for e in self.annotated_events:
                 s.add(e)
-                logging.debug(str(e.__dict__))
+                logging.debug(str(e))
         self.signal_finished.emit()
 
 
@@ -202,6 +213,12 @@ class NoteState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        # set default full turn count
+        event_count = len(self.document.get_related_events())
+        with session_scope() as s:
+            sensor_info = s.query(SensorInfo).\
+                filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
+        self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -209,8 +226,17 @@ class NoteState(MyState):
         # update document and close window
         self.document.notes = self.dialog.notes
         self.document.full_turn_count = self.dialog.full_turn_count
-        self.document.distraction_plan_followed = self.dialog.distraction_plan_followed
         self.dialog.close()
+
+    @property
+    def full_turn_count(self):
+        return self.dialog.full_turn_count
+
+    @full_turn_count.setter
+    def full_turn_count(self, value):
+        self.dialog.full_turn_count = value
+
+
 
 
 class UpdateDocumentState(MyState):
@@ -226,8 +252,7 @@ class UpdateDocumentState(MyState):
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
-            document.distraction_plan_followed = self.document.distraction_plan_followed
-            logging.debug(str(document.__dict__))
+            logging.debug(str(document))
         self.signal_finished.emit()
 
 
