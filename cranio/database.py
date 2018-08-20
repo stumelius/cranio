@@ -113,7 +113,7 @@ def session_scope(engine: Engine=None):
         session.close()
 
 
-class InstanceBase:
+class InstanceMixin:
     """ Base class for handling class instances, or rather instance identifies. """
 
     @classmethod
@@ -146,7 +146,7 @@ class DictMixin:
         return f'{type(self).__name__}({arg_str})'
 
 
-class Patient(Base, InstanceBase, DictMixin):
+class Patient(Base, InstanceMixin, DictMixin):
     """ Patient table. """
     __tablename__ = 'dim_patient'
     patient_id = Column(String, CheckConstraint('patient_id != ""'), primary_key=True,
@@ -173,7 +173,7 @@ class Patient(Base, InstanceBase, DictMixin):
         return cls.get_instance()
 
 
-class Session(Base, InstanceBase, DictMixin):
+class Session(Base, InstanceMixin, DictMixin):
     """ Session table. """
     __tablename__ = 'dim_session'
     session_id = Column(String, primary_key=True, default=generate_unique_id,
@@ -216,7 +216,7 @@ class AnnotatedEvent(Base, DictMixin):
                       nullable=False)
 
 
-class Document(Base, InstanceBase, DictMixin):
+class Document(Base, InstanceMixin, DictMixin):
     """ Document table. """
     __tablename__ = 'dim_document'
     document_id = Column(String, primary_key=True, default=generate_unique_id,
