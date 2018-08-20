@@ -204,6 +204,12 @@ class NoteState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        # set default full turn count
+        event_count = len(self.document.get_related_events())
+        with session_scope() as s:
+            sensor_info = s.query(SensorInfo).\
+                filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
+        self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -213,6 +219,16 @@ class NoteState(MyState):
         self.document.full_turn_count = self.dialog.full_turn_count
         self.document.distraction_plan_followed = self.dialog.distraction_plan_followed
         self.dialog.close()
+
+    @property
+    def full_turn_count(self):
+        return self.dialog.full_turn_count
+
+    @full_turn_count.setter
+    def full_turn_count(self, value):
+        self.dialog.full_turn_count = value
+
+
 
 
 class UpdateDocumentState(MyState):

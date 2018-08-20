@@ -5,7 +5,7 @@ from PyQt5.QtCore import QEvent
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
-    AnnotatedEvent, Log, SensorInfo
+    AnnotatedEvent, Log, SensorInfo, EventType
 from cranio.producer import plug_dummy_sensor
 from cranio.utils import attach_excepthook
 
@@ -186,3 +186,24 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
     assert state.dialog.isVisible()
     state.onExit(event)
     assert not state.dialog.isVisible()
+
+
+def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times_per_turns_in_full_turn(database_document_fixture):
+    state_machine = MyStateMachine()
+    state_machine.document = Document.get_instance()
+    state = state_machine.s6
+    event_count = 3
+    with session_scope() as s:
+        # insert annotated events
+        for i in range(event_count):
+            s.add(AnnotatedEvent(document_id=state.document.document_id, event_begin=0, event_end=1,
+                                 event_num=i+1, annotation_done=True, recorded=True,
+                                 event_type=EventType.distraction_event_type().event_type))
+        # get sensor info for turns_in_full_turn
+        sensor_info = s.query(SensorInfo).\
+            filter(SensorInfo.sensor_serial_number == state.document.sensor_serial_number).first()
+    # trigger entry with dummy event
+    event = QEvent(QEvent.None_)
+    state.onEntry(event)
+    assert state.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)
+    assert state.dialog.full_turn_count == event_count / float(sensor_info.turns_in_full_turn)

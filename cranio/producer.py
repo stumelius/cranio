@@ -94,7 +94,7 @@ class Sensor:
     Open(), close() and read() method must be overloaded.
     """
     # dummy sensor info
-    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW')
+    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW', turns_in_full_turn=3)
     
     def __init__(self):
         self.channels = []
