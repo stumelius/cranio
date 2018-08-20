@@ -217,7 +217,6 @@ class NoteState(MyState):
         # update document and close window
         self.document.notes = self.dialog.notes
         self.document.full_turn_count = self.dialog.full_turn_count
-        self.document.distraction_plan_followed = self.dialog.distraction_plan_followed
         self.dialog.close()
 
     @property
@@ -244,7 +243,6 @@ class UpdateDocumentState(MyState):
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
-            document.distraction_plan_followed = self.document.distraction_plan_followed
             logging.debug(str(document))
         self.signal_finished.emit()
 
