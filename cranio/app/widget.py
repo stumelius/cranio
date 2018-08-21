@@ -1,7 +1,6 @@
 """
 .. todo:: To be documented.
 """
-import logging
 import pyqtgraph as pg
 import pandas as pd
 from typing import Tuple, List, Iterable
@@ -12,6 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
 from cranio.database import AnnotatedEvent, session_scope, Patient, EventType
+from cranio.utils import logger
 
 # plot style settings
 pg.setConfigOption('background', 'w')
@@ -269,7 +269,7 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
-        logging.debug('Update patients called')
+        logger.debug('Update patients called')
         self.patient_widget.clear()
         with session_scope() as s:
             for p in s.query(Patient).all():
@@ -317,7 +317,7 @@ class MetaDataWidget(QGroupBox):
         """
         self.enabled = not lock
         self.patient_widget.setEnabled(self.enabled)
-        logging.debug(f'Patient lock = {lock}')
+        logger.debug(f'Patient lock = {lock}')
 
     def toggle_lock_button_clicked(self):
         """
@@ -598,7 +598,7 @@ class RegionEditWidget(QGroupBox):
         self.main_layout = QVBoxLayout()
         self.boundary_layout = QHBoxLayout()
         # widgets
-        self.done_widget = CheckBoxEditWidget('Done')
+        self.done_widget = CheckBoxEditWidget('Annotation done')
         self.recorded_widget = CheckBoxEditWidget('Recorded')
         self.minimum_edit = QDoubleSpinBox()
         self.maximum_edit = QDoubleSpinBox()
@@ -894,7 +894,7 @@ class RegionPlotWidget(QWidget):
         :return:
         """
         if len(self.x_arr) == 0:
-            logging.error('Unable to add region to empty plot')
+            logger.error('Unable to add region to empty plot')
             return 0
         count = self.add_count.value()
         if count > 0:

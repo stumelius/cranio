@@ -5,14 +5,15 @@ import os
 import sys
 import time
 import logging
+import logging.config
 import random
-import traceback
 from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
 from ruamel import yaml
+from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
-DEFAULT_LOGGING_CONFIG_PATH = Path(__file__).parent.parent / 'logging_config.yml'
+logger = logging.getLogger('cranio')
 
 
 class UTCFormatter(logging.Formatter):
@@ -38,6 +39,12 @@ def get_logging_config(path: Union[Path, str]=None) -> dict:
         path = DEFAULT_LOGGING_CONFIG_PATH
     with open(path) as stream:
         return yaml.safe_load(stream)
+
+
+def configure_logging():
+    # logging configuration
+    d = get_logging_config()
+    logging.config.dictConfig(d)
 
 
 def get_logging_levels() -> Dict[int, str]:

@@ -1,7 +1,6 @@
 """
 .. todo:: To be documented.
 """
-import logging
 from typing import List
 from functools import partial
 from PyQt5.QtCore import Qt
@@ -12,16 +11,17 @@ from cranio.imada import plug_imada
 from cranio.database import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
     DoubleSpinEditWidget, CheckBoxEditWidget
+from cranio.utils import logger
 
 
 def create_document():
     """ Dummy function. """
-    logging.info('create_document() called!')
+    logger.info('create_document() called!')
 
 
 def load_document():
     """ Dummy function. """
-    logging.info('load_document() called!')
+    logger.info('load_document() called!')
 
 
 class RegionPlotWindow(QDialog):
@@ -94,9 +94,6 @@ class NotesWindow(QDialog):
         self.notes_widget = EditWidget('Notes')
         self.full_turn_count_widget = DoubleSpinEditWidget('Number of full turns')
         self.ok_button = QPushButton('Ok')
-        # properties
-        self.notes = self.notes_widget.value
-        self.full_turn_count = self.full_turn_count_widget.value
         # initialize ui
         self.init_ui()
 
@@ -111,6 +108,22 @@ class NotesWindow(QDialog):
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)
         self.setLayout(self.layout)
+
+    @property
+    def full_turn_count(self) -> float:
+        return self.full_turn_count_widget.value
+
+    @full_turn_count.setter
+    def full_turn_count(self, value: float):
+        self.full_turn_count_widget.value = value
+
+    @property
+    def notes(self) -> str:
+        return self.notes_widget.value
+
+    @notes.setter
+    def notes(self, value: str):
+        self.notes_widget.value = value
 
 
 class MainWindow(QMainWindow):

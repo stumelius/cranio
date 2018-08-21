@@ -1,11 +1,10 @@
-import logging
-from copy import copy
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
 from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.core import utc_datetime
+from cranio.utils import logger
 
 
 class MyState(QState):
@@ -36,10 +35,10 @@ class MyState(QState):
         self.machine().annotated_events = values
 
     def onEntry(self, event: QEvent):
-        logging.debug(f'Enter {self.name}')
+        logger.debug(f'Enter {self.name}')
 
     def onExit(self, event: QEvent):
-        logging.debug(f'Exit {self.name}')
+        logger.debug(f'Exit {self.name}')
 
 
 class InitialState(MyState):
@@ -79,7 +78,7 @@ class MeasurementState(MyState):
         # insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:
-            logging.debug(f'Enter document: {str(self.document)}')
+            logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
         self.main_window.measurement_widget.producer_process.start()
 
@@ -95,7 +94,7 @@ class MeasurementState(MyState):
         if len(plot_widgets) > 1:
             raise ValueError('Only single plots are supported')
         elif len(plot_widgets) == 0:
-            logging.debug('No data to enter')
+            logger.debug('No data to enter')
             # no data to enter
             return
         plot_widget = self.main_window.measurement_widget.multiplot_widget.plot_widgets[0]
@@ -105,7 +104,7 @@ class MeasurementState(MyState):
                 m = Measurement(document_id=self.document.document_id, time_s=x, torque_Nm=y)
                 measurements.append(m)
                 s.add(m)
-        logging.debug(f'Entered {len(measurements)} measurements to the database')
+        logger.debug(f'Entered {len(measurements)} measurements to the database')
 
 
 class EventDetectionState(MyState):
@@ -136,12 +135,12 @@ class EventDetectionState(MyState):
     def onExit(self, event: QEvent):
         super().onExit(event)
         # assign annotated events and link to document
-        logging.debug('Assign annotated events and link to document')
+        logger.debug('Assign annotated events and link to document')
         self.annotated_events = self.dialog.get_annotated_events()
         for e in self.annotated_events:
             e.document_id = self.document.document_id
         for event in self.annotated_events:
-            logging.debug(str(event))
+            logger.debug(str(event))
         self.dialog.close()
 
     def region_count(self):
@@ -196,11 +195,11 @@ class EnterAnnotatedEventsState(MyState):
         super().onEntry(event)
         if not self.annotated_events:
             raise ValueError('No annotated events to enter')
-        logging.debug('Enter annotated events to database')
+        logger.debug('Enter annotated events to database')
         with session_scope() as s:
             for e in self.annotated_events:
                 s.add(e)
-                logging.debug(str(e))
+                logger.debug(str(e))
         self.signal_finished.emit()
 
 
@@ -219,6 +218,8 @@ class NoteState(MyState):
             sensor_info = s.query(SensorInfo).\
                 filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
         self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)
+        logger.debug(f'Calculate default full_turn_count = {self.full_turn_count} = '
+                     f'{event_count} / {sensor_info.turns_in_full_turn}')
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -237,8 +238,6 @@ class NoteState(MyState):
         self.dialog.full_turn_count = value
 
 
-
-
 class UpdateDocumentState(MyState):
     signal_finished = pyqtSignal()
 
@@ -247,12 +246,12 @@ class UpdateDocumentState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        logging.debug('Update document in database')
+        logger.debug('Update document in database')
         with session_scope() as s:
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
-            logging.debug(str(document))
+            logger.debug(str(document))
         self.signal_finished.emit()
 
 
@@ -270,15 +269,15 @@ class StartMeasurementTransition(QSignalTransition):
             return False
         # invalid patient
         if not self.sourceState().machine().active_patient:
-            logging.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
+            logger.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
             return False
         # no sensor connected
         if len(self.sourceState().machine().producer_process.sensors) == 0:
-            logging.error('No sensors connected')
+            logger.error('No sensors connected')
             return False
         # too many sensors connected
         if len(self.sourceState().machine().producer_process.sensors) > 1:
-            logging.error('More than one sensor connected')
+            logger.error('More than one sensor connected')
             return False
         return True
 

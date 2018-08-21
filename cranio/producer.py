@@ -2,7 +2,6 @@
 .. todo:: Module description
 """
 import datetime
-import logging
 import time
 import multiprocessing as mp
 import pandas as pd
@@ -12,7 +11,7 @@ from typing import Union, Iterable, List
 from contextlib import contextmanager
 from daqstore.store import DataStore
 from cranio.core import Packet
-from cranio.utils import random_value_generator
+from cranio.utils import random_value_generator, logger
 from cranio.database import SensorInfo, session_scope, enter_if_not_exists
 
 
@@ -159,7 +158,7 @@ class Sensor:
     def enter_info_to_database(cls):
         """ Enter copy of self.sensor_info to the database. """
         with session_scope() as s:
-            logging.debug(f'Enter sensor info: {str(cls.sensor_info)}')
+            logger.debug(f'Enter sensor info: {str(cls.sensor_info)}')
             enter_if_not_exists(s, cls.sensor_info)
 
 
@@ -260,14 +259,14 @@ class ProducerProcess:
         """
         # implement required initializations here!
         # open producer
-        logging.info('Running producer process "{}"'.format(str(self)))
+        logger.info('Running producer process "{}"'.format(str(self)))
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
                     for packet in self.producer.read():
                         tpl = (self.producer.id,) + packet.as_tuple()
                         self.store.put(tpl)
-        logging.info('Stopping producer process "{}"'.format(str(self)))
+        logger.info('Stopping producer process "{}"'.format(str(self)))
                     
     def read(self, include_cache: bool=False) -> pd.DataFrame:
         """
@@ -326,11 +325,11 @@ class ProducerProcess:
         #self.data_queue.join_thread()
         self._process.join(timeout)
         if self.is_alive():
-            logging.error('Producer process "{}" is not shutting down gracefully. '
+            logger.error('Producer process "{}" is not shutting down gracefully. '
                           'Resorting to force terminate and join...'.format(str(self)))
             self._process.terminate()
             self._process.join(timeout)
-        logging.info('Producer process "{}" joined successfully'.format(str(self)))
+        logger.info('Producer process "{}" joined successfully'.format(str(self)))
         return self._process.exitcode
 
 
@@ -341,11 +340,11 @@ def plug_dummy_sensor(producer_process: ProducerProcess) -> Sensor:
     :param producer_process: Producer process
     :return: Sensor object
     """
-    logging.debug('Initialize torque sensor')
+    logger.debug('Initialize torque sensor')
     sensor = Sensor()
     sensor.value_generator = random_value_generator
     ch = ChannelInfo('torque', 'Nm')
     sensor.register_channel(ch)
     producer_process.producer.register_sensor(sensor)
-    logging.debug('Dummy torque sensor plugged')
+    logger.debug('Dummy torque sensor plugged')
     return sensor
