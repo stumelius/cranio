@@ -1,10 +1,13 @@
 from typing import List
+from datetime import timedelta
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
+from daqstore.store import DataStore
+from daqstore.utils import timestamp
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
 from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.core import utc_datetime
-from cranio.utils import logger
+from cranio.utils import logger, utc_offset
 
 
 class MyState(QState):
@@ -72,14 +75,19 @@ class MeasurementState(MyState):
         super().onEntry(event)
         # MeasurementStateTransition ensures that only one sensor is connected
         sensor = self.machine().sensor
-        # create new document
+        # Create new document
         self.document = self.create_document()
         self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
-        # insert sensor info and document to database
+        # Insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:
             logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
+        # Create new DataStore
+        # Note that DataStore uses local time and therefore utc_offset is applied
+        # TODO: Create a whole new producer process to prevent issues
+        self.main_window.store = DataStore(buffer_length=10, resampling_frequency=None,
+                                           t_ref=timestamp(self.document.started_at + timedelta(hours=utc_offset())))
         self.main_window.measurement_widget.producer_process.start()
 
     def onExit(self, event: QEvent):

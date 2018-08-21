@@ -92,3 +92,13 @@ def attach_excepthook(excepthook=None):
     if excepthook is None:
         excepthook = default_excepthook
     sys.excepthook = excepthook
+
+
+def utc_offset() -> float:
+    """
+    Return UTC offset of local time.
+
+    :return:
+    """
+    offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
+    return offset / 60 / 60 * (-1)

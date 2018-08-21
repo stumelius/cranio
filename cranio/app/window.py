@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Craniodistractor')
-        self.store = DataStore(buffer_length=10, resampling_frequency=None)
+        self._store = DataStore(buffer_length=10, resampling_frequency=None)
         self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
         # layouts
         self.main_layout = QVBoxLayout()
@@ -171,6 +171,15 @@ class MainWindow(QMainWindow):
         self.signal_stop = self.measurement_widget.stop_button.clicked
         self.signal_ok = self.measurement_widget.ok_button.clicked
         self.init_ui()
+
+    @property
+    def store(self):
+        return self._store
+
+    @store.setter
+    def store(self, value: DataStore):
+        self._store = value
+        self.producer_process.store = self._store
 
     def init_ui(self):
         """ Initialize UI elements. """
