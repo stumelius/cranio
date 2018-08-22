@@ -1,13 +1,11 @@
 from typing import List
-from datetime import timedelta
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
-from daqstore.store import DataStore
-from daqstore.utils import timestamp
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
 from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.core import utc_datetime
-from cranio.utils import logger, utc_offset
+from cranio.utils import logger
+from cranio.producer import ProducerProcess
 
 
 class MyState(QState):
@@ -83,36 +81,21 @@ class MeasurementState(MyState):
         with session_scope() as s:
             logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
-        # Create new DataStore
-        # Note that DataStore uses local time and therefore utc_offset is applied
-        # TODO: Create a whole new producer process to prevent issues
-        self.main_window.store = DataStore(buffer_length=10, resampling_frequency=None,
-                                           t_ref=timestamp(self.document.started_at + timedelta(hours=utc_offset())))
+        # Create producer process and register connected sensor
+        self.main_window.producer_process = ProducerProcess('Imada torque producer', document=self.document)
+        self.main_window.register_sensor_with_producer()
+        # Start producing!
         self.main_window.measurement_widget.producer_process.start()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
-        # pause producer process and stop timer
+        # Pause producer process and stop timer
         if self.main_window.measurement_widget.producer_process is None:
             return
         self.main_window.measurement_widget.producer_process.pause()
         self.main_window.measurement_widget.update_timer.stop()
-        # enter data to database
-        plot_widgets = self.main_window.measurement_widget.multiplot_widget.plot_widgets
-        if len(plot_widgets) > 1:
-            raise ValueError('Only single plots are supported')
-        elif len(plot_widgets) == 0:
-            logger.debug('No data to enter')
-            # no data to enter
-            return
-        plot_widget = self.main_window.measurement_widget.multiplot_widget.plot_widgets[0]
-        measurements = []
-        with session_scope() as s:
-            for x, y in zip(plot_widget.x, plot_widget.y):
-                m = Measurement(document_id=self.document.document_id, time_s=x, torque_Nm=y)
-                measurements.append(m)
-                s.add(m)
-        logger.debug(f'Entered {len(measurements)} measurements to the database')
+        # Update to ensure that all data is inserted to database
+        self.main_window.measurement_widget.update()
 
 
 class EventDetectionState(MyState):
@@ -280,12 +263,8 @@ class StartMeasurementTransition(QSignalTransition):
             logger.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
             return False
         # no sensor connected
-        if len(self.sourceState().machine().producer_process.sensors) == 0:
+        if self.sourceState().machine().sensor is None:
             logger.error('No sensors connected')
-            return False
-        # too many sensors connected
-        if len(self.sourceState().machine().producer_process.sensors) > 1:
-            logger.error('More than one sensor connected')
             return False
         return True
 
@@ -351,9 +330,7 @@ class MyStateMachine(QStateMachine):
 
     @property
     def sensor(self):
-        if len(self.producer_process.sensors) != 1:
-            raise ValueError('Too many sensors connected')
-        return self.producer_process.sensors[0]
+        return self.main_window.sensor
 
     def in_state(self, state: QState) -> bool:
         """

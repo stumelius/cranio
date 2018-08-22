@@ -1,9 +1,8 @@
 import pytest
 import logging.config
-from daqstore.store import DataStore
-from cranio.database import init_database, Session, Patient, Document, SensorInfo, session_scope, DistractorType
+from cranio.database import init_database, Session, Patient, Document, DistractorType
 from cranio.utils import get_logging_config
-from cranio.core import generate_unique_id
+from cranio.core import generate_unique_id, utc_datetime
 from cranio.producer import ProducerProcess, Sensor
 
 
@@ -49,15 +48,8 @@ def logging_fixture():
 
 
 @pytest.fixture
-def data_store():
-    ds = DataStore(buffer_length=10, resampling_frequency=None)
-    yield ds
-    ds.cache.delete()
-
-
-@pytest.fixture
-def producer_process(data_store):
-    p = ProducerProcess('test_process', data_store)
+def producer_process():
+    p = ProducerProcess('test_process', document=Document(document_id=generate_unique_id(), started_at=utc_datetime()))
     yield p
     p.join()
     assert not p.is_alive()

@@ -2,15 +2,13 @@
 .. todo:: To be documented.
 """
 from typing import List
-from functools import partial
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton, QMessageBox
-from daqstore.store import DataStore
-from cranio.producer import ProducerProcess, plug_dummy_sensor
-from cranio.imada import plug_imada
+from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
+from cranio.producer import ProducerProcess, create_dummy_sensor
+from cranio.imada import Imada
 from cranio.database import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
-    DoubleSpinEditWidget, CheckBoxEditWidget
+    DoubleSpinEditWidget
 from cranio.utils import logger
 
 
@@ -132,8 +130,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Craniodistractor')
-        self._store = DataStore(buffer_length=10, resampling_frequency=None)
-        self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
+        self._producer_process = None
+        self.sensor = None
         # layouts
         self.main_layout = QVBoxLayout()
         self.main_widget = QWidget()
@@ -161,9 +159,9 @@ class MainWindow(QMainWindow):
         # add Connect menu
         self.connect_menu = self.menuBar().addMenu('Connect')
         self.connect_torque_sensor_action = QAction('Connect Imada torque sensor', self)
-        self.connect_torque_sensor_action.triggered.connect(partial(plug_imada, self.producer_process))
+        self.connect_torque_sensor_action.triggered.connect(self.connect_imada_sensor)
         self.connect_dummy_sensor_action = QAction('Connect dummy torque sensor', self)
-        self.connect_dummy_sensor_action.triggered.connect(partial(plug_dummy_sensor, self.producer_process))
+        self.connect_dummy_sensor_action.triggered.connect(self.connect_dummy_sensor)
         self.connect_menu.addAction(self.connect_torque_sensor_action)
         self.connect_menu.addAction(self.connect_dummy_sensor_action)
         # signals
@@ -173,13 +171,14 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     @property
-    def store(self):
-        return self._store
+    def producer_process(self):
+        return self._producer_process
 
-    @store.setter
-    def store(self, value: DataStore):
-        self._store = value
-        self.producer_process.store = self._store
+    @producer_process.setter
+    def producer_process(self, value: ProducerProcess):
+        self._producer_process = value
+        logger.debug(f'Set measurement widget producer process to {self._producer_process}')
+        self.measurement_widget.producer_process = self._producer_process
 
     def init_ui(self):
         """ Initialize UI elements. """
@@ -243,4 +242,14 @@ class MainWindow(QMainWindow):
         :return:
         """
         return self.measurement_widget.ok_button.clicked.emit(True)
+
+    def connect_dummy_sensor(self):
+        self.sensor = create_dummy_sensor()
+
+    def connect_imada_sensor(self):
+        self.sensor = Imada()
+
+    def register_sensor_with_producer(self):
+        if self.sensor is not None:
+            self.producer_process.producer.register_sensor(self.sensor)
 

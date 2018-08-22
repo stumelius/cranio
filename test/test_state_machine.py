@@ -6,7 +6,7 @@ from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
     AnnotatedEvent, Log, SensorInfo, EventType
-from cranio.producer import plug_dummy_sensor
+from cranio.producer import create_dummy_sensor
 from cranio.utils import attach_excepthook
 
 wait_sec = 0.5
@@ -17,7 +17,7 @@ attach_excepthook()
 def machine(database_patient_fixture):
     state_machine = MyStateMachine()
     # connect dummy sensor
-    plug_dummy_sensor(state_machine.producer_process)
+    create_dummy_sensor(state_machine.producer_process)
     # set active patient
     state_machine.active_patient = Patient.get_instance().patient_id
     state_machine.start()

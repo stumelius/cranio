@@ -10,8 +10,9 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, session_scope, Patient, EventType
+from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement
 from cranio.utils import logger
+from cranio.producer import get_all_from_queue, datetime_to_seconds
 
 # plot style settings
 pg.setConfigOption('background', 'w')
@@ -494,10 +495,24 @@ class MeasurementWidget(QWidget):
 
         :return:
         """
-        self.producer_process.store.read()
-        self.producer_process.store.flush()
-        data = self.producer_process.read()
-        self.plot(data)
+        measurements = []
+        index_arr, value_dict_arr = get_all_from_queue(self.producer_process.queue)
+        # No data available
+        if not index_arr:
+            return
+        # Convert datetime to seconds
+        time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
+        # Insert to database
+        with session_scope() as s:
+            for time_s, value_dict in zip(time_arr, value_dict_arr):
+                m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
+                                document_id=self.producer_process.document.document_id)
+                s.add(m)
+                measurements.append(m)
+        # Convert data to dataframe and plot
+        x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
+        df = pd.DataFrame({'torque (Nm)': y}, index=x)
+        self.plot(df)
 
 
 class PlotWidget(pg.PlotWidget):

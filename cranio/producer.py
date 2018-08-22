@@ -7,18 +7,18 @@ import multiprocessing as mp
 import pandas as pd
 import numpy as np
 from queue import Queue
-from typing import Union, Iterable, List
+from typing import Union, Iterable, List, Tuple
 from contextlib import contextmanager
-from daqstore.store import DataStore
-from cranio.core import Packet
+from cranio.core import Packet, generate_unique_id
 from cranio.utils import random_value_generator, logger
-from cranio.database import SensorInfo, session_scope, enter_if_not_exists
+from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Document
 
 
 class SensorError(Exception):
     pass
 
 
+# TODO: Remove function
 def all_from_queue(queue: Union[mp.Queue, Queue]):
     """
     Return a queue.get() generator.
@@ -28,6 +28,16 @@ def all_from_queue(queue: Union[mp.Queue, Queue]):
     """
     while not queue.empty():
         yield queue.get()
+
+
+def get_all_from_queue(queue) -> Tuple[List, List]:
+    index_arr = []
+    value_arr = []
+    while not queue.empty():
+        index, value = queue.get()
+        index_arr.append(index)
+        value_arr.append(value)
+    return index_arr, value_arr
 
 
 def datetime_to_seconds(array: Iterable[datetime.datetime], t0: datetime.datetime) -> Iterable[float]:
@@ -152,7 +162,7 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return Packet([datetime.datetime.now()], values)
+        return Packet(datetime.datetime.now(), values)
 
     @classmethod
     def enter_info_to_database(cls):
@@ -167,7 +177,7 @@ class Producer:
         
     def __init__(self):
         self.sensors = []
-        self.id = DataStore.register_device()
+        self.id = generate_unique_id()
         
     def open(self):
         """ Open all sensor ports. """
@@ -219,8 +229,9 @@ class ProducerProcess:
     # default producer class
     producer_class = Producer
     
-    def __init__(self, name: str, store):
-        self.store = store
+    def __init__(self, name: str, document: Document):
+        self.queue = mp.Queue()
+        self.document = document
         self.start_event = mp.Event()
         self.stop_event = mp.Event()
         self.producer = self.producer_class()
@@ -264,19 +275,9 @@ class ProducerProcess:
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
                     for packet in self.producer.read():
-                        tpl = (self.producer.id,) + packet.as_tuple()
-                        self.store.put(tpl)
+                        self.queue.put(packet.as_tuple())
         logger.info('Stopping producer process "{}"'.format(str(self)))
-                    
-    def read(self, include_cache: bool=False) -> pd.DataFrame:
-        """
-        Read data recorded by the process.
 
-        :param include_cache: Boolean indicating if already cached data is included in the return value
-        :return: Recorded data
-        """
-        return self.store.get_data(include_cache=include_cache)
-                    
     def start(self) -> None:
         """
         Start the data producer process. If already running, only the producer is started.
@@ -321,8 +322,8 @@ class ProducerProcess:
         """
         self.stop_event.set()
         # close the queue and join the background thread
-        #self.data_queue.close()
-        #self.data_queue.join_thread()
+        #self.queue.close()
+        #self.queue.join_thread()
         self._process.join(timeout)
         if self.is_alive():
             logger.error('Producer process "{}" is not shutting down gracefully. '
@@ -333,18 +334,15 @@ class ProducerProcess:
         return self._process.exitcode
 
 
-def plug_dummy_sensor(producer_process: ProducerProcess) -> Sensor:
+def create_dummy_sensor() -> Sensor:
     """
     Plug sensor with an input channel that generates random torque data to a producer process.
 
-    :param producer_process: Producer process
     :return: Sensor object
     """
-    logger.debug('Initialize torque sensor')
+    logger.debug('Initialize dummy torque sensor')
     sensor = Sensor()
     sensor.value_generator = random_value_generator
     ch = ChannelInfo('torque', 'Nm')
     sensor.register_channel(ch)
-    producer_process.producer.register_sensor(sensor)
-    logger.debug('Dummy torque sensor plugged')
     return sensor
