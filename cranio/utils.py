@@ -1,5 +1,5 @@
 """
-.. todo:: Utility functions and classes.
+Utility functions and classes.
 """
 import os
 import sys

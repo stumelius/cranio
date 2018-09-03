@@ -1,5 +1,5 @@
 """
-.. todo:: To be documented.
+.. todo:: Module description.
 """
 import pyqtgraph as pg
 import pandas as pd
@@ -28,6 +28,12 @@ PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
 SESSION_ID_TOOLTIP = ('This is a random-generated unique identifier.\n'
                       'NOTE: Value cannot be changed by the user.')
 DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
+
+
+def filter_last_n_seconds(x_arr, n: float):
+    last = x_arr[-1]
+    for x in x_arr:
+        yield x >= (last - n)
 
 
 def remove_widget_from_layout(layout: QLayout, widget: QWidget):
@@ -468,14 +474,14 @@ class MeasurementWidget(QWidget):
         # connect signals
         self.update_timer.timeout.connect(self.update)
 
-    def plot(self, df: pd.DataFrame):
+    def plot(self, df: pd.DataFrame, mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot a dataframe in the multiplot widget.
 
         :param df:
         :return:
         """
-        self.multiplot_widget.plot(df)
+        self.multiplot_widget.plot(df, mode=mode)
 
     def add_plot(self, label: str):
         """
@@ -519,7 +525,7 @@ class MeasurementWidget(QWidget):
         # TODO: Append to plot instead of creating a new
         x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         df = pd.DataFrame({'torque (Nm)': y}, index=x)
-        self.plot(df)
+        self.plot(df, mode=PlotMode.APPEND)
 
 
 class PlotWidget(pg.PlotWidget):
@@ -530,9 +536,11 @@ class PlotWidget(pg.PlotWidget):
 
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
-        self.x = []
-        self.y = []
+        # TODO: Rename x -> x_arr and y -> y_arr
+        self.x_arr = []
+        self.y_arr = []
         self.init_ui()
+        self.filters = []
 
     def init_ui(self):
         """ Initialize UI elements. """
@@ -577,8 +585,8 @@ class PlotWidget(pg.PlotWidget):
 
         :return:
         """
-        self.x = []
-        self.y = []
+        self.x_arr = []
+        self.y_arr = []
         return self.getPlotItem().clear()
 
     def plot(self, x: Iterable[float], y: Iterable[float], mode: PlotMode=PlotMode.OVERWRITE):
@@ -592,15 +600,36 @@ class PlotWidget(pg.PlotWidget):
         :raises ValueError: if invalid plot mode argument
         """
         if mode == PlotMode.OVERWRITE:
-            self.x = list(x)
-            self.y = list(y)
+            self.x_arr = list(x)
+            self.y_arr = list(y)
         elif mode == PlotMode.APPEND:
-            self.x += list(x)
-            self.y += list(y)
+            self.x_arr += list(x)
+            self.y_arr += list(y)
         else:
             raise ValueError('Invalid mode {}'.format(mode))
-        self.getPlotItem().plot(self.x, self.y, clear=True, **self.plot_configuration)
+        # Apply filters
+        self.apply_filters()
+        self.getPlotItem().plot(self.x_arr, self.y_arr, clear=True, **self.plot_configuration)
         return self
+
+    def apply_filters(self):
+        """
+        Apply filters to x and y data in the order the filters were added.
+
+        :return:
+        """
+        for filter_func in self.filters:
+            i_arr = [i for i, x in enumerate(list(filter_func(self.x_arr))) if x]
+            self.x_arr = [self.x_arr[i] for i in i_arr]
+            self.y_arr = [self.y_arr[i] for i in i_arr]
+
+    def add_filter(self, filter_func):
+        """
+
+        :param filter_func: Filter function with x values as input argument
+        :return:
+        """
+        self.filters.append(filter_func)
 
 
 class RegionEditWidget(QGroupBox):
@@ -804,12 +833,12 @@ class RegionPlotWidget(QWidget):
     @property
     def x_arr(self):
         """ Plot x values property. """
-        return self.plot_widget.x
+        return self.plot_widget.x_arr
 
     @property
     def y_arr(self):
         """ Plot y values property. """
-        return self.plot_widget.y
+        return self.plot_widget.y_arr
 
     def plot(self, x_arr, y_arr, mode: PlotMode=PlotMode.OVERWRITE):
         """
@@ -993,6 +1022,7 @@ class VMultiPlotWidget(QWidget):
         :return:
         :raises ValueError: if a plot with the specified label already exists
         """
+        from cranio.constants import PLOT_N_SECONDS
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
         # if placeholder exists, use it
@@ -1005,6 +1035,9 @@ class VMultiPlotWidget(QWidget):
             plot_widget = PlotWidget()
             self.main_layout.addWidget(plot_widget)
         plot_widget.y_label = label
+        # Add filter defined by PLOT_N_SECONDS
+        if PLOT_N_SECONDS is not None:
+            plot_widget.add_filter(partial(filter_last_n_seconds, n=PLOT_N_SECONDS))
         self.plot_widgets.append(plot_widget)
         return plot_widget
 

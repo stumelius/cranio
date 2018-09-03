@@ -6,8 +6,7 @@ import time
 import multiprocessing as mp
 import pandas as pd
 import numpy as np
-from queue import Queue
-from typing import Union, Iterable, List, Tuple
+from typing import Iterable, List, Tuple
 from contextlib import contextmanager
 from cranio.utils import random_value_generator, logger, generate_unique_id
 from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Document
@@ -15,18 +14,6 @@ from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Docu
 
 class SensorError(Exception):
     pass
-
-
-# TODO: Remove function
-def all_from_queue(queue: Union[mp.Queue, Queue]):
-    """
-    Return a queue.get() generator.
-
-    :param queue: Queue object
-    :return: queue.get() generator
-    """
-    while not queue.empty():
-        yield queue.get()
 
 
 def get_all_from_queue(queue) -> Tuple[List, List]:

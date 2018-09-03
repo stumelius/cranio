@@ -3,15 +3,17 @@ import random
 import pytest
 import numpy as np
 import pandas as pd
+import cranio.constants
 from functools import partial
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget, PlotMode
+from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget, PlotMode, filter_last_n_seconds
 from cranio.app.window import RegionPlotWindow
 
 left_edge = 0
 right_edge = 99
 region_count = 4
+cranio.constants.PLOT_N_SECONDS = None
 
 
 @pytest.fixture
@@ -26,11 +28,11 @@ def test_plot_widget_overwrite_plot_data():
         x = np.random.rand(i)
         y = np.random.rand(i)
         w.plot(x, y, PlotMode.OVERWRITE)
-        assert w.x == list(x)
-        assert w.y == list(y)
+        assert w.x_arr == list(x)
+        assert w.y_arr == list(y)
     w.clear_plot()
-    assert w.x == []
-    assert w.y == []
+    assert w.x_arr == []
+    assert w.y_arr == []
 
 
 def test_plot_widget_append_plot_data():
@@ -43,11 +45,11 @@ def test_plot_widget_append_plot_data():
         X += list(x)
         Y += list(y)
         w.plot(x, y, PlotMode.APPEND)
-        assert w.x == X
-        assert w.y == Y
+        assert w.x_arr == X
+        assert w.y_arr == Y
     w.clear_plot()
-    assert w.x == []
-    assert w.y == []
+    assert w.x_arr == []
+    assert w.y_arr == []
 
 
 def test_plot_widget_dtypes():
@@ -57,8 +59,8 @@ def test_plot_widget_dtypes():
     
     def _assert_plot(x_in, y_in):
         w.plot(x, y, PlotMode.OVERWRITE)
-        assert w.x == list(x)
-        assert w.y == list(y)
+        assert w.x_arr == list(x)
+        assert w.y_arr == list(y)
     # numpy array
     x_np = np.array(x)
     y_np = np.array(y)
@@ -72,11 +74,9 @@ def test_plot_widget_dtypes():
 
 def test_plot_widget_x_label():
     p = PlotWidget()
-    
     label_map = {None: ''}
     for c in string.printable:
         label_map[c] = c
-        
     for i, o in label_map.items():
         p.x_label = i
         assert p.x_label == o, 'x_label: {} - output: {} (input: {})'.format(p.x_label, o, i)
@@ -84,14 +84,24 @@ def test_plot_widget_x_label():
 
 def test_plot_widget_y_label():
     p = PlotWidget()
-    
     label_map = {None: ''}
     for c in string.printable:
         label_map[c] = c
-        
     for i, o in label_map.items():
         p.y_label = i
         assert p.y_label == o, 'y_label: {} - output: {} (input: {})'.format(p.y_label, o, i)
+
+
+def test_plot_widget_filter_last_10_seconds_excludes_entries_older_than_10_seconds_from_the_plot():
+    w = PlotWidget()
+    n = 20
+    x_arr = list(range(n))
+    y_arr = [np.random.rand() for _ in range(n)]
+    # Include last 10 seconds
+    w.add_filter(partial(filter_last_n_seconds, n=10))
+    w.plot(x_arr, y_arr, mode=PlotMode.APPEND)
+    assert max(w.x_arr) == n - 1
+    assert min(w.x_arr) == n - 1 - 10
 
 
 @pytest.mark.parametrize('rows', [100, 1000])
@@ -107,8 +117,8 @@ def test_vmulti_plot_widget_plot_and_overwrite(rows):
         # assert data in each plot widget
         for c in data.columns:
             pw = p.find_plot_widget_by_label(c)
-            assert pw.x == data[c].index.tolist()
-            assert pw.y == data[c].tolist()
+            assert pw.x_arr == data[c].index.tolist()
+            assert pw.y_arr == data[c].tolist()
 
 
 def test_vmulti_plot_widget_placeholder():
