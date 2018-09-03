@@ -6,7 +6,7 @@ from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
     AnnotatedEvent, Log, SensorInfo, EventType
-from cranio.producer import create_dummy_sensor
+from cranio.producer import ProducerProcess
 from cranio.utils import attach_excepthook
 
 wait_sec = 0.5
@@ -14,24 +14,27 @@ attach_excepthook()
 
 
 @pytest.fixture(scope='function')
-def machine(database_patient_fixture):
+def machine(producer_process, database_patient_fixture):
     state_machine = MyStateMachine()
-    # connect dummy sensor
-    create_dummy_sensor(state_machine.producer_process)
-    # set active patient
+    state_machine.main_window.producer_process = producer_process
+    # Connect and register dummy sensor
+    state_machine.main_window.connect_dummy_sensor()
+    state_machine.main_window.register_sensor_with_producer()
+    # Set active patient
     state_machine.active_patient = Patient.get_instance().patient_id
     state_machine.start()
     app.processEvents()
     yield state_machine
-    # kill producer
+    # Kill producer
     if state_machine.producer_process.is_alive():
         state_machine.producer_process.join()
     state_machine.stop()
 
 
 @pytest.fixture
-def machine_without_patient(database_fixture):
+def machine_without_patient(producer_process, database_fixture):
     state_machine = MyStateMachine()
+    state_machine.main_window.producer_process = producer_process
     state_machine.start()
     app.processEvents()
     yield state_machine
@@ -91,17 +94,15 @@ def test_prevent_measurement_start_if_no_patient_is_selected(machine_without_pat
 
 
 def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
-    # unregister sensors
-    producer = machine.producer_process.producer
-    for sensor in producer.sensors:
-        producer.unregister_sensor(sensor)
-    # start measurement
+    # Unregister connected dummy sensor
+    machine.main_window.unregister_sensor()
+    # Start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
     errors = caught_exceptions()
     assert len(errors) == 1
     assert 'No sensors connected' in errors[0].message
-    # machine rolled back to initial state
+    # Machine rolled back to initial state
     assert not machine.in_state(machine.s2)
     assert machine.in_state(machine.s1)
 

@@ -8,7 +8,6 @@ from collections import namedtuple
 from typing import Tuple
 from serial.tools.list_ports_common import ListPortInfo
 from cranio.producer import Sensor, ChannelInfo, ProducerProcess
-from cranio.core import Packet
 from cranio.database import SensorInfo
 from cranio.utils import logger
 
@@ -121,11 +120,11 @@ class Imada(Sensor):
         # return display value
         return self.readline()
     
-    def read(self) -> Packet:
+    def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read a single value from the sensor.
 
-        :return: Packet object
+        :return: Datetime and value dictionary as a tuple
         """
         try:
             telegram = self.poll()
@@ -133,8 +132,7 @@ class Imada(Sensor):
         except TelegramError as e:
             logger.error('Decode telegram failed! {}'.format(str(e)))
             value = None
-        record = Packet([datetime.datetime.now()], {str(self.channels[0]): value})
-        return record
+        return datetime.datetime.now(), {str(self.channels[0]): value}
 
 
 def plug_imada(producer_process: ProducerProcess) -> Imada:

@@ -9,8 +9,7 @@ import numpy as np
 from queue import Queue
 from typing import Union, Iterable, List, Tuple
 from contextlib import contextmanager
-from cranio.core import Packet, generate_unique_id
-from cranio.utils import random_value_generator, logger
+from cranio.utils import random_value_generator, logger, generate_unique_id
 from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Document
 
 
@@ -31,6 +30,11 @@ def all_from_queue(queue: Union[mp.Queue, Queue]):
 
 
 def get_all_from_queue(queue) -> Tuple[List, List]:
+    """
+
+    :param queue:
+    :return: Index and value arrays as a tuple
+    """
     index_arr = []
     value_arr = []
     while not queue.empty():
@@ -147,11 +151,11 @@ class Sensor:
         """
         return self.channels.remove(channel_info)
     
-    def read(self) -> Packet:
+    def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read values from the registered input channels.
 
-        :return: Packet object
+        :return: Datetime and value dictionary as a tuple
         """
         if len(self.channels) == 0:
             return None
@@ -162,7 +166,7 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return Packet(datetime.datetime.now(), values)
+        return datetime.datetime.now(), values
 
     @classmethod
     def enter_info_to_database(cls):
@@ -215,11 +219,11 @@ class Producer:
         except ValueError:
             raise ValueError(f'{type(sensor).__name__} is not registered with the producer')
         
-    def read(self) -> List[Packet]:
+    def read(self) -> List[Tuple[datetime.datetime, dict]]:
         """
         Read values from the registered input sensors.
 
-        :return: List of Packet objects
+        :return: List of datetime and value dictionary tuples
         """
         return [s.read() for s in self.sensors]
 
@@ -274,8 +278,8 @@ class ProducerProcess:
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
-                    for packet in self.producer.read():
-                        self.queue.put(packet.as_tuple())
+                    for index, value_dict in self.producer.read():
+                        self.queue.put((index, value_dict))
         logger.info('Stopping producer process "{}"'.format(str(self)))
 
     def start(self) -> None:
@@ -293,15 +297,7 @@ class ProducerProcess:
         """
         Pause the process. To stop the process, call .join() after .pause().
 
-        Example:
-            >>> process.start()
-            >>> time.sleep(2)
-            >>> process.pause()
-            >>> data = process.get_all()
-            >>> process.join()
-            >>> assert not process.is_alive()
-
-        :return: None
+        :return:
         """
         self.start_event.clear()
         
@@ -336,7 +332,7 @@ class ProducerProcess:
 
 def create_dummy_sensor() -> Sensor:
     """
-    Plug sensor with an input channel that generates random torque data to a producer process.
+    Create a dummy torque (Nm) sensor.
 
     :return: Sensor object
     """

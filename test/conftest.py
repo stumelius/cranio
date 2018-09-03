@@ -1,8 +1,7 @@
 import pytest
 import logging.config
 from cranio.database import init_database, Session, Patient, Document, DistractorType
-from cranio.utils import get_logging_config
-from cranio.core import generate_unique_id, utc_datetime
+from cranio.utils import get_logging_config, generate_unique_id, utc_datetime
 from cranio.producer import ProducerProcess, Sensor
 
 
@@ -51,5 +50,6 @@ def logging_fixture():
 def producer_process():
     p = ProducerProcess('test_process', document=Document(document_id=generate_unique_id(), started_at=utc_datetime()))
     yield p
-    p.join()
+    if p.is_alive():
+        p.join()
     assert not p.is_alive()

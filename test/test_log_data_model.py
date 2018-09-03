@@ -2,8 +2,7 @@ import pytest
 import logging
 import time
 from sqlalchemy.exc import IntegrityError
-from cranio.core import utc_datetime
-from cranio.utils import log_level_to_name
+from cranio.utils import log_level_to_name, utc_datetime
 from cranio.database import init_database, Log, session_scope, Session
 
 logger_name = 'cranio'

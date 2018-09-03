@@ -1,5 +1,5 @@
 """
-.. todo:: Combine with the core module
+.. todo:: Utility functions and classes.
 """
 import os
 import sys
@@ -7,6 +7,8 @@ import time
 import logging
 import logging.config
 import random
+import uuid
+from datetime import datetime
 from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
@@ -19,6 +21,22 @@ logger = logging.getLogger('cranio')
 class UTCFormatter(logging.Formatter):
     """ Logging formatter that converts timestamps to UTC+0. """
     converter = time.gmtime
+
+
+def generate_unique_id():
+    """
+
+    :return: Unique id based on host ID, sequence number and current time
+    """
+    return str(uuid.uuid1())
+
+
+def utc_datetime():
+    """
+
+    :return: Current date and time (UTC+0)
+    """
+    return datetime.utcnow()
 
 
 def try_remove(name: Union[str, Path]):

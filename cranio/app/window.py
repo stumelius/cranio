@@ -253,3 +253,7 @@ class MainWindow(QMainWindow):
         if self.sensor is not None:
             self.producer_process.producer.register_sensor(self.sensor)
 
+    def unregister_sensor(self):
+        self.producer_process.producer.unregister_sensor(self.sensor)
+        self.sensor = None
+

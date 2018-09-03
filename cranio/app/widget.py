@@ -3,6 +3,7 @@
 """
 import pyqtgraph as pg
 import pandas as pd
+from enum import Enum
 from typing import Tuple, List, Iterable
 from functools import partial
 from PyQt5 import QtCore
@@ -59,6 +60,11 @@ def clear_layout(layout: QLayout):
             clear_layout(item.layout())
         # remove item from layout
         layout.removeItem(item)
+
+
+class PlotMode(Enum):
+    OVERWRITE = 'o'
+    APPEND = 'a'
 
 
 class EditWidget(QWidget):
@@ -510,6 +516,7 @@ class MeasurementWidget(QWidget):
                 s.add(m)
                 measurements.append(m)
         # Convert data to dataframe and plot
+        # TODO: Append to plot instead of creating a new
         x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         df = pd.DataFrame({'torque (Nm)': y}, index=x)
         self.plot(df)
@@ -574,20 +581,20 @@ class PlotWidget(pg.PlotWidget):
         self.y = []
         return self.getPlotItem().clear()
 
-    def plot(self, x: Iterable[float], y: Iterable[float], mode: str = 'o'):
+    def plot(self, x: Iterable[float], y: Iterable[float], mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot (x, y) data.
 
         :param x:
         :param y:
-        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :param mode:
         :return:
         :raises ValueError: if invalid plot mode argument
         """
-        if mode == 'o':
+        if mode == PlotMode.OVERWRITE:
             self.x = list(x)
             self.y = list(y)
-        elif mode == 'a':
+        elif mode == PlotMode.APPEND:
             self.x += list(x)
             self.y += list(y)
         else:
@@ -804,13 +811,13 @@ class RegionPlotWidget(QWidget):
         """ Plot y values property. """
         return self.plot_widget.y
 
-    def plot(self, x_arr, y_arr, mode='o'):
+    def plot(self, x_arr, y_arr, mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot (x, y) data.
 
-        :param x:
-        :param y:
-        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :param x_arr:
+        :param y_arr:
+        :param mode:
         :return:
         """
         return self.plot_widget.plot(x_arr, y_arr, mode)
@@ -1001,7 +1008,7 @@ class VMultiPlotWidget(QWidget):
         self.plot_widgets.append(plot_widget)
         return plot_widget
 
-    def plot(self, df: pd.DataFrame, title: str = '', mode: str = 'o'):
+    def plot(self, df: pd.DataFrame, title: str = '', mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot a dataframe.
 

@@ -6,7 +6,7 @@ import pandas as pd
 from functools import partial
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget
+from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget, PlotMode
 from cranio.app.window import RegionPlotWindow
 
 left_edge = 0
@@ -25,7 +25,7 @@ def test_plot_widget_overwrite_plot_data():
     for i in range(10):
         x = np.random.rand(i)
         y = np.random.rand(i)
-        w.plot(x, y, 'o')
+        w.plot(x, y, PlotMode.OVERWRITE)
         assert w.x == list(x)
         assert w.y == list(y)
     w.clear_plot()
@@ -42,7 +42,7 @@ def test_plot_widget_append_plot_data():
         y = np.random.rand(i)
         X += list(x)
         Y += list(y)
-        w.plot(x, y, 'a')
+        w.plot(x, y, PlotMode.APPEND)
         assert w.x == X
         assert w.y == Y
     w.clear_plot()
@@ -56,7 +56,7 @@ def test_plot_widget_dtypes():
     y = [random.random() for _ in range(10)]
     
     def _assert_plot(x_in, y_in):
-        w.plot(x, y, 'o')
+        w.plot(x, y, PlotMode.OVERWRITE)
         assert w.x == list(x)
         assert w.y == list(y)
     # numpy array
@@ -66,7 +66,7 @@ def test_plot_widget_dtypes():
     # pandas series
     x_pd = pd.Series(x)
     y_pd = pd.Series(y)
-    w.plot(x_pd, y_pd, 'o')
+    w.plot(x_pd, y_pd, PlotMode.OVERWRITE)
     _assert_plot(x_pd, y_pd)
 
 
@@ -100,7 +100,7 @@ def test_vmulti_plot_widget_plot_and_overwrite(rows):
     for _ in range(2):
         data = pd.DataFrame(np.random.rand(rows, 4), 
                             columns=list('ABCD'))
-        p.plot(data, 'title', mode='o')
+        p.plot(data, 'title', mode=PlotMode.OVERWRITE)
         assert p.title == 'title'
         assert len(p.plot_widgets) == 4
         
@@ -122,20 +122,20 @@ def test_vmulti_plot_widget_placeholder():
 def test_region_plot_widget_add_region(region_plot_widget):
     n = 100
     region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
-    for top in range(0,51,10):
+    for top in range(0, 51, 10):
         region = [0, top]
         edit_widget = region_plot_widget.add_region(region)
         assert edit_widget.region() == tuple(region)
-        edit_widget.set_region([0,1])
-        assert edit_widget.region() == (0,1)
+        edit_widget.set_region([0, 1])
+        assert edit_widget.region() == (0, 1)
     for widget in region_plot_widget.region_edit_map.values():
-        assert widget.region() == (0,1)
+        assert widget.region() == (0, 1)
 
 
 def test_region_plot_widget_remove_region(region_plot_widget):
     n = 100
     region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
-    item = region_plot_widget.add_region([0,10])
+    item = region_plot_widget.add_region([0, 10])
     assert len(region_plot_widget.region_edit_map) == 1
     region_plot_widget.remove_region(item)
     assert len(region_plot_widget.region_edit_map) == 0
@@ -145,13 +145,13 @@ def test_region_plot_widget_set_bounds(region_plot_widget):
     n = 100
     region_plot_widget.plot(x_arr=list(range(n)), y_arr=list(range(n)))
     edit_widget = region_plot_widget.add_region([0, 50])
-    assert edit_widget.region() == (0,50)
-    edit_widget.set_bounds([0,10])
-    assert edit_widget.region() == (0,10)
-    edit_widget.set_bounds([0,100])
-    assert edit_widget.region() == (0,10)
-    edit_widget.set_region([0,50])
-    assert edit_widget.region() == (0,50)
+    assert edit_widget.region() == (0, 50)
+    edit_widget.set_bounds([0, 10])
+    assert edit_widget.region() == (0, 10)
+    edit_widget.set_bounds([0, 100])
+    assert edit_widget.region() == (0, 10)
+    edit_widget.set_region([0, 50])
+    assert edit_widget.region() == (0, 50)
 
 
 @pytest.mark.skip('Does not work in Travis')

@@ -2,9 +2,8 @@ from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
-from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
-from cranio.core import utc_datetime
-from cranio.utils import logger
+from cranio.database import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
+from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
 
 

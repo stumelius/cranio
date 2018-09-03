@@ -8,8 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 from sqlalchemy import (Column, Integer, String, DateTime, Numeric, Boolean, ForeignKey, create_engine,
                         CheckConstraint, event)
-from cranio.core import generate_unique_id, utc_datetime
-from cranio.utils import get_logging_levels
+from cranio.utils import get_logging_levels, generate_unique_id, utc_datetime
 from cranio import __version__
 
 # Define database connection

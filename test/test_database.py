@@ -2,8 +2,7 @@ import pytest
 import numpy as np
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
-from cranio.core import generate_unique_id, utc_datetime
-from cranio.utils import try_remove, get_logging_levels
+from cranio.utils import try_remove, get_logging_levels, generate_unique_id, utc_datetime
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
     AnnotatedEvent, init_database, EventType, enter_if_not_exists, DistractorInfo, DistractorType
 from cranio.producer import Sensor
