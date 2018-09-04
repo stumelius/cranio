@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement
+from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
 
@@ -439,6 +439,82 @@ class PatientWidget(QWidget):
         :return:
         """
         return self.table_widget.rowCount()
+
+
+class SessionWidget(QWidget):
+    """
+    View existing sessions and let user select one.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.main_layout = QVBoxLayout()
+        self.label = QLabel('Sessions')
+        self.table_widget = QTableWidget(parent=self)
+        self.table_widget.setColumnCount(2)
+        # Disable editing
+        self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # Set column names
+        self.table_widget.setHorizontalHeaderLabels(['session_id', 'started_at'])
+        self.table_widget.horizontalHeader().setStretchLastSection(True);
+        self.table_widget.resizeColumnsToContents()
+        self.select_button = QPushButton('Select session')
+        self.cancel_button = QPushButton('Cancel')
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addWidget(self.table_widget)
+        self.main_layout.addWidget(self.select_button)
+        self.main_layout.addWidget(self.cancel_button)
+        # Connect buttons
+        self.select_button.clicked.connect(self.select_button_clicked)
+        self.cancel_button.clicked.connect(self.cancel_button_clicked)
+        self.setLayout(self.main_layout)
+        self.update_sessions()
+
+    def update_sessions(self):
+        """
+        Update session list.
+
+        :return:
+        """
+        with session_scope() as s:
+            for i, session in enumerate(s.query(Session).all()):
+                self.table_widget.setRowCount(i + 1)
+                self.table_widget.setItem(i, 0, QTableWidgetItem(session.session_id))
+                self.table_widget.setItem(i, 1, QTableWidgetItem(str(session.started_at)))
+
+    def session_count(self) -> int:
+        """
+        Return number of sessions in the list.
+
+        :return:
+        """
+        return self.table_widget.rowCount()
+
+    def active_session_id(self) -> str:
+        session_id = self.table_widget.item(self.table_widget.currentRow(), 0).text()
+        logger.debug(f'Active session_id = {session_id}')
+        return session_id
+
+    def select_session(self, session_id: str):
+        """
+        Select select by session_id.
+
+        :param session_id:
+        :return:
+        """
+        for i in range(self.session_count()):
+            item = self.table_widget.item(i, 0)
+            if item.text() == session_id:
+                self.table_widget.setCurrentCell(i, 0)
+                break
+        else:
+            logger.error(f'No session {session_id} in SessionWidget')
+
+    def select_button_clicked(self):
+        logger.debug('Select button clicked')
+
+    def cancel_button_clicked(self):
+        logger.debug('Cancel button clicked')
 
 
 class MeasurementWidget(QWidget):

@@ -50,6 +50,18 @@ class InitialState(MyState):
         self.main_window.show()
 
 
+class ChangeSessionState(MyState):
+    def __init__(self, parent=None):
+        super().__init__(name=type(self).__name__, parent=parent)
+
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        # List sessions
+        with session_scope() as s:
+            for session in s.query(Session).all():
+                print(session.session_id, session.started_at)
+
+
 class MeasurementState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
