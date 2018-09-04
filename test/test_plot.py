@@ -121,12 +121,28 @@ def test_vmulti_plot_widget_plot_and_overwrite(rows):
             assert pw.y_arr == data[c].tolist()
 
 
+
 def test_vmulti_plot_widget_placeholder():
     p = VMultiPlotWidget()
     assert p.placeholder is not None
     plot_widget = p.add_plot_widget('foo')
     assert p.placeholder is None
     assert p.find_plot_widget_by_label('foo') == plot_widget
+
+
+def test_vmulti_plot_widget_clear_all_plots():
+    p = VMultiPlotWidget()
+    n = 100
+    data = pd.DataFrame(np.random.rand(n, 4),
+                        columns=list('ABCD'))
+    p.plot(data, 'title', mode=PlotMode.OVERWRITE)
+    for pw in p.plot_widgets:
+        assert len(pw.x_arr) == n
+        assert len(pw.y_arr) == n
+    p.clear()
+    for pw in p.plot_widgets:
+        assert len(pw.x_arr) == 0
+        assert len(pw.y_arr) == 0
 
 
 def test_region_plot_widget_add_region(region_plot_widget):

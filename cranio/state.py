@@ -75,6 +75,9 @@ class MeasurementState(MyState):
         # Create new document
         self.document = self.create_document()
         self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
+        # Clear plot
+        logger.debug('Clear plot')
+        self.main_window.measurement_widget.clear()
         # Insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:

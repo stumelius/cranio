@@ -527,6 +527,14 @@ class MeasurementWidget(QWidget):
         # Append to plot
         self.plot(df, mode=PlotMode.APPEND)
 
+    def clear(self):
+        """
+        Clear the plots.
+
+        :return:
+        """
+        self.multiplot_widget.clear()
+
 
 class PlotWidget(pg.PlotWidget):
     """ Widget for displaying a (real-time) plot """
@@ -1080,7 +1088,7 @@ class VMultiPlotWidget(QWidget):
         :return:
         """
         for p in self.plot_widgets:
-            p.clear()
+            p.clear_plot()
 
     def reset(self):
         """
