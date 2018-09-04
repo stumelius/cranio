@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from typing import Iterable, List, Tuple
 from contextlib import contextmanager
-from cranio.utils import random_value_generator, logger, generate_unique_id
+from cranio.utils import random_value_generator, logger, generate_unique_id, utc_datetime
 from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Document
 
 
@@ -153,7 +153,8 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return datetime.datetime.now(), values
+        # Use UTC+0 time
+        return utc_datetime(), values
 
     @classmethod
     def enter_info_to_database(cls):

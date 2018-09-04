@@ -9,7 +9,7 @@ from typing import Tuple
 from serial.tools.list_ports_common import ListPortInfo
 from cranio.producer import Sensor, ChannelInfo, ProducerProcess
 from cranio.database import SensorInfo
-from cranio.utils import logger
+from cranio.utils import logger, utc_datetime
 
 IMADA_EOL = '\r'
 
@@ -132,7 +132,7 @@ class Imada(Sensor):
         except TelegramError as e:
             logger.error('Decode telegram failed! {}'.format(str(e)))
             value = None
-        return datetime.datetime.now(), {str(self.channels[0]): value}
+        return utc_datetime(), {str(self.channels[0]): value}
 
 
 def plug_imada(producer_process: ProducerProcess) -> Imada:

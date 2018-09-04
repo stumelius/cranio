@@ -294,7 +294,6 @@ class Document(Base, InstanceMixin, DictMixin):
         return sensor_info
 
 
-
 class Measurement(Base, DictMixin):
     """ Measurement table. """
     __tablename__ = 'fact_measurement'

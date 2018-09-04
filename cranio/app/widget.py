@@ -512,7 +512,7 @@ class MeasurementWidget(QWidget):
         # No data available
         if not index_arr:
             return
-        # Convert datetime to seconds
+        # Convert UTC+0 datetime to seconds
         time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
         # Insert to database
         with session_scope() as s:
@@ -521,10 +521,10 @@ class MeasurementWidget(QWidget):
                                 document_id=self.producer_process.document.document_id)
                 s.add(m)
                 measurements.append(m)
-        # Convert data to dataframe and plot
-        # TODO: Append to plot instead of creating a new
+        # Convert data to DataFrame
         x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         df = pd.DataFrame({'torque (Nm)': y}, index=x)
+        # Append to plot
         self.plot(df, mode=PlotMode.APPEND)
 
 
@@ -536,7 +536,6 @@ class PlotWidget(pg.PlotWidget):
 
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
-        # TODO: Rename x -> x_arr and y -> y_arr
         self.x_arr = []
         self.y_arr = []
         self.init_ui()
