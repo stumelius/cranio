@@ -132,18 +132,18 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Craniodistractor')
         self._producer_process = None
         self.sensor = None
-        # layouts
+        # Layouts
         self.main_layout = QVBoxLayout()
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
-        # add meta prompt widget
+        # Add meta prompt widget
         self.meta_widget = MetaDataWidget()
         self.main_layout.addWidget(self.meta_widget)
-        # add measurement widget
+        # Add measurement widget
         self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
-        # add File menu
+        # Add File menu
         self.file_menu = self.menuBar().addMenu('File')
         self.new_document_action = QAction('New document', self)
         self.new_document_action.triggered.connect(create_document)
@@ -151,12 +151,16 @@ class MainWindow(QMainWindow):
         self.load_document_action = QAction('Load document', self)
         self.load_document_action.triggered.connect(load_document)
         self.file_menu.addAction(self.load_document_action)
-        # add separator between documents and patients
+        # Add separator between documents and patients
         self.file_menu.addSeparator()
         self.patients_action = QAction('Patients', self)
         self.patients_action.triggered.connect(self.open_patient_widget)
         self.file_menu.addAction(self.patients_action)
-        # add Connect menu
+        # Add separator between patients and sessions
+        self.file_menu.addSeparator()
+        self.change_session_action = QAction('Change session', self)
+        self.file_menu.addAction(self.change_session_action)
+        # Add Connect menu
         self.connect_menu = self.menuBar().addMenu('Connect')
         self.connect_torque_sensor_action = QAction('Connect Imada torque sensor', self)
         self.connect_torque_sensor_action.triggered.connect(self.connect_imada_sensor)
@@ -164,10 +168,11 @@ class MainWindow(QMainWindow):
         self.connect_dummy_sensor_action.triggered.connect(self.connect_dummy_sensor)
         self.connect_menu.addAction(self.connect_torque_sensor_action)
         self.connect_menu.addAction(self.connect_dummy_sensor_action)
-        # signals
+        # Define signals
         self.signal_start = self.measurement_widget.start_button.clicked
         self.signal_stop = self.measurement_widget.stop_button.clicked
         self.signal_ok = self.measurement_widget.ok_button.clicked
+        self.signal_change_session = self.change_session_action.triggered
         self.init_ui()
 
     @property

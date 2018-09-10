@@ -1,7 +1,8 @@
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
+from cranio.app.widget import SessionWidget
 from cranio.database import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
@@ -45,6 +46,10 @@ class InitialState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
 
+    @property
+    def signal_change_session(self):
+        return self.main_window.signal_change_session
+
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         self.main_window.show()
@@ -53,13 +58,28 @@ class InitialState(MyState):
 class ChangeSessionState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
+        # Initialize session dialog
+        self.session_widget = SessionWidget()
+        self.session_dialog = QDialog()
+        self.session_dialog.main_layout = QVBoxLayout()
+        self.session_dialog.main_layout.addWidget(self.session_widget)
+        self.session_dialog.setLayout(self.session_dialog.main_layout)
+        # Define signals
+        self.signal_select = self.session_widget.select_button.clicked
+
+    def active_session_id(self):
+        return self.session_widget.active_session_id()
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        # List sessions
-        with session_scope() as s:
-            for session in s.query(Session).all():
-                print(session.session_id, session.started_at)
+        # Update and open dialog
+        self.session_widget.update_sessions()
+        self.session_dialog.show()
+
+    def onExit(self, event: QEvent):
+        super().onExit(event)
+        # Close dialog
+        self.session_dialog.close()
 
 
 class MeasurementState(MyState):
@@ -154,13 +174,16 @@ class EventDetectionState(MyState):
 
 class AreYouSureState(MyState):
 
-    def __init__(self, text_template: str, parent=None):
+    def __init__(self, text_template: str, name: str=None, parent=None):
         """
 
         :param text: Text shown in the dialog
+        :param: name
         :param parent:
         """
-        super().__init__(name=type(self).__name__, parent=parent)
+        if name is None:
+            name = type(self).__name__
+        super().__init__(name=name, parent=parent)
         self.template = text_template
         self.dialog = QMessageBox()
         self.yes_button = self.dialog.addButton('Yes', QMessageBox.YesRole)
@@ -175,10 +198,11 @@ class AreYouSureState(MyState):
         """ Return template namespace. """
         try:
             region_count = len(self.annotated_events)
-        except AttributeError:
-            # object has no attribute 'annotated_events'
+        except (AttributeError, TypeError):
+            # Object has no attribute 'annotated_events' or annotated_events = None
             region_count = None
-        return {'region_count': region_count}
+        session_info = self.machine().s9.session_widget.active_session_id
+        return {'region_count': region_count, 'session_info': session_info}
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -283,15 +307,33 @@ class StartMeasurementTransition(QSignalTransition):
         return True
 
 
+class ChangeActiveSessionTransition(QSignalTransition):
+    def __init__(self, signal: pyqtSignal, source_state: QState=None):
+        """
+
+        :param source_state:
+        """
+        super().__init__(signal, source_state)
+
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        # Change active session
+        session_id = self.sourceState().machine().s9.active_session_id()
+        logger.debug(f'[{type(self).__name__}] Change active session to {session_id}')
+        with session_scope() as s:
+            session = s.query(Session).filter(Session.session_id == session_id).first()
+        Session.set_instance(session)
+
+
 class MyStateMachine(QStateMachine):
 
     def __init__(self):
         super().__init__()
-        # context
+        # Initialize context
         self.main_window = MainWindow()
         self.document = None
         self.annotated_events = None
-        # states
+        # Initialize states
         self.s1 = InitialState()
         self.s2 = MeasurementState()
         self.s3 = EventDetectionState()
@@ -301,9 +343,18 @@ class MyStateMachine(QStateMachine):
         self.s6 = NoteState()
         self.s7 = AreYouSureState('Are you sure you want to continue?')
         self.s8 = UpdateDocumentState()
-        # transitions
+        self.s9 = ChangeSessionState()
+        self.s10 = AreYouSureState('You have selected session {session_info}. '
+                                   'Are you sure you want to continue?', name='s10 (AreYouSureState)')
+        # Set states
+        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8, self.s9, self.s10):
+            self.addState(s)
+        self.setInitialState(self.s1)
+        # Define transitions
         self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
         self.start_measurement_transition.setTargetState(self.s2)
+        self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
+        self.change_active_session_transition.setTargetState(self.s1)
         self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok},
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s4: self.s3.signal_ok},
@@ -311,16 +362,16 @@ class MyStateMachine(QStateMachine):
                                self.s5: {self.s6: self.s5.signal_finished},
                                self.s6: {self.s7: self.s6.signal_ok},
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
-                               self.s8: {self.s1: self.s8.signal_finished}}
+                               self.s8: {self.s1: self.s8.signal_finished},
+                               self.s1: {self.s9: self.s1.signal_change_session},
+                               self.s9: {self.s10: self.s9.signal_select},
+                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
-                if type(signal) == StartMeasurementTransition:
+                if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)
-        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8):
-            self.addState(s)
-        self.setInitialState(self.s1)
 
     @property
     def active_patient(self):

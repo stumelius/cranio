@@ -460,14 +460,13 @@ class SessionWidget(QWidget):
         self.table_widget.resizeColumnsToContents()
         self.select_button = QPushButton('Select session')
         self.cancel_button = QPushButton('Cancel')
+        # Set layout
         self.main_layout.addWidget(self.label)
         self.main_layout.addWidget(self.table_widget)
         self.main_layout.addWidget(self.select_button)
         self.main_layout.addWidget(self.cancel_button)
-        # Connect buttons
-        self.select_button.clicked.connect(self.select_button_clicked)
-        self.cancel_button.clicked.connect(self.cancel_button_clicked)
         self.setLayout(self.main_layout)
+        self.sessions = []
         self.update_sessions()
 
     def update_sessions(self):
@@ -476,8 +475,13 @@ class SessionWidget(QWidget):
 
         :return:
         """
+        # Clear current contents
+        self.sessions = []
+        self.table_widget.clear()
+        # Add new contents
         with session_scope() as s:
             for i, session in enumerate(s.query(Session).all()):
+                self.sessions.append(session)
                 self.table_widget.setRowCount(i + 1)
                 self.table_widget.setItem(i, 0, QTableWidgetItem(session.session_id))
                 self.table_widget.setItem(i, 1, QTableWidgetItem(str(session.started_at)))
@@ -509,12 +513,6 @@ class SessionWidget(QWidget):
                 break
         else:
             logger.error(f'No session {session_id} in SessionWidget')
-
-    def select_button_clicked(self):
-        logger.debug('Select button clicked')
-
-    def cancel_button_clicked(self):
-        logger.debug('Cancel button clicked')
 
 
 class MeasurementWidget(QWidget):
