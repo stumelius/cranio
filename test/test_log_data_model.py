@@ -2,8 +2,7 @@ import pytest
 import logging
 import time
 from sqlalchemy.exc import IntegrityError
-from cranio.core import utc_datetime
-from cranio.utils import log_level_to_name
+from cranio.utils import log_level_to_name, utc_datetime
 from cranio.database import init_database, Log, session_scope, Session
 
 logger_name = 'cranio'
@@ -28,10 +27,9 @@ def test_logging_is_directed_to_database_log_table_with_correct_values(database_
     time.sleep(wait_duration)
     t_stop = utc_datetime()
     with session_scope() as s:
-        logs = s.query(Log).all()
+        logs = s.query(Log).filter(Log.message == msg).all()
         assert len(logs) == 1
         log = logs[0]
-        assert log.message == msg
         assert log.session_id == Session.get_instance().session_id
         assert log.logger == logger_name
         assert log_level_to_name(log.level).lower() == 'info'

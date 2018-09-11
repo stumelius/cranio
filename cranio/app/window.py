@@ -1,27 +1,25 @@
 """
 .. todo:: To be documented.
 """
-import logging
 from typing import List
-from functools import partial
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton, QMessageBox
-from daqstore.store import DataStore
-from cranio.producer import ProducerProcess, plug_dummy_sensor
-from cranio.imada import plug_imada
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
+from cranio.producer import ProducerProcess, create_dummy_sensor
+from cranio.imada import Imada
 from cranio.database import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
-    DoubleSpinEditWidget, CheckBoxEditWidget
+    DoubleSpinEditWidget, SessionWidget
+from cranio.utils import logger
 
 
 def create_document():
     """ Dummy function. """
-    logging.info('create_document() called!')
+    logger.info('create_document() called!')
 
 
 def load_document():
     """ Dummy function. """
-    logging.info('load_document() called!')
+    logger.info('load_document() called!')
 
 
 class RegionPlotWindow(QDialog):
@@ -94,9 +92,6 @@ class NotesWindow(QDialog):
         self.notes_widget = EditWidget('Notes')
         self.full_turn_count_widget = DoubleSpinEditWidget('Number of full turns')
         self.ok_button = QPushButton('Ok')
-        # properties
-        self.notes = self.notes_widget.value
-        self.full_turn_count = self.full_turn_count_widget.value
         # initialize ui
         self.init_ui()
 
@@ -112,6 +107,39 @@ class NotesWindow(QDialog):
         self.layout.addWidget(self.ok_button)
         self.setLayout(self.layout)
 
+    @property
+    def full_turn_count(self) -> float:
+        return self.full_turn_count_widget.value
+
+    @full_turn_count.setter
+    def full_turn_count(self, value: float):
+        self.full_turn_count_widget.value = value
+
+    @property
+    def notes(self) -> str:
+        return self.notes_widget.value
+
+    @notes.setter
+    def notes(self, value: str):
+        self.notes_widget.value = value
+
+
+class SessionDialog(QDialog):
+    signal_close = pyqtSignal()
+
+    def __init__(self, session_widget: SessionWidget):
+        super().__init__()
+        self.session_widget = session_widget
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.session_widget)
+        self.main_layout.addWidget(self.session_widget)
+        self.setLayout(self.main_layout)
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        self.signal_close.emit()
+
 
 class MainWindow(QMainWindow):
     """ Craniodistraction application main window. """
@@ -119,20 +147,20 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Craniodistractor')
-        self.store = DataStore(buffer_length=10, resampling_frequency=None)
-        self.producer_process = ProducerProcess('Imada torque producer', store=self.store)
-        # layouts
+        self._producer_process = None
+        self.sensor = None
+        # Layouts
         self.main_layout = QVBoxLayout()
         self.main_widget = QWidget()
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
-        # add meta prompt widget
+        # Add meta prompt widget
         self.meta_widget = MetaDataWidget()
         self.main_layout.addWidget(self.meta_widget)
-        # add measurement widget
+        # Add measurement widget
         self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
-        # add File menu
+        # Add File menu
         self.file_menu = self.menuBar().addMenu('File')
         self.new_document_action = QAction('New document', self)
         self.new_document_action.triggered.connect(create_document)
@@ -140,24 +168,39 @@ class MainWindow(QMainWindow):
         self.load_document_action = QAction('Load document', self)
         self.load_document_action.triggered.connect(load_document)
         self.file_menu.addAction(self.load_document_action)
-        # add separator between documents and patients
+        # Add separator between documents and patients
         self.file_menu.addSeparator()
         self.patients_action = QAction('Patients', self)
         self.patients_action.triggered.connect(self.open_patient_widget)
         self.file_menu.addAction(self.patients_action)
-        # add Connect menu
+        # Add separator between patients and sessions
+        self.file_menu.addSeparator()
+        self.change_session_action = QAction('Change session', self)
+        self.file_menu.addAction(self.change_session_action)
+        # Add Connect menu
         self.connect_menu = self.menuBar().addMenu('Connect')
         self.connect_torque_sensor_action = QAction('Connect Imada torque sensor', self)
-        self.connect_torque_sensor_action.triggered.connect(partial(plug_imada, self.producer_process))
+        self.connect_torque_sensor_action.triggered.connect(self.connect_imada_sensor)
         self.connect_dummy_sensor_action = QAction('Connect dummy torque sensor', self)
-        self.connect_dummy_sensor_action.triggered.connect(partial(plug_dummy_sensor, self.producer_process))
+        self.connect_dummy_sensor_action.triggered.connect(self.connect_dummy_sensor)
         self.connect_menu.addAction(self.connect_torque_sensor_action)
         self.connect_menu.addAction(self.connect_dummy_sensor_action)
-        # signals
+        # Define signals
         self.signal_start = self.measurement_widget.start_button.clicked
         self.signal_stop = self.measurement_widget.stop_button.clicked
         self.signal_ok = self.measurement_widget.ok_button.clicked
+        self.signal_change_session = self.change_session_action.triggered
         self.init_ui()
+
+    @property
+    def producer_process(self):
+        return self._producer_process
+
+    @producer_process.setter
+    def producer_process(self, value: ProducerProcess):
+        self._producer_process = value
+        logger.debug(f'Set measurement widget producer process to {self._producer_process}')
+        self.measurement_widget.producer_process = self._producer_process
 
     def init_ui(self):
         """ Initialize UI elements. """
@@ -221,4 +264,18 @@ class MainWindow(QMainWindow):
         :return:
         """
         return self.measurement_widget.ok_button.clicked.emit(True)
+
+    def connect_dummy_sensor(self):
+        self.sensor = create_dummy_sensor()
+
+    def connect_imada_sensor(self):
+        self.sensor = Imada()
+
+    def register_sensor_with_producer(self):
+        if self.sensor is not None:
+            self.producer_process.producer.register_sensor(self.sensor)
+
+    def unregister_sensor(self):
+        self.producer_process.producer.unregister_sensor(self.sensor)
+        self.sensor = None
 

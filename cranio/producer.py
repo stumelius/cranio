@@ -2,33 +2,33 @@
 .. todo:: Module description
 """
 import datetime
-import logging
 import time
 import multiprocessing as mp
 import pandas as pd
 import numpy as np
-from queue import Queue
-from typing import Union, Iterable, List
+from typing import Iterable, List, Tuple
 from contextlib import contextmanager
-from daqstore.store import DataStore
-from cranio.core import Packet
-from cranio.utils import random_value_generator
-from cranio.database import SensorInfo, session_scope, enter_if_not_exists
+from cranio.utils import random_value_generator, logger, generate_unique_id, utc_datetime
+from cranio.database import SensorInfo, session_scope, enter_if_not_exists, Document
 
 
 class SensorError(Exception):
     pass
 
 
-def all_from_queue(queue: Union[mp.Queue, Queue]):
+def get_all_from_queue(queue) -> Tuple[List, List]:
     """
-    Return a queue.get() generator.
 
-    :param queue: Queue object
-    :return: queue.get() generator
+    :param queue:
+    :return: Index and value arrays as a tuple
     """
+    index_arr = []
+    value_arr = []
     while not queue.empty():
-        yield queue.get()
+        index, value = queue.get()
+        index_arr.append(index)
+        value_arr.append(value)
+    return index_arr, value_arr
 
 
 def datetime_to_seconds(array: Iterable[datetime.datetime], t0: datetime.datetime) -> Iterable[float]:
@@ -138,11 +138,11 @@ class Sensor:
         """
         return self.channels.remove(channel_info)
     
-    def read(self) -> Packet:
+    def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read values from the registered input channels.
 
-        :return: Packet object
+        :return: Datetime and value dictionary as a tuple
         """
         if len(self.channels) == 0:
             return None
@@ -153,13 +153,14 @@ class Sensor:
         # if there is no wait between consecutive read() calls,
         # too much data is generated for a plot widget to handle
         time.sleep(0.01)
-        return Packet([datetime.datetime.now()], values)
+        # Use UTC+0 time
+        return utc_datetime(), values
 
     @classmethod
     def enter_info_to_database(cls):
         """ Enter copy of self.sensor_info to the database. """
         with session_scope() as s:
-            logging.debug(f'Enter sensor info: {str(cls.sensor_info)}')
+            logger.debug(f'Enter sensor info: {str(cls.sensor_info)}')
             enter_if_not_exists(s, cls.sensor_info)
 
 
@@ -168,7 +169,7 @@ class Producer:
         
     def __init__(self):
         self.sensors = []
-        self.id = DataStore.register_device()
+        self.id = generate_unique_id()
         
     def open(self):
         """ Open all sensor ports. """
@@ -206,11 +207,11 @@ class Producer:
         except ValueError:
             raise ValueError(f'{type(sensor).__name__} is not registered with the producer')
         
-    def read(self) -> List[Packet]:
+    def read(self) -> List[Tuple[datetime.datetime, dict]]:
         """
         Read values from the registered input sensors.
 
-        :return: List of Packet objects
+        :return: List of datetime and value dictionary tuples
         """
         return [s.read() for s in self.sensors]
 
@@ -220,8 +221,9 @@ class ProducerProcess:
     # default producer class
     producer_class = Producer
     
-    def __init__(self, name: str, store):
-        self.store = store
+    def __init__(self, name: str, document: Document):
+        self.queue = mp.Queue()
+        self.document = document
         self.start_event = mp.Event()
         self.stop_event = mp.Event()
         self.producer = self.producer_class()
@@ -260,24 +262,14 @@ class ProducerProcess:
         """
         # implement required initializations here!
         # open producer
-        logging.info('Running producer process "{}"'.format(str(self)))
+        logger.info('Running producer process "{}"'.format(str(self)))
         with open_port(self.producer):
             while not self.stop_event.is_set():
                 if self.start_event.is_set():
-                    for packet in self.producer.read():
-                        tpl = (self.producer.id,) + packet.as_tuple()
-                        self.store.put(tpl)
-        logging.info('Stopping producer process "{}"'.format(str(self)))
-                    
-    def read(self, include_cache: bool=False) -> pd.DataFrame:
-        """
-        Read data recorded by the process.
+                    for index, value_dict in self.producer.read():
+                        self.queue.put((index, value_dict))
+        logger.info('Stopping producer process "{}"'.format(str(self)))
 
-        :param include_cache: Boolean indicating if already cached data is included in the return value
-        :return: Recorded data
-        """
-        return self.store.get_data(include_cache=include_cache)
-                    
     def start(self) -> None:
         """
         Start the data producer process. If already running, only the producer is started.
@@ -293,15 +285,7 @@ class ProducerProcess:
         """
         Pause the process. To stop the process, call .join() after .pause().
 
-        Example:
-            >>> process.start()
-            >>> time.sleep(2)
-            >>> process.pause()
-            >>> data = process.get_all()
-            >>> process.join()
-            >>> assert not process.is_alive()
-
-        :return: None
+        :return:
         """
         self.start_event.clear()
         
@@ -322,30 +306,27 @@ class ProducerProcess:
         """
         self.stop_event.set()
         # close the queue and join the background thread
-        #self.data_queue.close()
-        #self.data_queue.join_thread()
+        #self.queue.close()
+        #self.queue.join_thread()
         self._process.join(timeout)
         if self.is_alive():
-            logging.error('Producer process "{}" is not shutting down gracefully. '
+            logger.error('Producer process "{}" is not shutting down gracefully. '
                           'Resorting to force terminate and join...'.format(str(self)))
             self._process.terminate()
             self._process.join(timeout)
-        logging.info('Producer process "{}" joined successfully'.format(str(self)))
+        logger.info('Producer process "{}" joined successfully'.format(str(self)))
         return self._process.exitcode
 
 
-def plug_dummy_sensor(producer_process: ProducerProcess) -> Sensor:
+def create_dummy_sensor() -> Sensor:
     """
-    Plug sensor with an input channel that generates random torque data to a producer process.
+    Create a dummy torque (Nm) sensor.
 
-    :param producer_process: Producer process
     :return: Sensor object
     """
-    logging.debug('Initialize torque sensor')
+    logger.debug('Initialize dummy torque sensor')
     sensor = Sensor()
     sensor.value_generator = random_value_generator
     ch = ChannelInfo('torque', 'Nm')
     sensor.register_channel(ch)
-    producer_process.producer.register_sensor(sensor)
-    logging.debug('Dummy torque sensor plugged')
     return sensor

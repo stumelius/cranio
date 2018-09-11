@@ -1,6 +1,6 @@
 import numpy as np
 import datetime
-from cranio.producer import datetime_to_seconds, ProducerProcess, plug_dummy_sensor
+from cranio.producer import datetime_to_seconds, create_dummy_sensor, Sensor
 
 
 def test_datetime_to_seconds():
@@ -10,8 +10,5 @@ def test_datetime_to_seconds():
         datetime_to_seconds(arr, t0)
 
 
-def test_only_dummy_sensor_is_plugged_by_plug_dummy_sensor(data_store, database_fixture):
-    process = ProducerProcess(name='dummy', store=data_store)
-    sensor = plug_dummy_sensor(process)
-    assert len(process.producer.sensors) == 1
-    assert process.producer.sensors[0] == sensor
+def test_create_dummy_sensor_returns_sensor():
+    assert type(create_dummy_sensor()) == Sensor

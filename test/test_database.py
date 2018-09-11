@@ -2,8 +2,7 @@ import pytest
 import numpy as np
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
-from cranio.core import generate_unique_id, utc_datetime
-from cranio.utils import try_remove, get_logging_levels
+from cranio.utils import try_remove, get_logging_levels, generate_unique_id, utc_datetime
 from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
     AnnotatedEvent, init_database, EventType, enter_if_not_exists, DistractorInfo, DistractorType
 from cranio.producer import Sensor
@@ -198,3 +197,12 @@ def test_measurement_copy_returns_new_instance_with_same_attributes():
 
 def test_distractor_info_takes_distractor_type_and_displacement_mm_per_full_turn_as_args():
     distractor_info = DistractorInfo(distractor_type='KLS Arnaud', displacement_mm_per_full_turn=1.15)
+
+
+def test_session_continue_from_sets_session_instance(database_fixture):
+    # Create new session
+    s2 = Session()
+    with session_scope() as s:
+        s.add(s2)
+    Session.continue_from(s2)
+    assert Session.get_instance() == s2

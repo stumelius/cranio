@@ -1,9 +1,9 @@
 """
-.. todo:: To be documented.
+.. todo:: Module description.
 """
-import logging
 import pyqtgraph as pg
 import pandas as pd
+from enum import Enum
 from typing import Tuple, List, Iterable
 from functools import partial
 from PyQt5 import QtCore
@@ -11,7 +11,9 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, session_scope, Patient, EventType
+from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
+from cranio.utils import logger
+from cranio.producer import get_all_from_queue, datetime_to_seconds
 
 # plot style settings
 pg.setConfigOption('background', 'w')
@@ -26,6 +28,12 @@ PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
 SESSION_ID_TOOLTIP = ('This is a random-generated unique identifier.\n'
                       'NOTE: Value cannot be changed by the user.')
 DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
+
+
+def filter_last_n_seconds(x_arr, n: float):
+    last = x_arr[-1]
+    for x in x_arr:
+        yield x >= (last - n)
 
 
 def remove_widget_from_layout(layout: QLayout, widget: QWidget):
@@ -58,6 +66,11 @@ def clear_layout(layout: QLayout):
             clear_layout(item.layout())
         # remove item from layout
         layout.removeItem(item)
+
+
+class PlotMode(Enum):
+    OVERWRITE = 'o'
+    APPEND = 'a'
 
 
 class EditWidget(QWidget):
@@ -269,7 +282,7 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
-        logging.debug('Update patients called')
+        logger.debug('Update patients called')
         self.patient_widget.clear()
         with session_scope() as s:
             for p in s.query(Patient).all():
@@ -317,7 +330,7 @@ class MetaDataWidget(QGroupBox):
         """
         self.enabled = not lock
         self.patient_widget.setEnabled(self.enabled)
-        logging.debug(f'Patient lock = {lock}')
+        logger.debug(f'Patient lock = {lock}')
 
     def toggle_lock_button_clicked(self):
         """
@@ -428,6 +441,85 @@ class PatientWidget(QWidget):
         return self.table_widget.rowCount()
 
 
+class SessionWidget(QWidget):
+    """
+    View existing sessions and let user select one.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.main_layout = QVBoxLayout()
+        self.label = QLabel('Sessions')
+        self.table_widget = QTableWidget(parent=self)
+        self.table_widget.setColumnCount(2)
+        # Disable editing
+        self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        # Set column names
+        self.table_widget.setHorizontalHeaderLabels(['session_id', 'started_at'])
+        self.table_widget.horizontalHeader().setStretchLastSection(True);
+        self.table_widget.resizeColumnsToContents()
+        self.select_button = QPushButton('Select session')
+        self.cancel_button = QPushButton('Cancel')
+        # Set layout
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addWidget(self.table_widget)
+        self.main_layout.addWidget(self.select_button)
+        self.main_layout.addWidget(self.cancel_button)
+        self.setLayout(self.main_layout)
+        self.sessions = []
+        self.update_sessions()
+
+    def update_sessions(self):
+        """
+        Update session list.
+
+        :return:
+        """
+        # Clear current contents
+        self.sessions = []
+        self.table_widget.clear()
+        # Add new contents
+        with session_scope() as s:
+            for i, session in enumerate(s.query(Session).all()):
+                self.sessions.append(session)
+                self.table_widget.setRowCount(i + 1)
+                self.table_widget.setItem(i, 0, QTableWidgetItem(session.session_id))
+                self.table_widget.setItem(i, 1, QTableWidgetItem(str(session.started_at)))
+
+    def session_count(self) -> int:
+        """
+        Return number of sessions in the list.
+
+        :return:
+        """
+        return self.table_widget.rowCount()
+
+    def active_session_id(self) -> str:
+        """ Return session_id of active (selected) session. If no session is selected, None is returned. """
+        try:
+            session_id = self.table_widget.item(self.table_widget.currentRow(), 0).text()
+        except AttributeError:
+            # AttributeError: 'NoneType' object has no attribute 'text'
+            session_id = None
+        logger.debug(f'Active session_id = {session_id}')
+        return session_id
+
+    def select_session(self, session_id: str):
+        """
+        Select select by session_id.
+
+        :param session_id:
+        :return:
+        """
+        for i in range(self.session_count()):
+            item = self.table_widget.item(i, 0)
+            if item.text() == session_id:
+                self.table_widget.setCurrentCell(i, 0)
+                break
+        else:
+            logger.error(f'No session {session_id} in SessionWidget')
+
+
 class MeasurementWidget(QWidget):
     """ Multiplot measurement widget and buttons to start and stop data recording. Ok button to continue. """
 
@@ -461,14 +553,14 @@ class MeasurementWidget(QWidget):
         # connect signals
         self.update_timer.timeout.connect(self.update)
 
-    def plot(self, df: pd.DataFrame):
+    def plot(self, df: pd.DataFrame, mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot a dataframe in the multiplot widget.
 
         :param df:
         :return:
         """
-        self.multiplot_widget.plot(df)
+        self.multiplot_widget.plot(df, mode=mode)
 
     def add_plot(self, label: str):
         """
@@ -494,10 +586,33 @@ class MeasurementWidget(QWidget):
 
         :return:
         """
-        self.producer_process.store.read()
-        self.producer_process.store.flush()
-        data = self.producer_process.read()
-        self.plot(data)
+        measurements = []
+        index_arr, value_dict_arr = get_all_from_queue(self.producer_process.queue)
+        # No data available
+        if not index_arr:
+            return
+        # Convert UTC+0 datetime to seconds
+        time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
+        # Insert to database
+        with session_scope() as s:
+            for time_s, value_dict in zip(time_arr, value_dict_arr):
+                m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
+                                document_id=self.producer_process.document.document_id)
+                s.add(m)
+                measurements.append(m)
+        # Convert data to DataFrame
+        x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
+        df = pd.DataFrame({'torque (Nm)': y}, index=x)
+        # Append to plot
+        self.plot(df, mode=PlotMode.APPEND)
+
+    def clear(self):
+        """
+        Clear the plots.
+
+        :return:
+        """
+        self.multiplot_widget.clear()
 
 
 class PlotWidget(pg.PlotWidget):
@@ -508,9 +623,10 @@ class PlotWidget(pg.PlotWidget):
 
     def __init__(self, parent=None):
         super(PlotWidget, self).__init__(parent)
-        self.x = []
-        self.y = []
+        self.x_arr = []
+        self.y_arr = []
         self.init_ui()
+        self.filters = []
 
     def init_ui(self):
         """ Initialize UI elements. """
@@ -555,30 +671,51 @@ class PlotWidget(pg.PlotWidget):
 
         :return:
         """
-        self.x = []
-        self.y = []
+        self.x_arr = []
+        self.y_arr = []
         return self.getPlotItem().clear()
 
-    def plot(self, x: Iterable[float], y: Iterable[float], mode: str = 'o'):
+    def plot(self, x: Iterable[float], y: Iterable[float], mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot (x, y) data.
 
         :param x:
         :param y:
-        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :param mode:
         :return:
         :raises ValueError: if invalid plot mode argument
         """
-        if mode == 'o':
-            self.x = list(x)
-            self.y = list(y)
-        elif mode == 'a':
-            self.x += list(x)
-            self.y += list(y)
+        if mode == PlotMode.OVERWRITE:
+            self.x_arr = list(x)
+            self.y_arr = list(y)
+        elif mode == PlotMode.APPEND:
+            self.x_arr += list(x)
+            self.y_arr += list(y)
         else:
             raise ValueError('Invalid mode {}'.format(mode))
-        self.getPlotItem().plot(self.x, self.y, clear=True, **self.plot_configuration)
+        # Apply filters
+        self.apply_filters()
+        self.getPlotItem().plot(self.x_arr, self.y_arr, clear=True, **self.plot_configuration)
         return self
+
+    def apply_filters(self):
+        """
+        Apply filters to x and y data in the order the filters were added.
+
+        :return:
+        """
+        for filter_func in self.filters:
+            i_arr = [i for i, x in enumerate(list(filter_func(self.x_arr))) if x]
+            self.x_arr = [self.x_arr[i] for i in i_arr]
+            self.y_arr = [self.y_arr[i] for i in i_arr]
+
+    def add_filter(self, filter_func):
+        """
+
+        :param filter_func: Filter function with x values as input argument
+        :return:
+        """
+        self.filters.append(filter_func)
 
 
 class RegionEditWidget(QGroupBox):
@@ -598,7 +735,7 @@ class RegionEditWidget(QGroupBox):
         self.main_layout = QVBoxLayout()
         self.boundary_layout = QHBoxLayout()
         # widgets
-        self.done_widget = CheckBoxEditWidget('Done')
+        self.done_widget = CheckBoxEditWidget('Annotation done')
         self.recorded_widget = CheckBoxEditWidget('Recorded')
         self.minimum_edit = QDoubleSpinBox()
         self.maximum_edit = QDoubleSpinBox()
@@ -782,20 +919,20 @@ class RegionPlotWidget(QWidget):
     @property
     def x_arr(self):
         """ Plot x values property. """
-        return self.plot_widget.x
+        return self.plot_widget.x_arr
 
     @property
     def y_arr(self):
         """ Plot y values property. """
-        return self.plot_widget.y
+        return self.plot_widget.y_arr
 
-    def plot(self, x_arr, y_arr, mode='o'):
+    def plot(self, x_arr, y_arr, mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot (x, y) data.
 
-        :param x:
-        :param y:
-        :param mode: Plot mode ('o' = overwrite, 'a' = append)
+        :param x_arr:
+        :param y_arr:
+        :param mode:
         :return:
         """
         return self.plot_widget.plot(x_arr, y_arr, mode)
@@ -894,7 +1031,7 @@ class RegionPlotWidget(QWidget):
         :return:
         """
         if len(self.x_arr) == 0:
-            logging.error('Unable to add region to empty plot')
+            logger.error('Unable to add region to empty plot')
             return 0
         count = self.add_count.value()
         if count > 0:
@@ -971,6 +1108,7 @@ class VMultiPlotWidget(QWidget):
         :return:
         :raises ValueError: if a plot with the specified label already exists
         """
+        from cranio.constants import PLOT_N_SECONDS
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
         # if placeholder exists, use it
@@ -983,10 +1121,13 @@ class VMultiPlotWidget(QWidget):
             plot_widget = PlotWidget()
             self.main_layout.addWidget(plot_widget)
         plot_widget.y_label = label
+        # Add filter defined by PLOT_N_SECONDS
+        if PLOT_N_SECONDS is not None:
+            plot_widget.add_filter(partial(filter_last_n_seconds, n=PLOT_N_SECONDS))
         self.plot_widgets.append(plot_widget)
         return plot_widget
 
-    def plot(self, df: pd.DataFrame, title: str = '', mode: str = 'o'):
+    def plot(self, df: pd.DataFrame, title: str = '', mode: PlotMode=PlotMode.OVERWRITE):
         """
         Plot a dataframe.
 
@@ -1026,7 +1167,7 @@ class VMultiPlotWidget(QWidget):
         :return:
         """
         for p in self.plot_widgets:
-            p.clear()
+            p.clear_plot()
 
     def reset(self):
         """

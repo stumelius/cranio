@@ -1,23 +1,42 @@
 """
-.. todo:: Combine with the core module
+Utility functions and classes.
 """
 import os
 import sys
 import time
 import logging
+import logging.config
 import random
-import traceback
+import uuid
+from datetime import datetime
 from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
 from ruamel import yaml
+from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
-DEFAULT_LOGGING_CONFIG_PATH = Path(__file__).parent.parent / 'logging_config.yml'
+logger = logging.getLogger('cranio')
 
 
 class UTCFormatter(logging.Formatter):
     """ Logging formatter that converts timestamps to UTC+0. """
     converter = time.gmtime
+
+
+def generate_unique_id():
+    """
+
+    :return: Unique id based on host ID, sequence number and current time
+    """
+    return str(uuid.uuid1())
+
+
+def utc_datetime():
+    """
+
+    :return: Current date and time (UTC+0)
+    """
+    return datetime.utcnow()
 
 
 def try_remove(name: Union[str, Path]):
@@ -38,6 +57,12 @@ def get_logging_config(path: Union[Path, str]=None) -> dict:
         path = DEFAULT_LOGGING_CONFIG_PATH
     with open(path) as stream:
         return yaml.safe_load(stream)
+
+
+def configure_logging():
+    # logging configuration
+    d = get_logging_config()
+    logging.config.dictConfig(d)
 
 
 def get_logging_levels() -> Dict[int, str]:
@@ -85,3 +110,13 @@ def attach_excepthook(excepthook=None):
     if excepthook is None:
         excepthook = default_excepthook
     sys.excepthook = excepthook
+
+
+def utc_offset() -> float:
+    """
+    Return UTC offset of local time.
+
+    :return:
+    """
+    offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
+    return offset / 60 / 60 * (-1)
