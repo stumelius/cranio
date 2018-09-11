@@ -1,7 +1,8 @@
 import pytest
 import random
 import time
-from cranio.producer import ChannelInfo, Sensor, Producer
+import pandas as pd
+from cranio.producer import ChannelInfo, Sensor, Producer, get_all_from_queue
 
 
 def random_value_generator():
@@ -19,10 +20,9 @@ def test_sensor():
     assert s.read() is None
     ch = ChannelInfo('torque', 'Nm')
     s.register_channel(ch)
-    packet = s.read()
-    df = packet.as_dataframe()
-    assert not df.empty
-    assert list(df.columns) == [str(ch)]
+    index, value_dict = s.read()
+    assert len(value_dict) > 0
+    assert list(value_dict) == [str(ch)]
 
 
 def test_producer_add_and_remove_sensors():
@@ -48,12 +48,10 @@ def test_producer_process_start_and_join(producer_process, database_document_fix
     p.start()
     assert p.is_alive()
     p.pause()
-    # read and flush store
-    p.store.read()
-    p.store.flush()
-    # no sensors -> empty data
-    df = p.read(include_cache=True)
-    assert df.empty
+    # Read values from queue
+    index_arr, value_arr = get_all_from_queue(p.queue)
+    # No sensors -> empty data
+    assert len(index_arr) == 0
 
 
 def test_producer_process_with_sensors(producer_process, database_document_fixture):
@@ -66,12 +64,12 @@ def test_producer_process_with_sensors(producer_process, database_document_fixtu
     p.producer.register_sensor(s)
     p.start()
     assert p.is_alive()
-    # record for 2 seconds
+    # Record for 2 seconds
     time.sleep(2)
     p.pause()
-    # read and flush store
-    p.store.read()
-    p.store.flush()
-    df = p.read(include_cache=True)
+    # Read values from queue
+    index_arr, value_arr = get_all_from_queue(p.queue)
+    # Convert value_arr (list of dicts) to a DataFrame
+    df = pd.DataFrame(value_arr, index=index_arr)
     for c in channels:
         assert str(c) in df

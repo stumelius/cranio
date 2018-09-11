@@ -1,11 +1,11 @@
-import logging
-from copy import copy
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
 from PyQt5.QtWidgets import QMessageBox
-from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
-from cranio.database import session_scope, Measurement, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
-from cranio.core import utc_datetime
+from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
+from cranio.app.widget import SessionWidget
+from cranio.database import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
+from cranio.utils import logger, utc_datetime
+from cranio.producer import ProducerProcess
 
 
 class MyState(QState):
@@ -36,19 +36,53 @@ class MyState(QState):
         self.machine().annotated_events = values
 
     def onEntry(self, event: QEvent):
-        logging.debug(f'Enter {self.name}')
+        logger.debug(f'Enter {self.name}')
 
     def onExit(self, event: QEvent):
-        logging.debug(f'Exit {self.name}')
+        logger.debug(f'Exit {self.name}')
 
 
 class InitialState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
 
+    @property
+    def signal_change_session(self):
+        return self.main_window.signal_change_session
+
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         self.main_window.show()
+
+
+class ChangeSessionState(MyState):
+    def __init__(self, parent=None):
+        super().__init__(name=type(self).__name__, parent=parent)
+        # Initialize session dialog
+        self.session_widget = SessionWidget()
+        self.session_dialog = SessionDialog(self.session_widget)
+        # Define signals
+        self.signal_select = self.session_widget.select_button.clicked
+        self.signal_cancel = self.session_widget.cancel_button.clicked
+        # Close equals to Cancel
+        self.session_dialog.signal_close = self.signal_cancel
+
+    def active_session_id(self):
+        return self.session_widget.active_session_id()
+
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        # Keep selection, update and open dialog
+        session_id = self.session_widget.active_session_id()
+        self.session_widget.update_sessions()
+        if session_id is not None:
+            self.session_widget.select_session(session_id)
+        self.session_dialog.show()
+
+    def onExit(self, event: QEvent):
+        super().onExit(event)
+        # Close dialog
+        self.session_dialog.close()
 
 
 class MeasurementState(MyState):
@@ -73,39 +107,32 @@ class MeasurementState(MyState):
         super().onEntry(event)
         # MeasurementStateTransition ensures that only one sensor is connected
         sensor = self.machine().sensor
-        # create new document
+        # Create new document
         self.document = self.create_document()
         self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
-        # insert sensor info and document to database
+        # Clear plot
+        logger.debug('Clear plot')
+        self.main_window.measurement_widget.clear()
+        # Insert sensor info and document to database
         sensor.enter_info_to_database()
         with session_scope() as s:
-            logging.debug(f'Enter document: {str(self.document)}')
+            logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
+        # Create producer process and register connected sensor
+        self.main_window.producer_process = ProducerProcess('Imada torque producer', document=self.document)
+        self.main_window.register_sensor_with_producer()
+        # Start producing!
         self.main_window.measurement_widget.producer_process.start()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
-        # pause producer process and stop timer
+        # Pause producer process and stop timer
         if self.main_window.measurement_widget.producer_process is None:
             return
         self.main_window.measurement_widget.producer_process.pause()
         self.main_window.measurement_widget.update_timer.stop()
-        # enter data to database
-        plot_widgets = self.main_window.measurement_widget.multiplot_widget.plot_widgets
-        if len(plot_widgets) > 1:
-            raise ValueError('Only single plots are supported')
-        elif len(plot_widgets) == 0:
-            logging.debug('No data to enter')
-            # no data to enter
-            return
-        plot_widget = self.main_window.measurement_widget.multiplot_widget.plot_widgets[0]
-        measurements = []
-        with session_scope() as s:
-            for x, y in zip(plot_widget.x, plot_widget.y):
-                m = Measurement(document_id=self.document.document_id, time_s=x, torque_Nm=y)
-                measurements.append(m)
-                s.add(m)
-        logging.debug(f'Entered {len(measurements)} measurements to the database')
+        # Update to ensure that all data is inserted to database
+        self.main_window.measurement_widget.update()
 
 
 class EventDetectionState(MyState):
@@ -136,12 +163,12 @@ class EventDetectionState(MyState):
     def onExit(self, event: QEvent):
         super().onExit(event)
         # assign annotated events and link to document
-        logging.debug('Assign annotated events and link to document')
+        logger.debug('Assign annotated events and link to document')
         self.annotated_events = self.dialog.get_annotated_events()
         for e in self.annotated_events:
             e.document_id = self.document.document_id
         for event in self.annotated_events:
-            logging.debug(str(event))
+            logger.debug(str(event))
         self.dialog.close()
 
     def region_count(self):
@@ -150,20 +177,23 @@ class EventDetectionState(MyState):
 
 class AreYouSureState(MyState):
 
-    def __init__(self, text_template: str, parent=None):
+    def __init__(self, text_template: str, name: str=None, parent=None):
         """
 
         :param text: Text shown in the dialog
+        :param: name
         :param parent:
         """
-        super().__init__(name=type(self).__name__, parent=parent)
+        if name is None:
+            name = type(self).__name__
+        super().__init__(name=name, parent=parent)
         self.template = text_template
         self.dialog = QMessageBox()
         self.yes_button = self.dialog.addButton('Yes', QMessageBox.YesRole)
         self.no_button = self.dialog.addButton('No', QMessageBox.NoRole)
         self.dialog.setIcon(QMessageBox.Question)
         self.dialog.setWindowTitle('Are you sure?')
-        # signals
+        # Signals
         self.signal_yes = self.yes_button.clicked
         self.signal_no = self.no_button.clicked
 
@@ -171,10 +201,15 @@ class AreYouSureState(MyState):
         """ Return template namespace. """
         try:
             region_count = len(self.annotated_events)
-        except AttributeError:
-            # object has no attribute 'annotated_events'
+        except (AttributeError, TypeError):
+            # Object has no attribute 'annotated_events' or annotated_events = None
             region_count = None
-        return {'region_count': region_count}
+        try:
+            session_info = self.machine().s9.session_widget.active_session_id
+        except AttributeError:
+            # 'NoneType' object has no attribute 's9'
+            session_info = None
+        return {'region_count': region_count, 'session_info': session_info}
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -196,11 +231,11 @@ class EnterAnnotatedEventsState(MyState):
         super().onEntry(event)
         if not self.annotated_events:
             raise ValueError('No annotated events to enter')
-        logging.debug('Enter annotated events to database')
+        logger.debug('Enter annotated events to database')
         with session_scope() as s:
             for e in self.annotated_events:
                 s.add(e)
-                logging.debug(str(e))
+                logger.debug(str(e))
         self.signal_finished.emit()
 
 
@@ -219,6 +254,8 @@ class NoteState(MyState):
             sensor_info = s.query(SensorInfo).\
                 filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
         self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)
+        logger.debug(f'Calculate default full_turn_count = {self.full_turn_count} = '
+                     f'{event_count} / {sensor_info.turns_in_full_turn}')
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -237,8 +274,6 @@ class NoteState(MyState):
         self.dialog.full_turn_count = value
 
 
-
-
 class UpdateDocumentState(MyState):
     signal_finished = pyqtSignal()
 
@@ -247,12 +282,12 @@ class UpdateDocumentState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        logging.debug('Update document in database')
+        logger.debug('Update document in database')
         with session_scope() as s:
             document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
-            logging.debug(str(document))
+            logger.debug(str(document))
         self.signal_finished.emit()
 
 
@@ -268,30 +303,44 @@ class StartMeasurementTransition(QSignalTransition):
     def eventTest(self, event: QEvent) -> bool:
         if not super().eventTest(event):
             return False
-        # invalid patient
+        # Invalid patient
         if not self.sourceState().machine().active_patient:
-            logging.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
+            logger.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
             return False
-        # no sensor connected
-        if len(self.sourceState().machine().producer_process.sensors) == 0:
-            logging.error('No sensors connected')
-            return False
-        # too many sensors connected
-        if len(self.sourceState().machine().producer_process.sensors) > 1:
-            logging.error('More than one sensor connected')
+        # No sensor connected
+        if self.sourceState().machine().sensor is None:
+            logger.error('No sensors connected')
             return False
         return True
+
+
+class ChangeActiveSessionTransition(QSignalTransition):
+    def __init__(self, signal: pyqtSignal, source_state: QState=None):
+        """
+
+        :param source_state:
+        """
+        super().__init__(signal, source_state)
+
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        # Change active session
+        session_id = self.sourceState().machine().s9.active_session_id()
+        logger.debug(f'[{type(self).__name__}] Change active session to {session_id}')
+        with session_scope() as s:
+            session = s.query(Session).filter(Session.session_id == session_id).first()
+        Session.set_instance(session)
 
 
 class MyStateMachine(QStateMachine):
 
     def __init__(self):
         super().__init__()
-        # context
+        # Initialize context
         self.main_window = MainWindow()
         self.document = None
         self.annotated_events = None
-        # states
+        # Initialize states
         self.s1 = InitialState()
         self.s2 = MeasurementState()
         self.s3 = EventDetectionState()
@@ -301,26 +350,34 @@ class MyStateMachine(QStateMachine):
         self.s6 = NoteState()
         self.s7 = AreYouSureState('Are you sure you want to continue?')
         self.s8 = UpdateDocumentState()
-        # transitions
+        self.s9 = ChangeSessionState()
+        self.s10 = AreYouSureState('You have selected session {session_info}. '
+                                   'Are you sure you want to continue?', name='s10 (AreYouSureState)')
+        # Set states
+        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8, self.s9, self.s10):
+            self.addState(s)
+        self.setInitialState(self.s1)
+        # Define transitions
         self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
         self.start_measurement_transition.setTargetState(self.s2)
-        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok},
+        self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
+        self.change_active_session_transition.setTargetState(self.s1)
+        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok, self.s9: self.s1.signal_change_session},
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s4: self.s3.signal_ok},
                                self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
                                self.s5: {self.s6: self.s5.signal_finished},
                                self.s6: {self.s7: self.s6.signal_ok},
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
-                               self.s8: {self.s1: self.s8.signal_finished}}
+                               self.s8: {self.s1: self.s8.signal_finished},
+                               self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
+                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
-                if type(signal) == StartMeasurementTransition:
+                if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)
-        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8):
-            self.addState(s)
-        self.setInitialState(self.s1)
 
     @property
     def active_patient(self):
@@ -344,9 +401,7 @@ class MyStateMachine(QStateMachine):
 
     @property
     def sensor(self):
-        if len(self.producer_process.sensors) != 1:
-            raise ValueError('Too many sensors connected')
-        return self.producer_process.sensors[0]
+        return self.main_window.sensor
 
     def in_state(self, state: QState) -> bool:
         """

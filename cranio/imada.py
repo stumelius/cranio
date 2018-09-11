@@ -4,13 +4,12 @@ Interface for Imada HTG2-4 digital torque gauge.
 import re
 import serial.tools.list_ports
 import datetime
-import logging
 from collections import namedtuple
 from typing import Tuple
 from serial.tools.list_ports_common import ListPortInfo
 from cranio.producer import Sensor, ChannelInfo, ProducerProcess
-from cranio.core import Packet
 from cranio.database import SensorInfo
+from cranio.utils import logger, utc_datetime
 
 IMADA_EOL = '\r'
 
@@ -121,20 +120,19 @@ class Imada(Sensor):
         # return display value
         return self.readline()
     
-    def read(self) -> Packet:
+    def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read a single value from the sensor.
 
-        :return: Packet object
+        :return: Datetime and value dictionary as a tuple
         """
         try:
             telegram = self.poll()
             value, _, _, _ = decode_telegram(telegram)
         except TelegramError as e:
-            logging.error('Decode telegram failed! {}'.format(str(e)))
+            logger.error('Decode telegram failed! {}'.format(str(e)))
             value = None
-        record = Packet([datetime.datetime.now()], {str(self.channels[0]): value})
-        return record
+        return utc_datetime(), {str(self.channels[0]): value}
 
 
 def plug_imada(producer_process: ProducerProcess) -> Imada:
