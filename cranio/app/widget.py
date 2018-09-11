@@ -495,7 +495,12 @@ class SessionWidget(QWidget):
         return self.table_widget.rowCount()
 
     def active_session_id(self) -> str:
-        session_id = self.table_widget.item(self.table_widget.currentRow(), 0).text()
+        """ Return session_id of active (selected) session. If no session is selected, None is returned. """
+        try:
+            session_id = self.table_widget.item(self.table_widget.currentRow(), 0).text()
+        except AttributeError:
+            # AttributeError: 'NoneType' object has no attribute 'text'
+            session_id = None
         logger.debug(f'Active session_id = {session_id}')
         return session_id
 

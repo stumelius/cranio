@@ -1,7 +1,7 @@
 from typing import List
 from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
-from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout
-from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow
+from PyQt5.QtWidgets import QMessageBox
+from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
 from cranio.database import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.utils import logger, utc_datetime
@@ -60,20 +60,23 @@ class ChangeSessionState(MyState):
         super().__init__(name=type(self).__name__, parent=parent)
         # Initialize session dialog
         self.session_widget = SessionWidget()
-        self.session_dialog = QDialog()
-        self.session_dialog.main_layout = QVBoxLayout()
-        self.session_dialog.main_layout.addWidget(self.session_widget)
-        self.session_dialog.setLayout(self.session_dialog.main_layout)
+        self.session_dialog = SessionDialog(self.session_widget)
         # Define signals
         self.signal_select = self.session_widget.select_button.clicked
+        self.signal_cancel = self.session_widget.cancel_button.clicked
+        # Close equals to Cancel
+        self.session_dialog.signal_close = self.signal_cancel
 
     def active_session_id(self):
         return self.session_widget.active_session_id()
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        # Update and open dialog
+        # Keep selection, update and open dialog
+        session_id = self.session_widget.active_session_id()
         self.session_widget.update_sessions()
+        if session_id is not None:
+            self.session_widget.select_session(session_id)
         self.session_dialog.show()
 
     def onExit(self, event: QEvent):
@@ -190,7 +193,7 @@ class AreYouSureState(MyState):
         self.no_button = self.dialog.addButton('No', QMessageBox.NoRole)
         self.dialog.setIcon(QMessageBox.Question)
         self.dialog.setWindowTitle('Are you sure?')
-        # signals
+        # Signals
         self.signal_yes = self.yes_button.clicked
         self.signal_no = self.no_button.clicked
 
@@ -201,7 +204,11 @@ class AreYouSureState(MyState):
         except (AttributeError, TypeError):
             # Object has no attribute 'annotated_events' or annotated_events = None
             region_count = None
-        session_info = self.machine().s9.session_widget.active_session_id
+        try:
+            session_info = self.machine().s9.session_widget.active_session_id
+        except AttributeError:
+            # 'NoneType' object has no attribute 's9'
+            session_info = None
         return {'region_count': region_count, 'session_info': session_info}
 
     def onEntry(self, event: QEvent):
@@ -296,11 +303,11 @@ class StartMeasurementTransition(QSignalTransition):
     def eventTest(self, event: QEvent) -> bool:
         if not super().eventTest(event):
             return False
-        # invalid patient
+        # Invalid patient
         if not self.sourceState().machine().active_patient:
             logger.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
             return False
-        # no sensor connected
+        # No sensor connected
         if self.sourceState().machine().sensor is None:
             logger.error('No sensors connected')
             return False
@@ -355,7 +362,7 @@ class MyStateMachine(QStateMachine):
         self.start_measurement_transition.setTargetState(self.s2)
         self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
         self.change_active_session_transition.setTargetState(self.s1)
-        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok},
+        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok, self.s9: self.s1.signal_change_session},
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s4: self.s3.signal_ok},
                                self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
@@ -363,8 +370,7 @@ class MyStateMachine(QStateMachine):
                                self.s6: {self.s7: self.s6.signal_ok},
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
                                self.s8: {self.s1: self.s8.signal_finished},
-                               self.s1: {self.s9: self.s1.signal_change_session},
-                               self.s9: {self.s10: self.s9.signal_select},
+                               self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
                                self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():

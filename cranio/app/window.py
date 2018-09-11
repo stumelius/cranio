@@ -2,13 +2,13 @@
 .. todo:: To be documented.
 """
 from typing import List
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
 from cranio.producer import ProducerProcess, create_dummy_sensor
 from cranio.imada import Imada
 from cranio.database import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
-    DoubleSpinEditWidget
+    DoubleSpinEditWidget, SessionWidget
 from cranio.utils import logger
 
 
@@ -122,6 +122,23 @@ class NotesWindow(QDialog):
     @notes.setter
     def notes(self, value: str):
         self.notes_widget.value = value
+
+
+class SessionDialog(QDialog):
+    signal_close = pyqtSignal()
+
+    def __init__(self, session_widget: SessionWidget):
+        super().__init__()
+        self.session_widget = session_widget
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.session_widget)
+        self.main_layout.addWidget(self.session_widget)
+        self.setLayout(self.main_layout)
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        self.signal_close.emit()
 
 
 class MainWindow(QMainWindow):

@@ -5,8 +5,7 @@ from PyQt5.QtCore import QEvent
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
-    AnnotatedEvent, Log, SensorInfo, EventType
-from cranio.producer import ProducerProcess
+    AnnotatedEvent, Log, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook
 
 wait_sec = 0.5
@@ -52,14 +51,14 @@ def caught_exceptions():
 
 
 def test_start_measurement_inserts_document_and_sensor_info_to_database(machine):
-    # start measurement
+    # Start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
     assert machine.document is not None
     with session_scope() as s:
         document = s.query(Document).first()
         assert document.document_id == machine.document.document_id
-        # verify patient, distractor and operator
+        # Verify patient, distractor and operator
         assert document.patient_id == machine.active_patient
         assert document.distractor_number == machine.active_distractor
         assert document.operator == machine.active_operator
@@ -214,3 +213,47 @@ def test_event_detection_state_default_region_count_equals_turns_in_full_turn(da
     state.onEntry(event)
     app.processEvents()
     assert state.region_count() == int(sensor_info.turns_in_full_turn)
+
+
+def test_state_machine_transitions_to_and_from_change_session_state(machine):
+    # Add extra session to switch to
+    with session_scope() as s:
+        s.add(Session())
+    assert machine.s1.signal_change_session is not None
+    # Trigger transition from s1 to s9 (ChangeSessionState)
+    machine.s1.signal_change_session.emit()
+    assert machine.in_state(machine.s9)
+    # Select session that is not the instance
+    assert len(machine.s9.session_widget.sessions) == machine.s9.session_widget.session_count() == 2
+    other_sessions = [s for s in machine.s9.session_widget.sessions
+                      if s.session_id != Session.get_instance().session_id]
+    assert len(other_sessions) == 1
+    active_session_id = other_sessions[0].session_id
+    machine.s9.session_widget.select_session(active_session_id)
+    # Click Select (Trigger transition from s9 to s10)
+    machine.s9.signal_select.emit()
+    assert machine.in_state(machine.s10)
+    # Click No on "Are you sure?" prompt (Trigger transition from s10 back to s9)
+    machine.s10.signal_no.emit()
+    assert machine.in_state(machine.s9)
+    # Click Cancel to go back to s1
+    machine.s9.signal_cancel.emit()
+    assert machine.in_state(machine.s1)
+    # Trigger transition back to s9 (ChangeSessionState)
+    machine.s1.signal_change_session.emit()
+    assert machine.in_state(machine.s9)
+    # Click Select to go to s10
+    machine.s9.signal_select.emit()
+    # Click Yes on "Are you sure?" prompt (Trigger transition from s10 to s1)
+    machine.s10.signal_yes.emit()
+    assert machine.in_state(machine.s1)
+    # Verify that session has changed
+    assert Session.get_instance().session_id == active_session_id
+
+
+def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_cancel_button(machine):
+    # Trigger transition from s1 to s9 (ChangeSessionState)
+    machine.s1.signal_change_session.emit()
+    assert machine.in_state(machine.s9)
+    machine.s9.session_dialog.close()
+    assert machine.in_state(machine.s1)
