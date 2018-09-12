@@ -1,7 +1,7 @@
 import pytest
 import time
 import logging
-from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
@@ -25,8 +25,7 @@ def machine(producer_process, database_patient_fixture):
     app.processEvents()
     yield state_machine
     # Kill producer
-    if state_machine.producer_process.is_alive():
-        state_machine.producer_process.join()
+    state_machine.producer_process.join()
     state_machine.stop()
 
 
@@ -257,3 +256,12 @@ def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_c
     assert machine.in_state(machine.s9)
     machine.s9.session_dialog.close()
     assert machine.in_state(machine.s1)
+
+
+def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is_stop(qtbot, machine):
+    # Run two loops to verify same behavior when coming back to initial state from measurement state
+    for _ in range(2):
+        with qtbot.waitSignal(machine.main_window.signal_start):
+            qtbot.keyPress(machine.main_window.measurement_widget.start_button, Qt.Key_Enter)
+        with qtbot.waitSignal(machine.main_window.signal_stop):
+            qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)

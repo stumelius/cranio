@@ -53,6 +53,11 @@ class InitialState(MyState):
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         self.main_window.show()
+        # Set focus on Start button so that pressing Enter will trigger it
+        logger.debug('Set focus on Start button')
+        self.main_window.measurement_widget.stop_button.setDefault(False)
+        self.main_window.measurement_widget.start_button.setDefault(True)
+        self.main_window.measurement_widget.start_button.setFocus()
 
 
 class ChangeSessionState(MyState):
@@ -118,11 +123,19 @@ class MeasurementState(MyState):
         with session_scope() as s:
             logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
+        # Kill old producer process
+        if self.main_window.producer_process is not None:
+            self.main_window.producer_process.join()
         # Create producer process and register connected sensor
         self.main_window.producer_process = ProducerProcess('Imada torque producer', document=self.document)
         self.main_window.register_sensor_with_producer()
         # Start producing!
         self.main_window.measurement_widget.producer_process.start()
+        # Set focus on Start button so that pressing Enter will trigger it
+        logger.debug('Set focus on Stop button')
+        self.main_window.measurement_widget.start_button.setDefault(False)
+        self.main_window.measurement_widget.stop_button.setDefault(True)
+        self.main_window.measurement_widget.stop_button.setFocus()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
