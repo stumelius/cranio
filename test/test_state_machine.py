@@ -120,23 +120,11 @@ def test_event_detection_state_flow(machine):
     # trigger transition from s1 to s3 (EventDetectionState)
     machine.transition_map[machine.s1][machine.s3].emit()
     app.processEvents()
+    # note that regions (sensor_info.turns_in_full_turn) are created on state entry
     region_count = machine.s3.region_count()
-    # trigger transition from s3 to s4
-    machine.transition_map[machine.s3][machine.s4].emit()
-    app.processEvents()
-    # trigger transition back to s3 (i.e., click No on "are you sure?" prompt)
-    machine.transition_map[machine.s4][machine.s3].emit()
-    app.processEvents()
-    # verify that no annotated events were entered
-    with session_scope() as s:
-        events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
-        assert len(events) == 0
-    # trigger transition from s3 to s4
-    machine.transition_map[machine.s3][machine.s4].emit()
-    app.processEvents()
-    # trigger transition from s4 to s5 (i.e., click Yes on "are you sure?" prompt)
-    machine.transition_map[machine.s4][machine.s5].emit()
-    app.processEvents()
+    # click ok in s3 to transition to s6
+    machine.s3.signal_ok.emit()
+    assert machine.in_state(machine.s6)
     # verify that annotated events were entered
     with session_scope() as s:
         events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
