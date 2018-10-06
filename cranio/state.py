@@ -1,5 +1,5 @@
 from typing import List
-from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
+from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition, QFinalState
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
@@ -366,8 +366,11 @@ class MyStateMachine(QStateMachine):
         self.s9 = ChangeSessionState()
         self.s10 = AreYouSureState('You have selected session {session_info}. '
                                    'Are you sure you want to continue?', name='s10 (AreYouSureState)')
+        self.s11 = AreYouSureState('Are you sure you want to exit the application?')
+        self.s0 = QFinalState()
         # Set states
-        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8, self.s9, self.s10):
+        for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8, self.s9, self.s10,
+                  self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
         # Define transitions
@@ -375,7 +378,10 @@ class MyStateMachine(QStateMachine):
         self.start_measurement_transition.setTargetState(self.s2)
         self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
         self.change_active_session_transition.setTargetState(self.s1)
-        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok, self.s9: self.s1.signal_change_session},
+        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
+                                         self.s3: self.main_window.signal_ok,
+                                         self.s9: self.s1.signal_change_session,
+                                         self.s11: self.main_window.signal_close},
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s4: self.s3.signal_ok},
                                self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
@@ -384,7 +390,8 @@ class MyStateMachine(QStateMachine):
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
                                self.s8: {self.s1: self.s8.signal_finished},
                                self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
-                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition}}
+                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition},
+                               self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
                 if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition):

@@ -265,3 +265,16 @@ def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is
             qtbot.keyPress(machine.main_window.measurement_widget.start_button, Qt.Key_Enter)
         with qtbot.waitSignal(machine.main_window.signal_stop):
             qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)
+
+
+def test_click_close_in_main_window_prompts_verification_from_user(machine):
+    # Trigger close and verify that state changed to s11
+    machine.main_window.signal_close.emit()
+    assert machine.in_state(machine.s11)
+    # Trigger No and verify that state is back to s1
+    machine.s11.signal_no.emit()
+    assert machine.in_state(machine.s1)
+    # Trigger close again, trigger Yes and verify that machine has stopped
+    machine.main_window.signal_close.emit()
+    machine.s11.signal_yes.emit()
+    assert not machine.isRunning()

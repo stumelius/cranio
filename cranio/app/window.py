@@ -143,6 +143,7 @@ class SessionDialog(QDialog):
 
 class MainWindow(QMainWindow):
     """ Craniodistraction application main window. """
+    signal_close = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -278,4 +279,9 @@ class MainWindow(QMainWindow):
     def unregister_sensor(self):
         self.producer_process.producer.unregister_sensor(self.sensor)
         self.sensor = None
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        self.signal_close.emit()
 
