@@ -299,7 +299,8 @@ class ProducerProcess:
         
     def join(self, timeout=1) -> int:
         """
-        Join the process. If the process won't shut down gracefully, it is forcefully terminated.
+        Join the process. If the process is not alive to begin with, nothing happens.
+        If the process won't shut down gracefully, it is forcefully terminated.
 
         :param timeout: Join timeout in seconds
         :return: Process exit code
@@ -308,12 +309,13 @@ class ProducerProcess:
         # close the queue and join the background thread
         #self.queue.close()
         #self.queue.join_thread()
-        self._process.join(timeout)
         if self.is_alive():
-            logger.error('Producer process "{}" is not shutting down gracefully. '
-                          'Resorting to force terminate and join...'.format(str(self)))
-            self._process.terminate()
             self._process.join(timeout)
+            if self.is_alive():
+                logger.error('Producer process "{}" is not shutting down gracefully. '
+                              'Resorting to force terminate and join...'.format(str(self)))
+                self._process.terminate()
+                self._process.join(timeout)
         logger.info('Producer process "{}" joined successfully'.format(str(self)))
         return self._process.exitcode
 

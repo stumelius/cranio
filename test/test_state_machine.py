@@ -1,7 +1,7 @@
 import pytest
 import time
 import logging
-from PyQt5.QtCore import QEvent
+from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
@@ -25,8 +25,7 @@ def machine(producer_process, database_patient_fixture):
     app.processEvents()
     yield state_machine
     # Kill producer
-    if state_machine.producer_process.is_alive():
-        state_machine.producer_process.join()
+    state_machine.producer_process.join()
     state_machine.stop()
 
 
@@ -121,23 +120,11 @@ def test_event_detection_state_flow(machine):
     # trigger transition from s1 to s3 (EventDetectionState)
     machine.transition_map[machine.s1][machine.s3].emit()
     app.processEvents()
+    # note that regions (sensor_info.turns_in_full_turn) are created on state entry
     region_count = machine.s3.region_count()
-    # trigger transition from s3 to s4
-    machine.transition_map[machine.s3][machine.s4].emit()
-    app.processEvents()
-    # trigger transition back to s3 (i.e., click No on "are you sure?" prompt)
-    machine.transition_map[machine.s4][machine.s3].emit()
-    app.processEvents()
-    # verify that no annotated events were entered
-    with session_scope() as s:
-        events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
-        assert len(events) == 0
-    # trigger transition from s3 to s4
-    machine.transition_map[machine.s3][machine.s4].emit()
-    app.processEvents()
-    # trigger transition from s4 to s5 (i.e., click Yes on "are you sure?" prompt)
-    machine.transition_map[machine.s4][machine.s5].emit()
-    app.processEvents()
+    # click ok in s3 to transition to s6
+    machine.s3.signal_ok.emit()
+    assert machine.in_state(machine.s6)
     # verify that annotated events were entered
     with session_scope() as s:
         events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
@@ -257,3 +244,33 @@ def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_c
     assert machine.in_state(machine.s9)
     machine.s9.session_dialog.close()
     assert machine.in_state(machine.s1)
+
+
+def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is_stop(qtbot, machine):
+    # Run two loops to verify same behavior when coming back to initial state from measurement state
+    for _ in range(2):
+        with qtbot.waitSignal(machine.main_window.signal_start):
+            qtbot.keyPress(machine.main_window.measurement_widget.start_button, Qt.Key_Enter)
+        with qtbot.waitSignal(machine.main_window.signal_stop):
+            qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)
+
+
+def test_click_close_in_main_window_prompts_verification_from_user(machine):
+    # Trigger close and verify that state changed to s11
+    machine.main_window.signal_close.emit()
+    assert machine.in_state(machine.s11)
+    # Trigger No and verify that state is back to s1
+    machine.s11.signal_no.emit()
+    assert machine.in_state(machine.s1)
+    # Trigger close again, trigger Yes and verify that machine has stopped
+    machine.main_window.signal_close.emit()
+    machine.s11.signal_yes.emit()
+    assert not machine.isRunning()
+
+
+def test_press_enter_in_are_you_sure_state_means_yes(database_patient_fixture, qtbot):
+    event = QEvent(QEvent.None_)
+    state = AreYouSureState('foo')
+    state.onEntry(event)
+    with qtbot.waitSignal(state.signal_yes):
+        qtbot.keyPress(state.yes_button, Qt.Key_Enter)

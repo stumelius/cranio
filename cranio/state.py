@@ -1,5 +1,5 @@
 from typing import List
-from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition
+from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition, QFinalState
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
@@ -53,6 +53,11 @@ class InitialState(MyState):
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         self.main_window.show()
+        # Set focus on Start button so that pressing Enter will trigger it
+        logger.debug('Set focus on Start button')
+        self.main_window.measurement_widget.stop_button.setDefault(False)
+        self.main_window.measurement_widget.start_button.setDefault(True)
+        self.main_window.measurement_widget.start_button.setFocus()
 
 
 class ChangeSessionState(MyState):
@@ -118,11 +123,19 @@ class MeasurementState(MyState):
         with session_scope() as s:
             logger.debug(f'Enter document: {str(self.document)}')
             s.add(self.document)
+        # Kill old producer process
+        if self.main_window.producer_process is not None:
+            self.main_window.producer_process.join()
         # Create producer process and register connected sensor
         self.main_window.producer_process = ProducerProcess('Imada torque producer', document=self.document)
         self.main_window.register_sensor_with_producer()
         # Start producing!
         self.main_window.measurement_widget.producer_process.start()
+        # Set focus on Start button so that pressing Enter will trigger it
+        logger.debug('Set focus on Stop button')
+        self.main_window.measurement_widget.start_button.setDefault(False)
+        self.main_window.measurement_widget.stop_button.setDefault(True)
+        self.main_window.measurement_widget.stop_button.setFocus()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
@@ -162,17 +175,13 @@ class EventDetectionState(MyState):
 
     def onExit(self, event: QEvent):
         super().onExit(event)
-        # assign annotated events and link to document
-        logger.debug('Assign annotated events and link to document')
-        self.annotated_events = self.dialog.get_annotated_events()
-        for e in self.annotated_events:
-            e.document_id = self.document.document_id
-        for event in self.annotated_events:
-            logger.debug(str(event))
         self.dialog.close()
 
     def region_count(self):
         return self.dialog.region_count()
+
+    def get_annotated_events(self):
+        return self.dialog.get_annotated_events()
 
 
 class AreYouSureState(MyState):
@@ -213,30 +222,15 @@ class AreYouSureState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        # Set focus on Yes button so that pressing Enter will trigger it
+        self.yes_button.setDefault(True)
+        self.no_button.setDefault(False)
         self.dialog.setText(self.template.format(**self.namespace()))
         self.dialog.open()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
         self.dialog.close()
-
-
-class EnterAnnotatedEventsState(MyState):
-    signal_finished = pyqtSignal()
-
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
-
-    def onEntry(self, event: QEvent):
-        super().onEntry(event)
-        if not self.annotated_events:
-            raise ValueError('No annotated events to enter')
-        logger.debug('Enter annotated events to database')
-        with session_scope() as s:
-            for e in self.annotated_events:
-                s.add(e)
-                logger.debug(str(e))
-        self.signal_finished.emit()
 
 
 class NoteState(MyState):
@@ -292,12 +286,7 @@ class UpdateDocumentState(MyState):
 
 
 class StartMeasurementTransition(QSignalTransition):
-
     def __init__(self, signal: pyqtSignal, source_state: QState=None):
-        """
-
-        :param source_state:
-        """
         super().__init__(signal, source_state)
 
     def eventTest(self, event: QEvent) -> bool:
@@ -316,10 +305,6 @@ class StartMeasurementTransition(QSignalTransition):
 
 class ChangeActiveSessionTransition(QSignalTransition):
     def __init__(self, signal: pyqtSignal, source_state: QState=None):
-        """
-
-        :param source_state:
-        """
         super().__init__(signal, source_state)
 
     def onTransition(self, event: QEvent):
@@ -330,6 +315,24 @@ class ChangeActiveSessionTransition(QSignalTransition):
         with session_scope() as s:
             session = s.query(Session).filter(Session.session_id == session_id).first()
         Session.set_instance(session)
+
+
+class EnterAnnotatedEventsTransition(QSignalTransition):
+    def __init__(self, signal: pyqtSignal, source_state: QState=None):
+        super().__init__(signal, source_state)
+
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        # Assign annotated events and link to document
+        logger.debug('Assign annotated events and link to document')
+        self.sourceState().annotated_events = self.sourceState().get_annotated_events()
+        for e in self.sourceState().annotated_events:
+            e.document_id = self.sourceState().document.document_id
+        logger.debug('Enter annotated events to database')
+        with session_scope() as s:
+            for e in self.sourceState().annotated_events:
+                s.add(e)
+                logger.debug(str(e))
 
 
 class MyStateMachine(QStateMachine):
@@ -344,17 +347,16 @@ class MyStateMachine(QStateMachine):
         self.s1 = InitialState()
         self.s2 = MeasurementState()
         self.s3 = EventDetectionState()
-        self.s4 = AreYouSureState('You have selected {region_count} regions. '
-                                  'Are you sure you want to continue?')
-        self.s5 = EnterAnnotatedEventsState()
         self.s6 = NoteState()
         self.s7 = AreYouSureState('Are you sure you want to continue?')
         self.s8 = UpdateDocumentState()
         self.s9 = ChangeSessionState()
         self.s10 = AreYouSureState('You have selected session {session_info}. '
                                    'Are you sure you want to continue?', name='s10 (AreYouSureState)')
+        self.s11 = AreYouSureState('Are you sure you want to exit the application?')
+        self.s0 = QFinalState()
         # Set states
-        for s in (self.s1, self.s2, self.s3, self.s4, self.s5, self.s6, self.s7, self.s8, self.s9, self.s10):
+        for s in (self.s0, self.s1, self.s2, self.s3, self.s6, self.s7, self.s8, self.s9, self.s10, self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
         # Define transitions
@@ -362,19 +364,24 @@ class MyStateMachine(QStateMachine):
         self.start_measurement_transition.setTargetState(self.s2)
         self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
         self.change_active_session_transition.setTargetState(self.s1)
-        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition, self.s3: self.main_window.signal_ok, self.s9: self.s1.signal_change_session},
+        self.enter_annotated_events_transition = EnterAnnotatedEventsTransition(self.s3.signal_ok)
+        self.enter_annotated_events_transition.setTargetState(self.s6)
+        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
+                                         self.s3: self.main_window.signal_ok,
+                                         self.s9: self.s1.signal_change_session,
+                                         self.s11: self.main_window.signal_close},
                                self.s2: {self.s1: self.main_window.signal_stop},
-                               self.s3: {self.s4: self.s3.signal_ok},
-                               self.s4: {self.s3: self.s4.signal_no, self.s5: self.s4.signal_yes},
-                               self.s5: {self.s6: self.s5.signal_finished},
+                               self.s3: {self.s6: self.enter_annotated_events_transition},
                                self.s6: {self.s7: self.s6.signal_ok},
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
                                self.s8: {self.s1: self.s8.signal_finished},
                                self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
-                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition}}
+                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition},
+                               self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
-                if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition):
+                if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
+                                    EnterAnnotatedEventsTransition):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)
