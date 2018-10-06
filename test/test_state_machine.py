@@ -278,3 +278,11 @@ def test_click_close_in_main_window_prompts_verification_from_user(machine):
     machine.main_window.signal_close.emit()
     machine.s11.signal_yes.emit()
     assert not machine.isRunning()
+
+
+def test_press_enter_in_are_you_sure_state_means_yes(database_patient_fixture, qtbot):
+    event = QEvent(QEvent.None_)
+    state = AreYouSureState('foo')
+    state.onEntry(event)
+    with qtbot.waitSignal(state.signal_yes):
+        qtbot.keyPress(state.yes_button, Qt.Key_Enter)

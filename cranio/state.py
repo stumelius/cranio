@@ -226,6 +226,9 @@ class AreYouSureState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        # Set focus on Yes button so that pressing Enter will trigger it
+        self.yes_button.setDefault(True)
+        self.no_button.setDefault(False)
         self.dialog.setText(self.template.format(**self.namespace()))
         self.dialog.open()
 
