@@ -13,14 +13,26 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
 from ruamel import yaml
+from PyQt5.QtCore import QStateMachine
 from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
 
 class CustomAdapter(logging.LoggerAdapter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.machine = None
+
     def process(self, msg, kwargs):
-        # TODO: Get current state from state machine
-        self.extra['state'] = 'PlaceHolderState'
+        if not self.machine:
+            self.extra['state'] = 'UnknownState'
+        else:
+            # TODO: Get current state from state machine
+            self.extra['state'] = 'ToBeImplemented'
         return super().process(msg, kwargs)
+
+    def register_machine(self, machine: QStateMachine):
+        self.machine = machine
 
 
 logger = CustomAdapter(logging.getLogger('cranio'), {})
