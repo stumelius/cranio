@@ -153,7 +153,7 @@ class EventDetectionState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
         self.dialog = RegionPlotWindow()
-        # signals
+        # Signals
         self.signal_ok = self.dialog.ok_button.clicked
 
     def onEntry(self, event: QEvent):
@@ -165,9 +165,9 @@ class EventDetectionState(MyState):
         """
         super().onEntry(event)
         self.dialog.plot(*self.document.get_related_time_series())
-        # clear existing regions
+        # Clear existing regions
         self.dialog.clear_regions()
-        # add as many regions as there are turns in one full turn
+        # Add as many regions as there are turns in one full turn
         sensor_info = self.document.get_related_sensor_info()
         self.dialog.set_add_count(int(sensor_info.turns_in_full_turn))
         self.dialog.add_button_clicked()

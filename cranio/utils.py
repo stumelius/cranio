@@ -15,7 +15,15 @@ from typing import Union, Dict
 from ruamel import yaml
 from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
-logger = logging.getLogger('cranio')
+
+class CustomAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        # TODO: Get current state from state machine
+        self.extra['state'] = 'PlaceHolderState'
+        return super().process(msg, kwargs)
+
+
+logger = CustomAdapter(logging.getLogger('cranio'), {})
 
 
 class UTCFormatter(logging.Formatter):

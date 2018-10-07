@@ -105,25 +105,33 @@ def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
     assert machine.in_state(machine.s1)
 
 
-def test_event_detection_state_flow(machine):
-    # assign document
+def test_event_detection_state_flow(machine, qtbot):
+    # Assign document
     machine.document = machine.s2.create_document()
-    # enter sensor info and document
+    # Enter sensor info and document
     machine.sensor.enter_info_to_database()
     with session_scope() as s:
         s.add(machine.document)
-    # generate and enter data
+    # Generate and enter data
     n = 10
     time_s = list(range(n))
     torque_Nm = list(range(n))
     insert_time_series_to_database(time_s, torque_Nm, machine.document)
-    # trigger transition from s1 to s3 (EventDetectionState)
+    # Trigger transition from s1 to s3 (EventDetectionState)
     machine.transition_map[machine.s1][machine.s3].emit()
     app.processEvents()
-    # note that regions (sensor_info.turns_in_full_turn) are created on state entry
+    # Note that regions (sensor_info.turns_in_full_turn) are created on state entry
     region_count = machine.s3.region_count()
-    # click ok in s3 to transition to s6
-    machine.s3.signal_ok.emit()
+    # Remove regions
+    machine.s3.dialog.clear_regions()
+    assert machine.s3.region_count() == 0
+    machine.s3.dialog.set_add_count(2)
+    # No existing regions -> press enter clicks Add
+    qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
+    assert machine.s3.region_count() == 2
+    # Regions exist -> press enter clicks Ok
+    with qtbot.waitSignal(machine.s3.signal_ok):
+        qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
     assert machine.in_state(machine.s6)
     # verify that annotated events were entered
     with session_scope() as s:
