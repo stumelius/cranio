@@ -237,12 +237,12 @@ class NoteState(MyState):
     def __init__(self, parent=None):
         super().__init__(name=type(self).__name__, parent=parent)
         self.dialog = NotesWindow()
-        # signals
+        # Signals
         self.signal_ok = self.dialog.ok_button.clicked
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
-        # set default full turn count
+        # Set default full turn count
         event_count = len(self.document.get_related_events())
         with session_scope() as s:
             sensor_info = s.query(SensorInfo).\
@@ -254,7 +254,7 @@ class NoteState(MyState):
 
     def onExit(self, event: QEvent):
         super().onExit(event)
-        # update document and close window
+        # Update document and close window
         self.document.notes = self.dialog.notes
         self.document.full_turn_count = self.dialog.full_turn_count
         self.dialog.close()
@@ -286,51 +286,42 @@ class UpdateDocumentState(MyState):
 
 
 class StartMeasurementTransition(QSignalTransition):
-    def __init__(self, signal: pyqtSignal, source_state: QState=None):
-        super().__init__(signal, source_state)
-
     def eventTest(self, event: QEvent) -> bool:
         if not super().eventTest(event):
             return False
         # Invalid patient
-        if not self.sourceState().machine().active_patient:
-            logger.error(f'Invalid patient "{self.sourceState().machine().active_patient}"')
+        if not self.machine().active_patient:
+            logger.error(f'Invalid patient "{self.machine().active_patient}"')
             return False
         # No sensor connected
-        if self.sourceState().machine().sensor is None:
+        if self.machine().sensor is None:
             logger.error('No sensors connected')
             return False
         return True
 
 
 class ChangeActiveSessionTransition(QSignalTransition):
-    def __init__(self, signal: pyqtSignal, source_state: QState=None):
-        super().__init__(signal, source_state)
-
     def onTransition(self, event: QEvent):
         super().onTransition(event)
         # Change active session
-        session_id = self.sourceState().machine().s9.active_session_id()
+        session_id = self.machine().s9.active_session_id()
         logger.debug(f'[{type(self).__name__}] Change active session to {session_id}')
         with session_scope() as s:
             session = s.query(Session).filter(Session.session_id == session_id).first()
-        Session.set_instance(session)
+        self.machine().active_session = session
 
 
 class EnterAnnotatedEventsTransition(QSignalTransition):
-    def __init__(self, signal: pyqtSignal, source_state: QState=None):
-        super().__init__(signal, source_state)
-
     def onTransition(self, event: QEvent):
         super().onTransition(event)
         # Assign annotated events and link to document
         logger.debug('Assign annotated events and link to document')
-        self.sourceState().annotated_events = self.sourceState().get_annotated_events()
-        for e in self.sourceState().annotated_events:
-            e.document_id = self.sourceState().document.document_id
+        self.machine().annotated_events = self.sourceState().get_annotated_events()
+        for e in self.machine().annotated_events:
+            e.document_id = self.machine().document.document_id
         logger.debug('Enter annotated events to database')
         with session_scope() as s:
-            for e in self.sourceState().annotated_events:
+            for e in self.machine().annotated_events:
                 s.add(e)
                 logger.debug(str(e))
 
@@ -385,6 +376,14 @@ class MyStateMachine(QStateMachine):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)
+
+    @property
+    def active_session(self):
+        return Session.get_instance()
+
+    @active_session.setter
+    def active_session(self, value: Session):
+        Session.set_instance(value)
 
     @property
     def active_patient(self):
