@@ -2,6 +2,7 @@
 [![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
 [![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
 [![Waffle.io - Columns and their card count](https://badge.waffle.io/smomni/cranio.svg?columns=all)](https://waffle.io/smomni/cranio)
+[![Maintainability](https://api.codeclimate.com/v1/badges/c14e1d3a9202d71024a3/maintainability)](https://codeclimate.com/github/smomni/cranio/maintainability)
 
 # Cranio
 
