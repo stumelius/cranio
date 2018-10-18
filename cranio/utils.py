@@ -13,9 +13,32 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Union, Dict
 from ruamel import yaml
+from PyQt5.QtCore import QStateMachine
 from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
-logger = logging.getLogger('cranio')
+
+class CustomAdapter(logging.LoggerAdapter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.machine = None
+
+    def process(self, msg, kwargs):
+        if not self.machine:
+            self.extra['state'] = 'UnknownState'
+        else:
+            try:
+                self.extra['state'] = str(self.machine.current_state())
+            except ValueError:
+                self.extra['state'] = 'UndefinedState'
+        return super().process(msg, kwargs)
+
+    def register_machine(self, machine: QStateMachine):
+        logger.debug(f'{machine} registered with logging adapter')
+        self.machine = machine
+
+
+logger = CustomAdapter(logging.getLogger('cranio'), {})
 
 
 class UTCFormatter(logging.Formatter):

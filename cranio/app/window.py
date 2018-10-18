@@ -35,16 +35,20 @@ class RegionPlotWindow(QDialog):
         self.region_plot_widget = RegionPlotWidget()
         self.notes_window = NotesWindow()
         self.ok_button = QPushButton('Ok')
+        self.add_button = self.region_plot_widget.add_button
         self.init_ui()
 
     def init_ui(self):
         """ Initialize UI elements. """
         self.setWindowTitle('Region window')
-        # add maximize button
+        # Add maximize button
         self.setWindowFlag(Qt.WindowMinMaxButtonsHint)
         self.setLayout(self.layout)
         self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
+        self.ok_button.clicked.connect(self.ok_button_clicked)
+        # Update focus when Add is clicked
+        self.add_button.clicked.connect(self.update_focus)
 
     @property
     def x_arr(self):
@@ -63,13 +67,13 @@ class RegionPlotWindow(QDialog):
         """ Overload method. """
         return self.region_plot_widget.plot(x, y)
 
+    def get_add_count(self) -> int:
+        return self.region_plot_widget.get_add_count()
+
     def set_add_count(self, value: int):
         """ Overload method. """
+        # TODO: Replace getter and setter with property
         return self.region_plot_widget.set_add_count(value)
-
-    def add_button_clicked(self):
-        """ Overload method. """
-        return self.region_plot_widget.add_button_clicked()
 
     def get_region_edit(self, index: int):
         """ Overload method. """
@@ -80,7 +84,29 @@ class RegionPlotWindow(QDialog):
         return self.region_plot_widget.region_count()
 
     def clear_regions(self):
-        return self.region_plot_widget.remove_all()
+        logger.debug('Clear regions')
+        ret = self.region_plot_widget.remove_all()
+        self.update_focus()
+        return ret
+
+    def update_focus(self):
+        """
+        If no regions have been entered, set focus on Add so that pressing Enter triggers it.
+        Otherwise, set focus on Ok.
+
+        :return:
+        """
+        if not self.region_count():
+            logger.debug('Set focus on Add button')
+            self.region_plot_widget.add_button.setDefault(True)
+            self.ok_button.setDefault(False)
+        else:
+            logger.debug('Set focus on Ok button')
+            self.region_plot_widget.add_button.setDefault(False)
+            self.ok_button.setDefault(True)
+
+    def ok_button_clicked(self):
+        logger.debug('Ok button clicked')
 
 
 class NotesWindow(QDialog):

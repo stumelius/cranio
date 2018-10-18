@@ -2,7 +2,7 @@ version: 1
 formatters:
   default:
     class: cranio.utils.UTCFormatter
-    format: '%(asctime)s.%(msecs)03d;%(name)s;%(threadName)s;%(levelname)s;%(message)s'
+    format: '[%(asctime)s.%(msecs)03d] {%(filename)s:%(lineno)d} %(state)s %(levelname)s - %(message)s'
     datefmt: '%Y-%m-%d %H:%M:%S'
 handlers:
   console:

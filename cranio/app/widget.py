@@ -945,6 +945,14 @@ class RegionPlotWidget(QWidget):
         """
         return len(self.region_edit_map)
 
+    def get_add_count(self) -> int:
+        """
+        Return value from the add count widget.
+
+        :return:
+        """
+        return self.add_count.value()
+
     def set_add_count(self, value: int):
         """
         Set integer value to the add count widget.
@@ -1030,10 +1038,11 @@ class RegionPlotWidget(QWidget):
 
         :return:
         """
+        count = self.get_add_count()
+        logger.debug(f'{type(self).__name__} add button clicked (add count={count})')
         if len(self.x_arr) == 0:
             logger.error('Unable to add region to empty plot')
             return 0
-        count = self.add_count.value()
         if count > 0:
             x_min = min(self.x_arr)
             interval = (max(self.x_arr) - x_min) / count
