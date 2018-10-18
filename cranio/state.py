@@ -9,9 +9,13 @@ from cranio.producer import ProducerProcess
 
 
 class MyState(QState):
+
     def __init__(self, name: str, parent=None):
         super().__init__(parent)
         self.name = name
+
+    def __str__(self):
+        return f'{type(self).__name__}(name="{self.name}")'
 
     @property
     def main_window(self) -> MainWindow:
@@ -43,8 +47,8 @@ class MyState(QState):
 
 
 class InitialState(MyState):
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
 
     @property
     def signal_change_session(self):
@@ -61,8 +65,8 @@ class InitialState(MyState):
 
 
 class ChangeSessionState(MyState):
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
         # Initialize session dialog
         self.session_widget = SessionWidget()
         self.session_dialog = SessionDialog(self.session_widget)
@@ -91,8 +95,8 @@ class ChangeSessionState(MyState):
 
 
 class MeasurementState(MyState):
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
 
     def create_document(self) -> Document:
         """
@@ -150,8 +154,8 @@ class MeasurementState(MyState):
 
 class EventDetectionState(MyState):
 
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
         self.dialog = RegionPlotWindow()
         # Signals
         self.signal_ok = self.dialog.ok_button.clicked
@@ -234,8 +238,8 @@ class AreYouSureState(MyState):
 
 
 class NoteState(MyState):
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
         self.dialog = NotesWindow()
         # Signals
         self.signal_ok = self.dialog.ok_button.clicked
@@ -271,8 +275,8 @@ class NoteState(MyState):
 class UpdateDocumentState(MyState):
     signal_finished = pyqtSignal()
 
-    def __init__(self, parent=None):
-        super().__init__(name=type(self).__name__, parent=parent)
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -335,16 +339,16 @@ class MyStateMachine(QStateMachine):
         self.document = None
         self.annotated_events = None
         # Initialize states
-        self.s1 = InitialState()
-        self.s2 = MeasurementState()
-        self.s3 = EventDetectionState()
-        self.s6 = NoteState()
-        self.s7 = AreYouSureState('Are you sure you want to continue?')
-        self.s8 = UpdateDocumentState()
-        self.s9 = ChangeSessionState()
+        self.s1 = InitialState(name='s1')
+        self.s2 = MeasurementState(name='s2')
+        self.s3 = EventDetectionState(name='s3')
+        self.s6 = NoteState(name='s6')
+        self.s7 = AreYouSureState('Are you sure you want to continue?', name='s7')
+        self.s8 = UpdateDocumentState(name='s8')
+        self.s9 = ChangeSessionState(name='s9')
         self.s10 = AreYouSureState('You have selected session {session_info}. '
-                                   'Are you sure you want to continue?', name='s10 (AreYouSureState)')
-        self.s11 = AreYouSureState('Are you sure you want to exit the application?')
+                                   'Are you sure you want to continue?', name='s10')
+        self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
         self.s0 = QFinalState()
         # Set states
         for s in (self.s0, self.s1, self.s2, self.s3, self.s6, self.s7, self.s8, self.s9, self.s10, self.s11):
@@ -417,3 +421,15 @@ class MyStateMachine(QStateMachine):
         :return:
         """
         return state in self.configuration()
+
+    def current_state(self) -> QState:
+        """
+        Return the current state the machine is in.
+
+        :raises ValueError: If current state is not defined
+        :return:
+        """
+        active_states = self.configuration()
+        if len(active_states) != 1:
+            raise ValueError(f'Current state not defined if {len(active_states)} states are active simultaneously')
+        return list(active_states)[0]

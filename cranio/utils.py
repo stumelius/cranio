@@ -27,11 +27,14 @@ class CustomAdapter(logging.LoggerAdapter):
         if not self.machine:
             self.extra['state'] = 'UnknownState'
         else:
-            # TODO: Get current state from state machine
-            self.extra['state'] = 'ToBeImplemented'
+            try:
+                self.extra['state'] = str(self.machine.current_state())
+            except ValueError:
+                self.extra['state'] = 'UndefinedState'
         return super().process(msg, kwargs)
 
     def register_machine(self, machine: QStateMachine):
+        logger.debug(f'{machine} registered with logging adapter')
         self.machine = machine
 
 

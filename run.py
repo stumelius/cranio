@@ -19,6 +19,7 @@ def run():
     :return: 
     """
     machine = MyStateMachine()
+    logger.register_machine(machine)
     logger.info('Start state machine')
     machine.start()
     ret = app.exec_()
