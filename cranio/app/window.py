@@ -35,6 +35,7 @@ class RegionPlotWindow(QDialog):
         self.region_plot_widget = RegionPlotWidget()
         self.notes_window = NotesWindow()
         self.ok_button = QPushButton('Ok')
+        self.add_button = self.region_plot_widget.add_button
         self.init_ui()
 
     def init_ui(self):
@@ -46,6 +47,8 @@ class RegionPlotWindow(QDialog):
         self.layout.addWidget(self.region_plot_widget)
         self.layout.addWidget(self.ok_button)
         self.ok_button.clicked.connect(self.ok_button_clicked)
+        # Update focus when Add is clicked
+        self.add_button.clicked.connect(self.update_focus)
 
     @property
     def x_arr(self):
@@ -71,13 +74,6 @@ class RegionPlotWindow(QDialog):
         """ Overload method. """
         # TODO: Replace getter and setter with property
         return self.region_plot_widget.set_add_count(value)
-
-    def add_button_clicked(self):
-        """ Overload method. """
-        logger.debug(f'Add button clicked (add count = {self.get_add_count()})')
-        ret = self.region_plot_widget.add_button_clicked()
-        self.update_focus()
-        return ret
 
     def get_region_edit(self, index: int):
         """ Overload method. """

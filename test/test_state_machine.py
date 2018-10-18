@@ -6,7 +6,7 @@ from cranio.app import app
 from cranio.state import MyStateMachine, AreYouSureState
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
     AnnotatedEvent, Log, SensorInfo, EventType, Session
-from cranio.utils import attach_excepthook
+from cranio.utils import attach_excepthook, logger
 
 wait_sec = 0.5
 attach_excepthook()
@@ -15,6 +15,7 @@ attach_excepthook()
 @pytest.fixture(scope='function')
 def machine(producer_process, database_patient_fixture):
     state_machine = MyStateMachine()
+    logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     # Connect and register dummy sensor
     state_machine.main_window.connect_dummy_sensor()
@@ -32,6 +33,7 @@ def machine(producer_process, database_patient_fixture):
 @pytest.fixture
 def machine_without_patient(producer_process, database_fixture):
     state_machine = MyStateMachine()
+    logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     state_machine.start()
     app.processEvents()
@@ -125,10 +127,13 @@ def test_event_detection_state_flow(machine, qtbot):
     # Remove regions
     machine.s3.dialog.clear_regions()
     assert machine.s3.region_count() == 0
-    machine.s3.dialog.set_add_count(2)
+    region_count = 2
+    machine.s3.dialog.set_add_count(region_count)
     # No existing regions -> press enter clicks Add
-    qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
-    assert machine.s3.region_count() == 2
+    with qtbot.waitSignal(machine.s3.signal_add):
+        qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
+    assert machine.s3.region_count() == region_count
+    logger.debug('Regions added and asserted')
     # Regions exist -> press enter clicks Ok
     with qtbot.waitSignal(machine.s3.signal_ok):
         qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)

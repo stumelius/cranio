@@ -161,7 +161,7 @@ def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is
     region_plot_window.plot(*document.get_related_time_series())
     # add regions using add button
     region_plot_window.set_add_count(region_count)
-    region_plot_window.add_button_clicked()
+    region_plot_window.add_button.clicked.emit(True)
     # verify that annotated events are correct
     events = region_plot_window.get_annotated_events()
     assert len(events) == region_count
