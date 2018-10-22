@@ -275,23 +275,6 @@ class NoteState(MyState):
         self.dialog.full_turn_count = value
 
 
-class UpdateDocumentState(MyState):
-    signal_finished = pyqtSignal()
-
-    def __init__(self, name: str, parent=None):
-        super().__init__(name=name, parent=parent)
-
-    def onEntry(self, event: QEvent):
-        super().onEntry(event)
-        logger.debug('Update document in database')
-        with session_scope() as s:
-            document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
-            document.notes = self.document.notes
-            document.full_turn_count = self.document.full_turn_count
-            logger.debug(str(document))
-        self.signal_finished.emit()
-
-
 class StartMeasurementTransition(QSignalTransition):
     def eventTest(self, event: QEvent) -> bool:
         if not super().eventTest(event):
@@ -344,6 +327,17 @@ class RemoveAnnotatedEventsTransition(QSignalTransition):
                     filter(AnnotatedEvent.event_num == e.event_num).delete()
 
 
+class UpdateDocumentTransition(QSignalTransition):
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        logger.debug('Update document in database')
+        with session_scope() as s:
+            document = s.query(Document).filter(Document.document_id == self.machine().document.document_id).first()
+            document.notes = self.machine().document.notes
+            document.full_turn_count = self.machine().document.full_turn_count
+            logger.debug(str(document))
+
+
 class MyStateMachine(QStateMachine):
 
     def __init__(self):
@@ -358,14 +352,13 @@ class MyStateMachine(QStateMachine):
         self.s3 = EventDetectionState(name='s3')
         self.s6 = NoteState(name='s6')
         self.s7 = AreYouSureState('Are you sure you want to continue?', name='s7')
-        self.s8 = UpdateDocumentState(name='s8')
         self.s9 = ChangeSessionState(name='s9')
         self.s10 = AreYouSureState('You have selected session {session_info}. '
                                    'Are you sure you want to continue?', name='s10')
         self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
         self.s0 = QFinalState()
         # Set states
-        for s in (self.s0, self.s1, self.s2, self.s3, self.s6, self.s7, self.s8, self.s9, self.s10, self.s11):
+        for s in (self.s0, self.s1, self.s2, self.s3, self.s6, self.s7, self.s9, self.s10, self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
         # Define transitions
@@ -377,6 +370,8 @@ class MyStateMachine(QStateMachine):
         self.enter_annotated_events_transition.setTargetState(self.s6)
         self.remove_annotated_events_transition = RemoveAnnotatedEventsTransition(self.s6.signal_close)
         self.remove_annotated_events_transition.setTargetState(self.s3)
+        self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
+        self.update_document_transition.setTargetState(self.s1)
         self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
                                          self.s3: self.main_window.signal_ok,
                                          self.s9: self.s1.signal_change_session,
@@ -384,15 +379,15 @@ class MyStateMachine(QStateMachine):
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s6: self.enter_annotated_events_transition},
                                self.s6: {self.s7: self.s6.signal_ok, self.s3: self.remove_annotated_events_transition},
-                               self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
-                               self.s8: {self.s1: self.s8.signal_finished},
+                               self.s7: {self.s6: self.s7.signal_no, self.s1: self.update_document_transition},
                                self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
                                self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition},
                                self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
                 if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
-                                    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition):
+                                    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition,
+                                    UpdateDocumentTransition):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)
