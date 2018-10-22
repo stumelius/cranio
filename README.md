@@ -13,8 +13,7 @@ The methods implemented in this library are based on a whitepaper by Ritvanen et
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
-See deployment for notes on how to deploy the project on a target machine.
+These instructions will get you a copy of the project up and running on your local machine.
 
 ### Hardware
 
@@ -25,35 +24,34 @@ digital torque gauge. The gauge features a remote torque sensor with a Jacob's c
 
 ### Prerequisites
 
-* OS: tested on Windows 10
+* OS: Windows, Linux, OS X (tested on Windows 10 and Linux)
 * Python 3.x
 
 ### Installing
 
-The source code is currently hosted on GitHub at https://github.com/smomni/cranio
+The source code is currently hosted on GitHub at https://github.com/smomni/cranio.
 
 You can use git clone and pip to install from sources:
 
-```
+```bash
 git clone https://github.com/smomni/cranio
 cd cranio
 pip install -e .
 ```
 
-The package will be available in Python package index (PyPI) in the future.
+To start the measurement software:
+
+```bash
+python -m run
+```
 
 ## Running the tests
 
 The tests can be run using pytest as the test runner:
 
-```
+```bash
 pytest tests
 ```
-
-## Deployment
-
-Software deployment by installation from sources on a target machine. 
-Alternatively, you can freeze the source in an executable using [PyInstaller](http://www.pyinstaller.org/) and running the executable on a target machine.
 
 ## Workflow
 
