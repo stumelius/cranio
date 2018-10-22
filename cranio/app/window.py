@@ -124,6 +124,7 @@ class RegionPlotWindow(QDialog):
 
 
 class NotesWindow(QDialog):
+    signal_close = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -162,6 +163,12 @@ class NotesWindow(QDialog):
     @notes.setter
     def notes(self, value: str):
         self.notes_widget.value = value
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        logger.debug('X (close) button clicked')
+        self.signal_close.emit()
 
 
 class SessionDialog(QDialog):

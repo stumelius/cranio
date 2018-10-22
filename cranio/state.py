@@ -245,6 +245,7 @@ class NoteState(MyState):
         self.dialog = NotesWindow()
         # Signals
         self.signal_ok = self.dialog.ok_button.clicked
+        self.signal_close = self.dialog.signal_close
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -332,6 +333,17 @@ class EnterAnnotatedEventsTransition(QSignalTransition):
                 logger.debug(str(e))
 
 
+class RemoveAnnotatedEventsTransition(QSignalTransition):
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        with session_scope() as s:
+            for e in self.machine().annotated_events:
+                logger.debug(f'Remove {str(e)} from database')
+                s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == e.document_id).\
+                    filter(AnnotatedEvent.event_type == e.event_type).\
+                    filter(AnnotatedEvent.event_num == e.event_num).delete()
+
+
 class MyStateMachine(QStateMachine):
 
     def __init__(self):
@@ -363,13 +375,15 @@ class MyStateMachine(QStateMachine):
         self.change_active_session_transition.setTargetState(self.s1)
         self.enter_annotated_events_transition = EnterAnnotatedEventsTransition(self.s3.signal_ok)
         self.enter_annotated_events_transition.setTargetState(self.s6)
+        self.remove_annotated_events_transition = RemoveAnnotatedEventsTransition(self.s6.signal_close)
+        self.remove_annotated_events_transition.setTargetState(self.s3)
         self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
                                          self.s3: self.main_window.signal_ok,
                                          self.s9: self.s1.signal_change_session,
                                          self.s11: self.main_window.signal_close},
                                self.s2: {self.s1: self.main_window.signal_stop},
                                self.s3: {self.s6: self.enter_annotated_events_transition},
-                               self.s6: {self.s7: self.s6.signal_ok},
+                               self.s6: {self.s7: self.s6.signal_ok, self.s3: self.remove_annotated_events_transition},
                                self.s7: {self.s6: self.s7.signal_no, self.s8: self.s7.signal_yes},
                                self.s8: {self.s1: self.s8.signal_finished},
                                self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
@@ -378,7 +392,7 @@ class MyStateMachine(QStateMachine):
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
                 if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
-                                    EnterAnnotatedEventsTransition):
+                                    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition):
                     source.addTransition(signal)
                 else:
                     source.addTransition(signal, target)

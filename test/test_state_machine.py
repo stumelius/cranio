@@ -150,34 +150,40 @@ def test_event_detection_state_flow(machine, qtbot):
     with qtbot.waitSignal(machine.s3.signal_ok):
         qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
     assert machine.in_state(machine.s6)
-    # verify that annotated events were entered
+    # Verify that annotated events were entered
     with session_scope() as s:
         events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
         assert len(events) == region_count
         region_edits = [machine.s3.dialog.get_region_edit(i) for i in range(region_count)]
-        # verify region edges
+        # Verify region edges
         for region_edit, event in zip(region_edits, events):
             assert region_edit.left_edge() == event.event_begin
             assert region_edit.right_edge() == event.event_end
-    # transition from s5 to s6 has been triggered automatically
-    # trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
+    # Trigger transition back to s3 and verify that annotated events were removed
+    machine.s6.signal_close.emit()
+    assert machine.in_state(machine.s3)
+    # Trigger transition back to s6
+    with qtbot.waitSignal(machine.s3.signal_ok):
+        qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
+    assert machine.in_state(machine.s6)
+    # Trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
     machine.s6.signal_ok.emit()
     app.processEvents()
-    # trigger transition back to s6 (i.e., click No on "are you sure?" prompt)
+    # Trigger transition back to s6 (i.e., click No on "are you sure?" prompt)
     machine.s7.signal_no.emit()
     app.processEvents()
-    # enter data in NotesWindow
+    # Enter data in NotesWindow
     notes = 'foo'
     full_turn_count = 1.2
     machine.s6.dialog.notes = notes
     machine.s6.dialog.full_turn_count = full_turn_count
-    # trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
+    # Trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
     machine.s6.signal_ok.emit()
     app.processEvents()
-    # trigger transition from s7 to s1 (i.e., click Yes on "are you sure?" prompt)
+    # Trigger transition from s7 to s1 (i.e., click Yes on "are you sure?" prompt)
     machine.s7.signal_yes.emit()
     app.processEvents()
-    # verify that document updates were entered to database
+    # Verify that document updates were entered to database
     with session_scope() as s:
         document = s.query(Document).filter(Document.document_id == machine.document.document_id).first()
         assert document.notes == notes
