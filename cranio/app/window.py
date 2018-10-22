@@ -36,6 +36,7 @@ class RegionPlotWindow(QDialog):
         self.notes_window = NotesWindow()
         self.ok_button = QPushButton('Ok')
         self.add_button = self.region_plot_widget.add_button
+        self.signal_value_changed = self.region_plot_widget.add_count.valueChanged
         self.init_ui()
 
     def init_ui(self):
@@ -49,6 +50,19 @@ class RegionPlotWindow(QDialog):
         self.ok_button.clicked.connect(self.ok_button_clicked)
         # Update focus when Add is clicked
         self.add_button.clicked.connect(self.update_focus)
+
+    def keyPressEvent(self, event):
+        # Increase add count when up arrow is pressed
+        if event.key() == Qt.Key_Up:
+            n = self.get_add_count() + 1
+            logger.debug(f'Increase add count to {n} (Up arrow pressed)')
+            self.set_add_count(n)
+        # Decrease add count when up arrow is pressed
+        elif event.key() == Qt.Key_Down:
+            n = self.get_add_count() - 1
+            logger.debug(f'Decrease add count to {n} (Down arrow pressed)')
+            self.set_add_count(n)
+        return super().keyPressEvent(event)
 
     @property
     def x_arr(self):

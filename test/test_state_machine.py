@@ -126,8 +126,20 @@ def test_event_detection_state_flow(machine, qtbot):
     region_count = machine.s3.region_count()
     # Remove regions
     machine.s3.dialog.clear_regions()
+    machine.s3.dialog.set_add_count(0)
     assert machine.s3.region_count() == 0
     region_count = 2
+    # Increase region count by up arrow press
+    for i in range(region_count):
+        with qtbot.waitSignal(machine.s3.signal_value_changed):
+            qtbot.keyPress(machine.s3.dialog, Qt.Key_Up)
+        assert machine.s3.dialog.get_add_count() == i+1
+    # Decrease region count by down arrow press
+    for i in reversed(range(region_count)):
+        with qtbot.waitSignal(machine.s3.signal_value_changed):
+            qtbot.keyPress(machine.s3.dialog, Qt.Key_Down)
+        assert machine.s3.dialog.get_add_count() == i
+    # Set correct add count
     machine.s3.dialog.set_add_count(region_count)
     # No existing regions -> press enter clicks Add
     with qtbot.waitSignal(machine.s3.signal_add):

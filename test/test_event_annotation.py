@@ -165,9 +165,3 @@ def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is
     # verify that annotated events are correct
     events = region_plot_window.get_annotated_events()
     assert len(events) == region_count
-
-"""
-* Annotated event can be flagged as not recorded
-* Recorded checkbox is checked by default
-* Checking and unchecking Recorded checkbox toggles Recorded state
-"""

@@ -160,6 +160,7 @@ class EventDetectionState(MyState):
         # Signals
         self.signal_ok = self.dialog.ok_button.clicked
         self.signal_add = self.dialog.add_button.clicked
+        self.signal_value_changed = self.dialog.signal_value_changed
 
     def onEntry(self, event: QEvent):
         """
