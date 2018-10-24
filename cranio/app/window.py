@@ -330,4 +330,3 @@ class MainWindow(QMainWindow):
         """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
         super().closeEvent(event)
         self.signal_close.emit()
-

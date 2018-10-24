@@ -412,7 +412,7 @@ class MyStateMachine(QStateMachine):
 
     @property
     def active_distractor(self):
-        return self.main_window.meta_widget.active_distractor
+        return self.main_window.measurement_widget.active_distractor
 
     @property
     def active_operator(self):
