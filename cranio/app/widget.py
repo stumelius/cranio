@@ -235,12 +235,12 @@ class CheckBoxEditWidget(EditWidget):
 
 class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
+    # TODO: Rename closing -> signal_close
     closing = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.patient_widget = ComboEditWidget('Patient', parent=self)
-        self.distractor_widget = SpinEditWidget('Distractor', parent=self)
         self.operator_widget = EditWidget('Operator', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
@@ -253,19 +253,14 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
-        # initialize distractor as 1 and set range between 1 and 10
-        self.distractor_widget.set_range(1, 10)
-        self.active_distractor = 1
         self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
         self.layout.addWidget(self.patient_widget)
-        self.layout.addWidget(self.distractor_widget)
         self.layout.addWidget(self.operator_widget)
         self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
-        # set tooltips
+        # Set tooltips
         self.patient_widget.tooltip = PATIENT_ID_TOOLTIP
-        self.distractor_widget.tooltip = DISTRACTOR_ID_TOOLTIP
 
     def add_patient(self, text: str):
         """
@@ -304,14 +299,6 @@ class MetaDataWidget(QGroupBox):
     @active_patient.setter
     def active_patient(self, patient_id: str):
         self.patient_widget.value = patient_id
-
-    @property
-    def active_distractor(self) -> int:
-        return self.distractor_widget.value
-
-    @active_distractor.setter
-    def active_distractor(self, distractor_number: int):
-        self.distractor_widget.value = distractor_number
 
     @property
     def active_operator(self) -> str:
@@ -530,11 +517,14 @@ class MeasurementWidget(QWidget):
         self.plot_layout = QHBoxLayout()
         self.start_stop_layout = QVBoxLayout()
         self.multiplot_widget = VMultiPlotWidget()
-        self.ok_button = QPushButton('Ok')
         self.start_button = QPushButton('Start')
+        self.distractor_widget = SpinEditWidget('Distractor', parent=self)
         self.stop_button = QPushButton('Stop')
         self.update_timer = QtCore.QTimer()
         self.update_interval = 0.05  # seconds
+        # Initialize distractor as 1 and set range between 1 and 10
+        self.active_distractor = 1
+        self.distractor_widget.set_range(1, 10)
         self.init_ui()
 
     def init_ui(self):
@@ -546,12 +536,21 @@ class MeasurementWidget(QWidget):
         self.plot_layout.addWidget(self.multiplot_widget)
         self.plot_layout.addLayout(self.start_stop_layout)
         self.start_stop_layout.addWidget(self.start_button)
+        self.start_stop_layout.addWidget(self.distractor_widget)
         self.start_stop_layout.addWidget(self.stop_button)
         self.main_layout.addLayout(self.plot_layout)
-        self.main_layout.addWidget(self.ok_button)
         self.setLayout(self.main_layout)
-        # connect signals
+        self.distractor_widget.tooltip = DISTRACTOR_ID_TOOLTIP
+        # Connect signals
         self.update_timer.timeout.connect(self.update)
+
+    @property
+    def active_distractor(self) -> int:
+        return self.distractor_widget.value
+
+    @active_distractor.setter
+    def active_distractor(self, distractor_number: int):
+        self.distractor_widget.value = distractor_number
 
     def plot(self, df: pd.DataFrame, mode: PlotMode=PlotMode.OVERWRITE):
         """
@@ -613,6 +612,17 @@ class MeasurementWidget(QWidget):
         :return:
         """
         self.multiplot_widget.clear()
+
+    def keyPressEvent(self, event):
+        # Increase active distractor when up arrow is pressed
+        if event.key() == QtCore.Qt.Key_Up:
+            self.active_distractor = self.active_distractor + 1
+            logger.debug(f'Change active distractor to {self.active_distractor} (Up arrow pressed)')
+        # Decrease active distractor when down arrow is pressed
+        elif event.key() == QtCore.Qt.Key_Down:
+            self.active_distractor = self.active_distractor - 1
+            logger.debug(f'Change active distractor to {self.active_distractor} (Down arrow pressed)')
+        return super().keyPressEvent(event)
 
 
 class PlotWidget(pg.PlotWidget):

@@ -236,7 +236,6 @@ class MainWindow(QMainWindow):
         # Define signals
         self.signal_start = self.measurement_widget.start_button.clicked
         self.signal_stop = self.measurement_widget.stop_button.clicked
-        self.signal_ok = self.measurement_widget.ok_button.clicked
         self.signal_change_session = self.change_session_action.triggered
         self.init_ui()
 
@@ -331,4 +330,3 @@ class MainWindow(QMainWindow):
         """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
         super().closeEvent(event)
         self.signal_close.emit()
-

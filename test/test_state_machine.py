@@ -119,8 +119,8 @@ def test_event_detection_state_flow(machine, qtbot):
     time_s = list(range(n))
     torque_Nm = list(range(n))
     insert_time_series_to_database(time_s, torque_Nm, machine.document)
-    # Trigger transition from s1 to s3 (EventDetectionState)
-    machine.transition_map[machine.s1][machine.s3].emit()
+    # Trigger hidden transition from s1 to s3 (EventDetectionState)
+    machine._s1_to_s3_signal.emit()
     app.processEvents()
     # Note that regions (sensor_info.turns_in_full_turn) are created on state entry
     region_count = machine.s3.region_count()
@@ -278,12 +278,12 @@ def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_c
 
 
 def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is_stop(qtbot, machine):
-    # Run two loops to verify same behavior when coming back to initial state from measurement state
-    for _ in range(2):
-        with qtbot.waitSignal(machine.main_window.signal_start):
-            qtbot.keyPress(machine.main_window.measurement_widget.start_button, Qt.Key_Enter)
-        with qtbot.waitSignal(machine.main_window.signal_stop):
-            qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)
+    with qtbot.waitSignal(machine.main_window.signal_start):
+        qtbot.keyPress(machine.main_window.measurement_widget.start_button, Qt.Key_Enter)
+    assert machine.in_state(machine.s2)
+    with qtbot.waitSignal(machine.main_window.signal_stop):
+        qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)
+    assert machine.in_state(machine.s3)
 
 
 def test_click_close_in_main_window_prompts_verification_from_user(machine):
