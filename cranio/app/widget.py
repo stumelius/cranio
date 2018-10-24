@@ -530,7 +530,6 @@ class MeasurementWidget(QWidget):
         self.plot_layout = QHBoxLayout()
         self.start_stop_layout = QVBoxLayout()
         self.multiplot_widget = VMultiPlotWidget()
-        self.ok_button = QPushButton('Ok')
         self.start_button = QPushButton('Start')
         self.stop_button = QPushButton('Stop')
         self.update_timer = QtCore.QTimer()
@@ -548,7 +547,6 @@ class MeasurementWidget(QWidget):
         self.start_stop_layout.addWidget(self.start_button)
         self.start_stop_layout.addWidget(self.stop_button)
         self.main_layout.addLayout(self.plot_layout)
-        self.main_layout.addWidget(self.ok_button)
         self.setLayout(self.main_layout)
         # connect signals
         self.update_timer.timeout.connect(self.update)

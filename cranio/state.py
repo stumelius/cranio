@@ -1,5 +1,5 @@
 from typing import List
-from PyQt5.QtCore import QStateMachine, QState, QEvent, pyqtSignal, QSignalTransition, QFinalState
+from PyQt5.QtCore import QStateMachine, QState, QEvent, QSignalTransition, QFinalState, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
@@ -339,6 +339,8 @@ class UpdateDocumentTransition(QSignalTransition):
 
 
 class MyStateMachine(QStateMachine):
+    # Hidden transition trigger signals for testing purposes
+    _s1_to_s3_signal = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -373,10 +375,10 @@ class MyStateMachine(QStateMachine):
         self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
         self.update_document_transition.setTargetState(self.s1)
         self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
-                                         self.s3: self.main_window.signal_ok,
                                          self.s9: self.s1.signal_change_session,
+                                         self.s3: self._s1_to_s3_signal,
                                          self.s11: self.main_window.signal_close},
-                               self.s2: {self.s1: self.main_window.signal_stop},
+                               self.s2: {self.s3: self.main_window.signal_stop},
                                self.s3: {self.s6: self.enter_annotated_events_transition},
                                self.s6: {self.s7: self.s6.signal_ok, self.s3: self.remove_annotated_events_transition},
                                self.s7: {self.s6: self.s7.signal_no, self.s1: self.update_document_transition},
