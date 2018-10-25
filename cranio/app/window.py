@@ -24,6 +24,7 @@ def load_document():
 
 class RegionPlotWindow(QDialog):
     """ Dialog with a region plot widget and an "Ok" button. """
+    signal_close = pyqtSignal()
 
     def __init__(self, parent=None):
         """
@@ -121,6 +122,12 @@ class RegionPlotWindow(QDialog):
 
     def ok_button_clicked(self):
         logger.debug('Ok button clicked')
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        logger.debug('X (close) button clicked')
+        self.signal_close.emit()
 
 
 class NotesWindow(QDialog):

@@ -161,6 +161,7 @@ class EventDetectionState(MyState):
         self.signal_ok = self.dialog.ok_button.clicked
         self.signal_add = self.dialog.add_button.clicked
         self.signal_value_changed = self.dialog.signal_value_changed
+        self.signal_close = self.dialog.signal_close
 
     def onEntry(self, event: QEvent):
         """
@@ -352,6 +353,8 @@ class MyStateMachine(QStateMachine):
         self.s1 = InitialState(name='s1')
         self.s2 = MeasurementState(name='s2')
         self.s3 = EventDetectionState(name='s3')
+        self.s4 = AreYouSureState('Are you sure you want to continue without annotating '
+                                  'any events for the recorded data?', name='s4')
         self.s6 = NoteState(name='s6')
         self.s7 = AreYouSureState('Are you sure you want to continue?', name='s7')
         self.s9 = ChangeSessionState(name='s9')
@@ -360,7 +363,7 @@ class MyStateMachine(QStateMachine):
         self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
         self.s0 = QFinalState()
         # Set states
-        for s in (self.s0, self.s1, self.s2, self.s3, self.s6, self.s7, self.s9, self.s10, self.s11):
+        for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
         # Define transitions
@@ -379,12 +382,20 @@ class MyStateMachine(QStateMachine):
                                          self.s3: self._s1_to_s3_signal,
                                          self.s11: self.main_window.signal_close},
                                self.s2: {self.s3: self.main_window.signal_stop},
-                               self.s3: {self.s6: self.enter_annotated_events_transition},
-                               self.s6: {self.s7: self.s6.signal_ok, self.s3: self.remove_annotated_events_transition},
-                               self.s7: {self.s6: self.s7.signal_no, self.s1: self.update_document_transition},
-                               self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
-                               self.s10: {self.s9: self.s10.signal_no, self.s1: self.change_active_session_transition},
-                               self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes}}
+                               self.s3: {self.s6: self.enter_annotated_events_transition,
+                                         self.s4: self.s3.signal_close},
+                               self.s4: {self.s3: self.s4.signal_no,
+                                         self.s1: self.s4.signal_yes},
+                               self.s6: {self.s7: self.s6.signal_ok,
+                                         self.s3: self.remove_annotated_events_transition},
+                               self.s7: {self.s6: self.s7.signal_no,
+                                         self.s1: self.update_document_transition},
+                               self.s9: {self.s10: self.s9.signal_select,
+                                         self.s1: self.s9.signal_cancel},
+                               self.s10: {self.s9: self.s10.signal_no,
+                                          self.s1: self.change_active_session_transition},
+                               self.s11: {self.s1: self.s11.signal_no,
+                                          self.s0: self.s11.signal_yes}}
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
                 if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,

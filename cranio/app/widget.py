@@ -762,10 +762,13 @@ class RegionEditWidget(QGroupBox):
         self.main_layout.addWidget(self.recorded_widget)
         self.main_layout.addLayout(self.boundary_layout)
         self.main_layout.addWidget(self.remove_button)
-        # set recorded to True
+        # Set recorded to True
         self.set_recorded(True)
         self.minimum_edit.setSingleStep(0.01)
         self.maximum_edit.setSingleStep(0.01)
+        # Set range to 0 - 10000 (#109)
+        self.minimum_edit.setRange(0, 10000)
+        self.maximum_edit.setRange(0, 10000)
         # FIXME: region.bounds is always (0,0)
         # self.minimum_edit.setRange(self.region.bounds.left(), self.region.bounds.right())
         self.minimum_edit.setValue(self.region()[0])
