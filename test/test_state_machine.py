@@ -190,6 +190,34 @@ def test_event_detection_state_flow(machine, qtbot):
         assert float(document.full_turn_count) == full_turn_count
 
 
+def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_you_sure_prompt(machine, qtbot):
+    # Assign document
+    machine.document = machine.s2.create_document()
+    # Enter sensor info and document
+    machine.sensor.enter_info_to_database()
+    with session_scope() as s:
+        s.add(machine.document)
+    # Generate and enter data
+    n = 10
+    time_s = list(range(n))
+    torque_Nm = list(range(n))
+    insert_time_series_to_database(time_s, torque_Nm, machine.document)
+    # Trigger hidden transition from s1 to s3 (EventDetectionState)
+    machine._s1_to_s3_signal.emit()
+    assert machine.in_state(machine.s3)
+    machine.s3.signal_close.emit()
+    # Are you sure? state
+    assert machine.in_state(machine.s4)
+    # No -> back to s3
+    machine.s4.signal_no.emit()
+    assert machine.in_state(machine.s3)
+    machine.s3.signal_close.emit()
+    assert machine.in_state(machine.s4)
+    # Yes -> go to s1
+    machine.s4.signal_yes.emit()
+    assert machine.in_state(machine.s1)
+
+
 def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
     event = QEvent(QEvent.None_)
     state = AreYouSureState('foo')
