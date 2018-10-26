@@ -311,9 +311,11 @@ class MainWindow(QMainWindow):
 
     def connect_dummy_sensor(self):
         self.sensor = create_dummy_sensor()
+        logger.debug('Connected dummy sensor')
 
     def connect_imada_sensor(self):
         self.sensor = Imada()
+        logger.debug(f'Connected Imada sensor with serial number "{self.sensor.sensor_info.sensor_serial_number}"')
 
     def register_sensor_with_producer(self):
         if self.sensor is not None:
