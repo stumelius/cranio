@@ -217,19 +217,9 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.measurement_widget)
         # Add File menu
         self.file_menu = self.menuBar().addMenu('File')
-        self.new_document_action = QAction('New document', self)
-        self.new_document_action.triggered.connect(create_document)
-        self.file_menu.addAction(self.new_document_action)
-        self.load_document_action = QAction('Load document', self)
-        self.load_document_action.triggered.connect(load_document)
-        self.file_menu.addAction(self.load_document_action)
-        # Add separator between documents and patients
-        self.file_menu.addSeparator()
-        self.patients_action = QAction('Patients', self)
-        self.patients_action.triggered.connect(self.open_patient_widget)
-        self.file_menu.addAction(self.patients_action)
-        # Add separator between patients and sessions
-        self.file_menu.addSeparator()
+        self.add_patient_action = QAction('Add patient', self)
+        self.add_patient_action.triggered.connect(self.open_patient_widget)
+        self.file_menu.addAction(self.add_patient_action)
         self.change_session_action = QAction('Change session', self)
         self.file_menu.addAction(self.change_session_action)
         # Add Connect menu
