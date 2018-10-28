@@ -71,7 +71,7 @@ RS232Configuration = namedtuple('RS232Configuration', ['baudrate', 'bytesize', '
 class Imada(Sensor):
     """ Imada HTG2-4 digital torque gauge with USB serial (RS-232) interface. """
     rs232_config = RS232Configuration(19200, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, 1/50)
-    sensor_info = SensorInfo(sensor_serial_number='FTSLQ6QIA')
+    sensor_info = SensorInfo(sensor_serial_number='FTSLQ6QIA', turns_in_full_turn=3)
 
     def __init__(self):
         super().__init__()
@@ -133,15 +133,3 @@ class Imada(Sensor):
             logger.error('Decode telegram failed! {}'.format(str(e)))
             value = None
         return utc_datetime(), {str(self.channels[0]): value}
-
-
-def plug_imada(producer_process: ProducerProcess) -> Imada:
-    """
-    Plug Imada digital torque gauge to a producer process.
-
-    :param producer_process: Producer process
-    :return: Imada object
-    """
-    imada = Imada()
-    producer_process.producer.register_sensor(imada)
-    return imada
