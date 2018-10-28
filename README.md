@@ -25,7 +25,7 @@ digital torque gauge. The gauge features a remote torque sensor with a Jacob's c
 ### Prerequisites
 
 * OS: Windows, Linux, OS X (tested on Windows 10 and Linux)
-* Python 3.x
+* Python 3.6 or newer
 
 ### Installing
 
@@ -36,7 +36,7 @@ You can use git clone and pip to install from sources:
 ```bash
 git clone https://github.com/smomni/cranio
 cd cranio
-pip install -e .
+pip install -e .[test]
 ```
 
 ## Running the tests
@@ -46,6 +46,17 @@ The tests can be run using pytest as the test runner:
 ```bash
 pytest tests
 ```
+
+## Building the documentation
+
+To build the documentation in HTML format using [Sphinx](http://www.sphinx-doc.org/en/stable/):
+
+```bash
+cd docs
+make html
+```
+
+The built documentation is located in `docs/build/html`.
 
 ## Running the software
 

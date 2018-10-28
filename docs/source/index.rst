@@ -6,6 +6,8 @@
 cranio documentation
 ====================
 
+.. contents:: Contents
+   :local:
 
 About cranio
 ------------
@@ -16,7 +18,6 @@ posterior calvarial vault osteodistraction (PCVO).
 General description on PCVO goes here...
 
 General description on force measurements goes here...
-
 
 Prequisites
 -----------
@@ -67,6 +68,18 @@ To start the measurement software:
 
    cd <cranio-installation-directory>
    python run.py
+
+This will open the main window. Before starting a measurement, you need to do to the following:
+
+1. Select a patient from the drop-down menu
+    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
+2. Connect an Imada HTG2-4 torque sensor from the Connect menu
+    * NOTE: The serial number of the sensor must match the hard-coded ``FTSLQ6QIA``
+    * If you don't have a matching sensor at hand, you can connect a dummy torque sensor
+
+Now you can click ``Start`` to start the measurement. The recorded data is visualized as a real-time plot in the main window.
+
+Instructions for stopping and event detection goes here...
 
 
 Use cases
