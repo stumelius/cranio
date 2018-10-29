@@ -6,7 +6,7 @@ numpy==1.15.3
 pandas==0.23.4
 pluggy==0.8.0
 py==1.7.0
-PyQt5==5.11.2
+PyQt5==5.11.3
 PyQt5-sip==4.19.11
 pyqtgraph==0.10.0
 pyserial==3.4
