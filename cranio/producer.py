@@ -22,8 +22,7 @@ def get_all_from_queue(queue) -> Tuple[List, List]:
     :param queue:
     :return: Index and value arrays as a tuple
     """
-    index_arr = []
-    value_arr = []
+    index_arr, value_arr = [], []
     while not queue.empty():
         index, value = queue.get()
         index_arr.append(index)
@@ -39,12 +38,12 @@ def datetime_to_seconds(array: Iterable[datetime.datetime], t0: datetime.datetim
     :param t0: Reference datetime against which the time difference is calculated
     :return: Float iterable
     """
-    # employ conversion to pd.Timestamp for datetime and np.datetime support
-    def fun(x): return (pd.Timestamp(x)-t0).total_seconds()
+    # Conversion to pd.Timestamp for datetime and np.datetime support
+    def to_total_seconds(x): return (pd.Timestamp(x)-t0).total_seconds()
     try:
-        return list(map(fun, array))
+        return list(map(to_total_seconds, array))
     except TypeError:
-        return fun(array)
+        return to_total_seconds(array)
 
 
 @contextmanager
@@ -65,18 +64,9 @@ def open_port(port):
     port.close()
 
 
-def nan_value_generator() -> np.NaN:
-    """
-    Return a NaN (Not a Number) value.
-
-    :return:
-    """
-    return np.NaN
-
-
 class ChannelInfo:
     """ Input channel information. """
-    # default string representation
+    # Default string representation
     strfmt = '{self.name} ({self.unit})'
         
     def __init__(self, name: str, unit: str):
@@ -89,16 +79,15 @@ class ChannelInfo:
 
 class Sensor:
     """
-    Sensor for recording one or more input channels.
-    Channels are stored as ChannelInfo objects.
+    Sensor for recording one or more input channels. Channels are stored as ChannelInfo objects.
     Open(), close() and read() method must be overloaded.
     """
-    # dummy sensor info
+    # Dummy sensor info
     sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW', turns_in_full_turn=3)
     
     def __init__(self):
         self.channels = []
-        self.value_generator = nan_value_generator
+        self.value_generator = lambda: np.NaN
     
     def open(self):
         """ Dummy method. """
@@ -149,9 +138,9 @@ class Sensor:
         values = {}
         for c in self.channels:
             values[str(c)] = self.value_generator()
-        # sleep for 10 ms to slow down the sampling
-        # if there is no wait between consecutive read() calls,
-        # too much data is generated for a plot widget to handle
+        # Sleep for 10 ms to slow down the sampling
+        # If there is no wait between consecutive read() calls,
+        # Too much data is generated for a plot widget to handle
         time.sleep(0.01)
         # Use UTC+0 time
         return utc_datetime(), values
@@ -223,7 +212,7 @@ class Producer:
 
 class ProducerProcess:
     """ Process for recording data from a Producer. """
-    # default producer class
+    # Default producer class
     producer_class = Producer
     
     def __init__(self, name: str, document: Document):
@@ -310,9 +299,8 @@ class ProducerProcess:
         :return: Process exit code
         """
         self.stop_event.set()
-        # Close the queue and join the background thread
-        #self.queue.close()
-        #self.queue.join_thread()
+        # Attempt to gracefully join the process
+        # If it fails, terminate the process forcefully
         if self.is_alive():
             self._process.join(timeout)
             if self.is_alive():
