@@ -14,19 +14,14 @@ from sqlalchemy.exc import IntegrityError
 from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
-
-# plot style settings
+# Plot style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
-
-# custom color palette for plots
+# Custom color palette for plots
 color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82),
                  (129, 114, 178), (204, 185, 116), (100, 181, 205)]
-
 PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
                       'NOTE: Do not enter personal information, such as names.')
-SESSION_ID_TOOLTIP = ('This is a random-generated unique identifier.\n'
-                      'NOTE: Value cannot be changed by the user.')
 DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
 
 
@@ -50,21 +45,19 @@ def remove_widget_from_layout(layout: QLayout, widget: QWidget):
 
 def clear_layout(layout: QLayout):
     """
-    Clear a layout.
+    Clear all widgets from a QLayout.
 
     :param layout:
     :return:
     """
-    for i in reversed(range(layout.count())):
+    widget_count = layout.count()
+    for i in reversed(range(widget_count)):
         item = layout.itemAt(i)
-
         if isinstance(item, QWidgetItem):
             item.widget().close()
-        elif isinstance(item, QSpacerItem):
-            pass
         else:
             clear_layout(item.layout())
-        # remove item from layout
+        # Remove item from layout
         layout.removeItem(item)
 
 
@@ -235,8 +228,7 @@ class CheckBoxEditWidget(EditWidget):
 
 class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
-    # TODO: Rename closing -> signal_close
-    closing = QtCore.pyqtSignal()
+    signal_close = QtCore.pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -259,7 +251,6 @@ class MetaDataWidget(QGroupBox):
         self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
-        # Set tooltips
         self.patient_widget.tooltip = PATIENT_ID_TOOLTIP
 
     def add_patient(self, text: str):
@@ -281,7 +272,7 @@ class MetaDataWidget(QGroupBox):
         self.patient_widget.clear()
         with session_scope() as s:
             for p in s.query(Patient).all():
-                # populate patient widget
+                # Populate patient widget
                 self.patient_widget.add_item(p.patient_id)
 
     def patients(self) -> List[str]:
@@ -350,11 +341,11 @@ def prompt_create_patient(parent_widget) -> str:
     :param parent_widget:
     :return: Patient identifier or None if no patient was created (user cancelled or patient already exists)
     """
-    # open create patient dialog
+    # Open create patient dialog
     patient_id, ok = QInputDialog.getText(parent_widget, 'Create patient', 'Enter patient id:')
     if not ok:
         return
-    # try to insert patient to database
+    # Try to insert patient to database
     try:
         add_patient(patient_id)
         return patient_id
@@ -374,9 +365,9 @@ class PatientWidget(QWidget):
         self.label = QLabel('Patients')
         self.table_widget = QTableWidget(parent=self)
         self.table_widget.setColumnCount(2)
-        # disable editing
+        # Disable editing
         self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # column headers from Patient table
+        # Column headers from Patient table
         self.table_widget.setHorizontalHeaderLabels(Patient.__table__.columns.keys())
         self.table_widget.horizontalHeader().setStretchLastSection(True);
         self.table_widget.resizeColumnsToContents()
@@ -443,7 +434,7 @@ class SessionWidget(QWidget):
         self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # Set column names
         self.table_widget.setHorizontalHeaderLabels(['session_id', 'started_at'])
-        self.table_widget.horizontalHeader().setStretchLastSection(True);
+        self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.resizeColumnsToContents()
         self.select_button = QPushButton('Select session')
         self.cancel_button = QPushButton('Cancel')
@@ -557,6 +548,7 @@ class MeasurementWidget(QWidget):
         Plot a dataframe in the multiplot widget.
 
         :param df:
+        :param mode: plot mode
         :return:
         """
         self.multiplot_widget.plot(df, mode=mode)
@@ -627,8 +619,7 @@ class MeasurementWidget(QWidget):
 
 class PlotWidget(pg.PlotWidget):
     """ Widget for displaying a (real-time) plot """
-
-    # default plot configuration
+    # Default plot configuration
     plot_configuration = {'antialias': True, 'pen': pg.mkPen(color_palette[0])}
 
     def __init__(self, parent=None):
@@ -901,10 +892,6 @@ class RegionPlotWidget(QWidget):
     """ Plot widget with region selection and edit functionality. """
 
     def __init__(self, parent=None):
-        """
-
-        :param parent:
-        """
         super().__init__(parent)
         self.plot_widget = PlotWidget()
         self.main_layout = QHBoxLayout()
@@ -1014,7 +1001,7 @@ class RegionPlotWidget(QWidget):
         color = list(color_palette[len(self.region_edit_map)]) + [alpha]
         item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
         self.plot_widget.addItem(item)
-        # event numbering by insertion order
+        # Event numbering by insertion order
         edit_widget = RegionEditWidget(item, event_number=self.region_count() + 1)
         edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
         self.edit_layout.insertWidget(self.edit_layout.count() - 1, edit_widget)
@@ -1133,12 +1120,12 @@ class VMultiPlotWidget(QWidget):
         from cranio.constants import PLOT_N_SECONDS
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
-        # if placeholder exists, use it
-        # NOTE: no need to add to layout as placeholder is there by default
+        # If placeholder exists, use it
+        # NOTE: No need to add to layout as placeholder is there by default
         if self.placeholder is not None:
             plot_widget = self.placeholder
             self.placeholder = None
-        # if no placeholder exists, create new
+        # If no placeholder exists, create new
         else:
             plot_widget = PlotWidget()
             self.main_layout.addWidget(plot_widget)
@@ -1159,25 +1146,16 @@ class VMultiPlotWidget(QWidget):
         :return:
         """
         # Data is stored as a DataFrame
-        # The dataframe is appended during recording
-        # Ideally, the real-time plot is updated automatically once the dataframe is updated
-        # Alternatively, real-time plot can be updated at regular intervals
-        #
-        # Example:
-        # update_timer = QTimer()
-        # update_timer.setInterval(100)
-        # update_timer.timeout.connect(self.update)
-        # def update(self):
-        #     data = devices.output()
-        #     self.figure_window.update(data)
+        # The DataFrame is appended during recording
+        # The real-time plot is updated at specified intervals
         self.title = title
-        # find already initialized columns
+        # Find already initialized columns
         initialized_columns = [p.y_label for p in self.plot_widgets if p.y_label in df]
-        # leftover columns need to be initialized
+        # Leftover columns need to be initialized
         non_initialized_columns = filter(lambda c: c not in initialized_columns, df.columns)
         for c in non_initialized_columns:
             self.add_plot_widget(c)
-        # plot each column
+        # Plot each column
         for c in df:
             plot_widget = self.find_plot_widget_by_label(c)
             plot_widget.plot(x=df.index, y=df[c], mode=mode)
