@@ -9,7 +9,6 @@ from cranio.producer import ProducerProcess
 
 
 class MyState(QState):
-
     def __init__(self, name: str, parent=None):
         super().__init__(parent)
         self.name = name
@@ -345,11 +344,13 @@ class MyStateMachine(QStateMachine):
 
     def __init__(self):
         super().__init__()
-        # Initialize context
         self.main_window = MainWindow()
         self.document = None
         self.annotated_events = None
-        # Initialize states
+        self._initialize_states()
+        self._initialize_transitions()
+
+    def _initialize_states(self):
         self.s1 = InitialState(name='s1')
         self.s2 = MeasurementState(name='s2')
         self.s3 = EventDetectionState(name='s3')
@@ -362,11 +363,11 @@ class MyStateMachine(QStateMachine):
                                    'Are you sure you want to continue?', name='s10')
         self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
         self.s0 = QFinalState()
-        # Set states
         for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
-        # Define transitions
+
+    def _initialize_transitions(self):
         self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
         self.start_measurement_transition.setTargetState(self.s2)
         self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
@@ -396,6 +397,7 @@ class MyStateMachine(QStateMachine):
                                           self.s1: self.change_active_session_transition},
                                self.s11: {self.s1: self.s11.signal_no,
                                           self.s0: self.s11.signal_yes}}
+        # Add transitions to state machine
         for source, targets in self.transition_map.items():
             for target, signal in targets.items():
                 if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,

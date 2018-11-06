@@ -25,7 +25,7 @@ digital torque gauge. The gauge features a remote torque sensor with a Jacob's c
 ### Prerequisites
 
 * OS: Windows, Linux, OS X (tested on Windows 10 and Linux)
-* Python 3.x
+* Python 3.6 or newer
 
 ### Installing
 
@@ -36,13 +36,7 @@ You can use git clone and pip to install from sources:
 ```bash
 git clone https://github.com/smomni/cranio
 cd cranio
-pip install -e .
-```
-
-To start the measurement software:
-
-```bash
-python -m run
+pip install -e .[test]
 ```
 
 ## Running the tests
@@ -52,6 +46,39 @@ The tests can be run using pytest as the test runner:
 ```bash
 pytest tests
 ```
+
+## Building the documentation
+
+To build the documentation in HTML format using [Sphinx](http://www.sphinx-doc.org/en/stable/):
+
+```bash
+cd docs
+make html
+```
+
+The built documentation is located in `docs/build/html`.
+
+## Running the software
+
+To start the measurement software:
+
+```bash
+python run.py
+```
+
+This will open the main window. Before starting a measurement, you need to do to the following:
+
+1. Select a patient from the drop-down menu
+    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
+2. Connect an Imada HTG2-4 torque sensor from Connect menu
+    * NOTE: The serial number of the sensor must match the hard-coded `FTSLQ6QIA`
+    * If you don't have a matching sensor at hand, you can connect a dummy torque sensor
+    
+Now you can click `Start` to start the measurement. The recorded data is visualized as a real-time plot in the main window.
+
+Instructions for stopping and event detection goes here...
+
+
 
 ## Workflow
 

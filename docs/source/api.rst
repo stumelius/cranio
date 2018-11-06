@@ -2,43 +2,43 @@ API documentation
 =================
 
 
-cranio database
+database module
 ---------------
 .. automodule:: cranio.database
    :members:
 
 
-cranio handler
+handler module
 --------------
 .. automodule:: cranio.handler
    :members:
 
 
-cranio imada
+imada module
 ------------
 .. automodule:: cranio.imada
    :members:
 
 
-cranio producer
+producer module
 ---------------
 .. automodule:: cranio.producer
    :members:
 
 
-cranio utils
+utils module
 ------------
 .. automodule:: cranio.producer
    :members:
 
-cranio widget
--------------
+app.widget module
+-----------------
 
 .. automodule:: cranio.app.widget
    :members:
 
-cranio window
--------------
+app.window module
+-----------------
 
 .. automodule:: cranio.app.window
    :members:
