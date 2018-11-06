@@ -207,13 +207,18 @@ class Producer:
         except ValueError:
             raise ValueError(f'{type(sensor).__name__} is not registered with the producer')
         
-    def read(self) -> List[Tuple[datetime.datetime, dict]]:
+    def read(self, queue: mp.Queue=None) -> List[Tuple[datetime.datetime, dict]]:
         """
-        Read values from the registered input sensors.
+        Read values from the registered input sensors. The read values are pushed to a queue if specified.
 
+        :param queue:
         :return: List of datetime and value dictionary tuples
         """
-        return [s.read() for s in self.sensors]
+        indices_and_values = [s.read() for s in self.sensors]
+        if queue is not None:
+            for index, value_dict in indices_and_values:
+                queue.put((index, value_dict))
+        return indices_and_values
 
 
 class ProducerProcess:
@@ -260,14 +265,13 @@ class ProducerProcess:
 
         :return: None
         """
-        # implement required initializations here!
-        # open producer
         logger.info('Running producer process "{}"'.format(str(self)))
         with open_port(self.producer):
+            # Read until stopped
             while not self.stop_event.is_set():
+                # Read only if started
                 if self.start_event.is_set():
-                    for index, value_dict in self.producer.read():
-                        self.queue.put((index, value_dict))
+                    self.producer.read(queue=self.queue)
         logger.info('Stopping producer process "{}"'.format(str(self)))
 
     def start(self) -> None:
@@ -306,14 +310,14 @@ class ProducerProcess:
         :return: Process exit code
         """
         self.stop_event.set()
-        # close the queue and join the background thread
+        # Close the queue and join the background thread
         #self.queue.close()
         #self.queue.join_thread()
         if self.is_alive():
             self._process.join(timeout)
             if self.is_alive():
                 logger.error('Producer process "{}" is not shutting down gracefully. '
-                              'Resorting to force terminate and join...'.format(str(self)))
+                             'Resorting to force terminate and join...'.format(str(self)))
                 self._process.terminate()
                 self._process.join(timeout)
         logger.info('Producer process "{}" joined successfully'.format(str(self)))
