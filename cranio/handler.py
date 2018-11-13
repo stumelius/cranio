@@ -5,7 +5,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from cranio.constants import DEFAULT_DATEFMT
-from cranio.model import Log, session_scope, Session
+from cranio.model import Log, session_scope, Session, DefaultDatabase
 
 
 class DatabaseHandler(logging.Handler):
@@ -32,5 +32,5 @@ class DatabaseHandler(logging.Handler):
         log = Log(logger=record.__dict__['name'], level=record.__dict__['levelno'],
                   created_at=dt, trace=trace, message=record.__dict__['msg'],
                   session_id=session_id)
-        with session_scope() as s:
-            s.add(log)
+        if DefaultDatabase.SQLITE.is_initialized():
+            DefaultDatabase.SQLITE.insert(log)

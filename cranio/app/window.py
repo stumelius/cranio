@@ -256,8 +256,6 @@ class MainWindow(QMainWindow):
 
         :return:
         """
-        with session_scope() as session:
-            patients = session.query(Patient).all()
         dialog = QDialog(parent=self)
         layout = QVBoxLayout()
         widget = PatientWidget()

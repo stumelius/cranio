@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QStateMachine, QState,QFinalState, pyqtSignal
 from cranio.app.window import MainWindow
-from cranio.model import Session
+from cranio.model import Session, Database
 from cranio.state import InitialState, MeasurementState, EventDetectionState, AreYouSureState, NoteState, \
     ChangeSessionState
 from cranio.transition import StartMeasurementTransition, ChangeActiveSessionTransition, \
@@ -11,8 +11,9 @@ class StateMachine(QStateMachine):
     # Hidden transition trigger signals for testing purposes
     _s1_to_s3_signal = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, database: Database):
         super().__init__()
+        self.database = database
         self.main_window = MainWindow()
         self.document = None
         self.annotated_events = None

@@ -1,14 +1,12 @@
 import sys
 from cranio.app import app
 from cranio.utils import attach_excepthook, logger, configure_logging
-from cranio.model import init_database, Session
+from cranio.model import Session, DefaultDatabase
 from cranio.state_machine import StateMachine
-from cranio.constants import SQLITE_FILENAME
-
-# initialize database and session
-init_database(f'sqlite:///{SQLITE_FILENAME}')
-Session.init()
-# attach custom excepthook
+database = DefaultDatabase.SQLITE
+database.create_engine()
+Session.init(database=database)
+# Attach custom excepthook
 attach_excepthook()
 
 
@@ -18,7 +16,7 @@ def run():
 
     :return: 
     """
-    machine = StateMachine()
+    machine = StateMachine(database)
     logger.register_machine(machine)
     logger.info('Start state machine')
     machine.start()

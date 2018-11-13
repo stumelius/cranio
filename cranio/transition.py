@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QSignalTransition
-from cranio.model import session_scope, Session, Document, AnnotatedEvent
+from cranio.model import session_scope, Session, Document, AnnotatedEvent, DefaultDatabase
 from cranio.utils import logger
 
 
@@ -38,10 +38,9 @@ class EnterAnnotatedEventsTransition(QSignalTransition):
         for e in self.machine().annotated_events:
             e.document_id = self.machine().document.document_id
         logger.debug('Enter annotated events to database')
-        with session_scope() as s:
-            for e in self.machine().annotated_events:
-                s.add(e)
-                logger.debug(str(e))
+        for e in self.machine().annotated_events:
+            DefaultDatabase.SQLITE.insert(e)
+            logger.debug(str(e))
 
 
 class RemoveAnnotatedEventsTransition(QSignalTransition):

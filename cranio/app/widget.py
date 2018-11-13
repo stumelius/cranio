@@ -8,10 +8,10 @@ from typing import Tuple, List, Iterable
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
+    QLayout, QWidget, QWidgetItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.model import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
+from cranio.model import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session, DefaultDatabase
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
 # Plot style settings
@@ -327,10 +327,7 @@ def add_patient(patient_id: str) -> Patient:
     :return:
     :raises sqlalchemy.exc.IntegrityError: if the patient already exists.
     """
-    patient = Patient(patient_id=patient_id)
-    with session_scope() as session:
-        session.add(patient)
-    return patient
+    return DefaultDatabase.SQLITE.insert(Patient(patient_id=patient_id))
 
 
 def prompt_create_patient(parent_widget) -> str:
@@ -577,20 +574,19 @@ class MeasurementWidget(QWidget):
 
         :return:
         """
-        measurements = []
         index_arr, value_dict_arr = get_all_from_queue(self.producer_process.queue)
         # No data available
         if not index_arr:
             return
         # Convert UTC+0 datetime to seconds
         time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
-        # Insert to database
-        with session_scope() as s:
-            for time_s, value_dict in zip(time_arr, value_dict_arr):
-                m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
-                                document_id=self.producer_process.document.document_id)
-                s.add(m)
-                measurements.append(m)
+        # Create measurements and insert to database
+        measurements = []
+        for time_s, value_dict in zip(time_arr, value_dict_arr):
+            m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
+                            document_id=self.producer_process.document.document_id)
+            measurements.append(m)
+        DefaultDatabase.SQLITE.bulk_insert(measurements)
         # Convert data to DataFrame
         x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         df = pd.DataFrame({'torque (Nm)': y}, index=x)

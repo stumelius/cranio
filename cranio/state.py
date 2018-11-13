@@ -3,7 +3,7 @@ from PyQt5.QtCore import QState, QEvent
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
-from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
+from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, DefaultDatabase
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
 
@@ -123,9 +123,8 @@ class MeasurementState(MyState):
         self.main_window.measurement_widget.clear()
         # Insert sensor info and document to database
         sensor.enter_info_to_database()
-        with session_scope() as s:
-            logger.debug(f'Enter document: {str(self.document)}')
-            s.add(self.document)
+        logger.debug(f'Enter document: {str(self.document)}')
+        DefaultDatabase.SQLITE.insert(self.document)
         # Kill old producer process
         if self.main_window.producer_process is not None:
             self.main_window.producer_process.join()
