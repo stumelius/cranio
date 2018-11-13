@@ -2,7 +2,7 @@ import sys
 from cranio.app import app
 from cranio.utils import attach_excepthook, logger, configure_logging
 from cranio.database import init_database, Session
-from cranio.state import MyStateMachine
+from cranio.state_machine import StateMachine
 from cranio.constants import SQLITE_FILENAME
 
 # initialize database and session
@@ -18,7 +18,7 @@ def run():
 
     :return: 
     """
-    machine = MyStateMachine()
+    machine = StateMachine()
     logger.register_machine(machine)
     logger.info('Start state machine')
     machine.start()

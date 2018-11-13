@@ -3,7 +3,8 @@ import time
 import logging
 from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
-from cranio.state import MyStateMachine, AreYouSureState
+from cranio.state import AreYouSureState
+from cranio.state_machine import StateMachine
 from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
     AnnotatedEvent, Log, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook, logger
@@ -14,7 +15,7 @@ attach_excepthook()
 
 @pytest.fixture(scope='function')
 def machine(producer_process, database_patient_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine()
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     # Connect and register dummy sensor
@@ -32,7 +33,7 @@ def machine(producer_process, database_patient_fixture):
 
 @pytest.fixture
 def machine_without_patient(producer_process, database_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine()
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     state_machine.start()
@@ -228,7 +229,7 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
 
 
 def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times_per_turns_in_full_turn(database_document_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine()
     state_machine.document = Document.get_instance()
     state = state_machine.s6
     event_count = 3
@@ -247,7 +248,7 @@ def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times
 
 
 def test_event_detection_state_default_region_count_equals_turns_in_full_turn(database_document_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine()
     state_machine.document = Document.get_instance()
     state = state_machine.s3
     sensor_info = state.document.get_related_sensor_info()
