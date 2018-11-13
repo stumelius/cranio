@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QStateMachine, QState,QFinalState, pyqtSignal
 from cranio.app.window import MainWindow
-from cranio.database import Session
+from cranio.model import Session
 from cranio.state import InitialState, MeasurementState, EventDetectionState, AreYouSureState, NoteState, \
     ChangeSessionState
 from cranio.transition import StartMeasurementTransition, ChangeActiveSessionTransition, \

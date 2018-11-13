@@ -15,7 +15,7 @@ List of tests:
 import pytest
 import numpy as np
 from typing import Iterable, List
-from cranio.database import AnnotatedEvent, Document, Measurement, session_scope, EventType
+from cranio.model import AnnotatedEvent, Document, Measurement, session_scope, EventType
 from cranio.app.widget import RegionPlotWidget, RegionEditWidget
 from cranio.app.window import RegionPlotWindow
 

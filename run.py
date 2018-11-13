@@ -1,7 +1,7 @@
 import sys
 from cranio.app import app
 from cranio.utils import attach_excepthook, logger, configure_logging
-from cranio.database import init_database, Session
+from cranio.model import init_database, Session
 from cranio.state_machine import StateMachine
 from cranio.constants import SQLITE_FILENAME
 

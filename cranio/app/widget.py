@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QT
     QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
+from cranio.model import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
 # Plot style settings

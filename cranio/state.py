@@ -3,7 +3,7 @@ from PyQt5.QtCore import QState, QEvent
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
-from cranio.database import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
+from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
 

@@ -1,7 +1,7 @@
 import pytest
 from cranio.imada import Imada
 from cranio.producer import Sensor
-from cranio.database import Document, SensorInfo, DistractorInfo, DistractorType
+from cranio.model import Document, SensorInfo, DistractorInfo, DistractorType
 """
 List of tests:
 

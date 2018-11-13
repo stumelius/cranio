@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QSignalTransition
-from cranio.database import session_scope, Session, Document, AnnotatedEvent
+from cranio.model import session_scope, Session, Document, AnnotatedEvent
 from cranio.utils import logger
 
 

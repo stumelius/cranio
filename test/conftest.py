@@ -1,6 +1,6 @@
 import pytest
 import logging.config
-from cranio.database import init_database, Session, Patient, Document, DistractorType
+from cranio.model import init_database, Session, Patient, Document, DistractorType
 from cranio.utils import get_logging_config, generate_unique_id, utc_datetime
 from cranio.producer import ProducerProcess, Sensor
 

@@ -3,7 +3,7 @@ import logging
 import time
 from sqlalchemy.exc import IntegrityError
 from cranio.utils import log_level_to_name, utc_datetime
-from cranio.database import init_database, Log, session_scope, Session
+from cranio.model import init_database, Log, session_scope, Session
 
 logger_name = 'cranio'
 logger = logging.getLogger(logger_name)

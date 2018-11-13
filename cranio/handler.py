@@ -5,7 +5,7 @@ import logging
 import traceback
 from datetime import datetime, timedelta
 from cranio.constants import DEFAULT_DATEFMT
-from cranio.database import Log, session_scope, Session
+from cranio.model import Log, session_scope, Session
 
 
 class DatabaseHandler(logging.Handler):

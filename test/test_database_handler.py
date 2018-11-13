@@ -1,6 +1,6 @@
 import logging
 from cranio.utils import log_level_to_name, logger
-from cranio.database import session_scope, Log
+from cranio.model import session_scope, Log
 
 
 def test_database_handler(database_document_fixture):

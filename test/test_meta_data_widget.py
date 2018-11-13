@@ -1,6 +1,6 @@
 import pytest
 from cranio.app.widget import MetaDataWidget
-from cranio.database import session_scope, Patient
+from cranio.model import session_scope, Patient
 
 
 @pytest.fixture(scope='function')

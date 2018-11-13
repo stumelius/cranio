@@ -2,7 +2,7 @@ import pytest
 from cranio.app.widget import PatientWidget
 from sqlalchemy import exists
 from sqlalchemy.exc import IntegrityError
-from cranio.database import Patient, session_scope, init_database
+from cranio.model import Patient, session_scope, init_database
 
 
 def patient_exists(patient_id: str) -> bool:

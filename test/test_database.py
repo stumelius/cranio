@@ -3,7 +3,7 @@ import numpy as np
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
 from cranio.utils import try_remove, get_logging_levels, generate_unique_id, utc_datetime
-from cranio.database import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, export_schema_graph,\
+from cranio.model import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, \
     AnnotatedEvent, init_database, EventType, enter_if_not_exists, DistractorInfo, DistractorType
 from cranio.producer import Sensor
 
@@ -73,13 +73,6 @@ def test_add_log_with_invalid_level(database_fixture):
     with session_scope() as s:
         with pytest.raises(IntegrityError):
             s.add(log)
-
-
-@pytest.mark.skip('Requires graphviz')
-def test_export_schema_graph():
-    name = 'foo.png'
-    export_schema_graph(name)
-    try_remove(name)
 
 
 def test_database_init_populate_lookup_tables(database_fixture):
@@ -196,7 +189,7 @@ def test_measurement_copy_returns_new_instance_with_same_attributes():
 
 
 def test_distractor_info_takes_distractor_type_and_displacement_mm_per_full_turn_as_args():
-    distractor_info = DistractorInfo(distractor_type='KLS Arnaud', displacement_mm_per_full_turn=1.15)
+    DistractorInfo(distractor_type='KLS Arnaud', displacement_mm_per_full_turn=1.15)
 
 
 def test_session_continue_from_sets_session_instance(database_fixture):

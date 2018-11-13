@@ -5,7 +5,7 @@ from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
 from cranio.state import AreYouSureState
 from cranio.state_machine import StateMachine
-from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
+from cranio.model import Patient, Document, Measurement, session_scope, \
     AnnotatedEvent, Log, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook, logger
 
@@ -119,7 +119,7 @@ def test_event_detection_state_flow(machine, qtbot):
     n = 10
     time_s = list(range(n))
     torque_Nm = list(range(n))
-    insert_time_series_to_database(time_s, torque_Nm, machine.document)
+    machine.document.insert_time_series(time_s, torque_Nm)
     # Trigger hidden transition from s1 to s3 (EventDetectionState)
     machine._s1_to_s3_signal.emit()
     app.processEvents()
@@ -202,7 +202,7 @@ def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_
     n = 10
     time_s = list(range(n))
     torque_Nm = list(range(n))
-    insert_time_series_to_database(time_s, torque_Nm, machine.document)
+    machine.document.insert_time_series(time_s, torque_Nm)
     # Trigger hidden transition from s1 to s3 (EventDetectionState)
     machine._s1_to_s3_signal.emit()
     assert machine.in_state(machine.s3)
@@ -254,7 +254,7 @@ def test_event_detection_state_default_region_count_equals_turns_in_full_turn(da
     sensor_info = state.document.get_related_sensor_info()
     # generate and enter data
     n = 10
-    insert_time_series_to_database(list(range(n)), list(range(n)), state.document)
+    state.document.insert_time_series(list(range(n)), list(range(n)))
     # trigger entry with dummy event
     event = QEvent(QEvent.None_)
     state.onEntry(event)

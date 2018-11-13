@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
 from cranio.producer import ProducerProcess, create_dummy_sensor
 from cranio.imada import Imada
-from cranio.database import session_scope, Patient, AnnotatedEvent
+from cranio.model import session_scope, Patient, AnnotatedEvent
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
     DoubleSpinEditWidget, SessionWidget
 from cranio.utils import logger

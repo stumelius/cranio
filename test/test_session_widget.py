@@ -1,5 +1,5 @@
 import pytest
-from cranio.database import session_scope, Session
+from cranio.model import session_scope, Session
 from cranio.app.widget import SessionWidget
 
 
