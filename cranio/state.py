@@ -3,18 +3,16 @@ from PyQt5.QtCore import QState, QEvent
 from PyQt5.QtWidgets import QMessageBox
 from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
 from cranio.app.widget import SessionWidget
-from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, DefaultDatabase
+from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, Database
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
 
 
-class MyState(QState):
-    def __init__(self, name: str, parent=None):
-        super().__init__(parent)
-        self.name = name
-
-    def __str__(self):
-        return f'{type(self).__name__}(name="{self.name}")'
+class StateMachineContextMixin:
+    @property
+    def database(self) -> Database:
+        """ Context Database. """
+        return self.machine().database
 
     @property
     def main_window(self) -> MainWindow:
@@ -37,6 +35,15 @@ class MyState(QState):
     @annotated_events.setter
     def annotated_events(self, values: List[AnnotatedEvent]):
         self.machine().annotated_events = values
+
+
+class MyState(QState, StateMachineContextMixin):
+    def __init__(self, name: str, parent=None):
+        super().__init__(parent)
+        self.name = name
+
+    def __str__(self):
+        return f'{type(self).__name__}(name="{self.name}")'
 
     def onEntry(self, event: QEvent):
         logger.debug(f'Enter {self.name}')
@@ -66,10 +73,16 @@ class InitialState(MyState):
 class ChangeSessionState(MyState):
     def __init__(self, name: str, parent=None):
         super().__init__(name=name, parent=parent)
-        # Initialize session dialog
-        self.session_widget = SessionWidget()
+        # UI elements are not initialized here because self.database is undefined before assignment to a state machine
+        self.session_widget = None
+        self.session_dialog = None
+        self.signal_select = None
+        self.signal_cancel = None
+
+    def init_ui(self):
+        """ Initialize UI elements. Needs to be called before entry. """
+        self.session_widget = SessionWidget(database=self.database)
         self.session_dialog = SessionDialog(self.session_widget)
-        # Define signals
         self.signal_select = self.session_widget.select_button.clicked
         self.signal_cancel = self.session_widget.cancel_button.clicked
         # Close equals to Cancel
@@ -122,9 +135,9 @@ class MeasurementState(MyState):
         logger.debug('Clear plot')
         self.main_window.measurement_widget.clear()
         # Insert sensor info and document to database
-        sensor.enter_info_to_database()
+        sensor.enter_info_to_database(self.database)
         logger.debug(f'Enter document: {str(self.document)}')
-        DefaultDatabase.SQLITE.insert(self.document)
+        self.database.insert(self.document)
         # Kill old producer process
         if self.main_window.producer_process is not None:
             self.main_window.producer_process.join()
@@ -169,11 +182,11 @@ class EventDetectionState(MyState):
         :return:
         """
         super().onEntry(event)
-        self.dialog.plot(*self.document.get_related_time_series())
+        self.dialog.plot(*self.document.get_related_time_series(self.database))
         # Clear existing regions
         self.dialog.clear_regions()
         # Add as many regions as there are turns in one full turn
-        sensor_info = self.document.get_related_sensor_info()
+        sensor_info = self.document.get_related_sensor_info(self.database)
         self.dialog.set_add_count(int(sensor_info.turns_in_full_turn))
         self.dialog.add_button.clicked.emit(True)
         self.dialog.show()
@@ -251,8 +264,8 @@ class NoteState(MyState):
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         # Set default full turn count
-        event_count = len(self.document.get_related_events())
-        with session_scope() as s:
+        event_count = len(self.document.get_related_events(self.database))
+        with session_scope(self.database) as s:
             sensor_info = s.query(SensorInfo).\
                 filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
         self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)

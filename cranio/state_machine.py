@@ -14,7 +14,7 @@ class StateMachine(QStateMachine):
     def __init__(self, database: Database):
         super().__init__()
         self.database = database
-        self.main_window = MainWindow()
+        self.main_window = MainWindow(database)
         self.document = None
         self.annotated_events = None
         self._initialize_states()
@@ -36,6 +36,8 @@ class StateMachine(QStateMachine):
         for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11):
             self.addState(s)
         self.setInitialState(self.s1)
+        # Additional initializations
+        self.s9.init_ui()
 
     def _initialize_transitions(self):
         self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)

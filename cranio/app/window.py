@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
 from cranio.producer import ProducerProcess, create_dummy_sensor
 from cranio.imada import Imada
-from cranio.model import session_scope, Patient, AnnotatedEvent
+from cranio.model import AnnotatedEvent, Database
 from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
     DoubleSpinEditWidget, SessionWidget
 from cranio.utils import logger
@@ -199,8 +199,9 @@ class MainWindow(QMainWindow):
     """ Craniodistraction application main window. """
     signal_close = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, database: Database):
         super().__init__()
+        self.database = database
         self.setWindowTitle('Craniodistractor')
         self._producer_process = None
         self.sensor = None
@@ -210,10 +211,10 @@ class MainWindow(QMainWindow):
         self.main_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.main_widget)
         # Add meta prompt widget
-        self.meta_widget = MetaDataWidget()
+        self.meta_widget = MetaDataWidget(database=self.database)
         self.main_layout.addWidget(self.meta_widget)
         # Add measurement widget
-        self.measurement_widget = MeasurementWidget(producer_process=self.producer_process)
+        self.measurement_widget = MeasurementWidget(database=self.database, producer_process=self.producer_process)
         self.main_layout.addWidget(self.measurement_widget)
         # Add File menu
         self.file_menu = self.menuBar().addMenu('File')

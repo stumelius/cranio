@@ -127,7 +127,7 @@ def enter_if_not_exists(session: SQLSession, row: Base):
 
 
 @contextmanager
-def session_scope(database: Database=DefaultDatabase.SQLITE):
+def session_scope(database: Database):
     """
     Provide a transactional scope around a series of operations.
 
@@ -318,45 +318,48 @@ class Document(Base, InstanceMixin, DictMixin):
         cls.set_instance(document)
         return cls.get_instance()
 
-    def get_related_time_series(self) -> Tuple[List[float], List[float]]:
+    def get_related_time_series(self, database: Database) -> Tuple[List[float], List[float]]:
         """
         Return torque as a function of time related to the document.
 
+        :param database:
         :return:
         """
         x, y = list(), list()
-        with session_scope() as s:
+        with session_scope(database) as s:
             measurements = s.query(Measurement).filter(Measurement.document_id == self.document_id).all()
             if len(measurements) == 0:
                 return x, y
             x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         return x, y
 
-    def get_related_events(self) -> List[AnnotatedEvent]:
+    def get_related_events(self, database: Database) -> List[AnnotatedEvent]:
         """
         Return list of annotated events related to the document.
 
         :return:
         """
-        with session_scope() as s:
+        with session_scope(database) as s:
             events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == self.document_id).all()
         return events
 
-    def get_related_sensor_info(self) -> SensorInfo:
+    def get_related_sensor_info(self, database: Database) -> SensorInfo:
         """
         Return SensorInfo object related to the document.
 
         :return:
         """
-        with session_scope() as s:
+        with session_scope(database) as s:
             sensor_info = s.query(SensorInfo). \
                 filter(SensorInfo.sensor_serial_number == self.sensor_serial_number).first()
         return sensor_info
 
-    def insert_time_series(self, time_s: Iterable[float], torque_Nm: Iterable[float]) -> List[Measurement]:
+    def insert_time_series(self, database: Database, time_s: Iterable[float],
+                           torque_Nm: Iterable[float]) -> List[Measurement]:
         """
         Insert torque as a function of time to database.
 
+        :param database:
         :param time_s:
         :param torque_Nm:
         :return:
@@ -364,7 +367,7 @@ class Document(Base, InstanceMixin, DictMixin):
         # Insert entire time series in one transaction
         measurements = [Measurement(document_id=self.document_id, time_s=x, torque_Nm=y)
                         for x, y in zip(time_s, torque_Nm)]
-        DefaultDatabase.SQLITE.bulk_insert(measurements)
+        database.bulk_insert(measurements)
         return measurements
 
 

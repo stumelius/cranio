@@ -1,10 +1,11 @@
 import pytest
+import time
 import numpy as np
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.inspection import inspect
-from cranio.utils import get_logging_levels, generate_unique_id, utc_datetime
+from cranio.utils import get_logging_levels, generate_unique_id, utc_datetime, logger, log_level_to_name
 from cranio.model import Patient, Session, Document, Measurement, Log, LogLevel, session_scope, \
-    AnnotatedEvent, DefaultDatabase, EventType, DistractorInfo, DistractorType
+    AnnotatedEvent, EventType, DistractorInfo, DistractorType
 from cranio.producer import Sensor
 
 
@@ -123,14 +124,14 @@ def test_get_time_series_related_to_document(database_document_fixture):
     y_arr = np.random.rand(n)
     measurements = [Measurement(document_id=document.document_id, time_s=x, torque_Nm=y) for x, y in zip(x_arr, y_arr)]
     database_document_fixture.bulk_insert(measurements)
-    x, y = document.get_related_time_series()
+    x, y = document.get_related_time_series(database_document_fixture)
     np.testing.assert_array_almost_equal(x, x_arr)
     np.testing.assert_array_almost_equal(y, y_arr)
 
 
 def test_get_non_existing_time_series_related_to_document(database_document_fixture):
     document = Document.get_instance()
-    x, y = document.get_related_time_series()
+    x, y = document.get_related_time_series(database_document_fixture)
     assert len(x) == 0 and len(y) == 0
 
 
@@ -155,7 +156,7 @@ def test_document_get_related_events_count_is_correct(database_document_fixture)
                                        document_id=document.document_id, annotation_done=False, recorded=True)
                         for i in range(n)]
     database_document_fixture.bulk_insert(annotated_events)
-    assert len(document.get_related_events()) == n
+    assert len(document.get_related_events(database_document_fixture)) == n
 
 
 def test_measurement_as_dict_returns_only_table_columns():
@@ -181,6 +182,27 @@ def test_distractor_info_takes_distractor_type_and_displacement_mm_per_full_turn
 def test_session_continue_from_sets_session_instance(database_fixture):
     # Create new session
     s2 = Session()
-    DefaultDatabase.SQLITE.insert(s2)
+    database_fixture.insert(s2)
     Session.continue_from(s2)
     assert Session.get_instance() == s2
+
+
+def test_logging_is_directed_to_database_log_table_with_correct_values(database_fixture):
+    wait_duration = 0.01  # seconds
+    t_start = utc_datetime()
+    # short wait to ensure that t_start < log timestamp
+    time.sleep(wait_duration)
+    msg = 'This should not raise an IntegrityError'
+    logger.info(msg)
+    # short wait to ensure that t_stop > log timestamp
+    time.sleep(wait_duration)
+    t_stop = utc_datetime()
+    with session_scope(database_fixture) as s:
+        logs = s.query(Log).filter(Log.message == msg).all()
+        assert len(logs) == 1
+        log = logs[0]
+        assert log.session_id == Session.get_instance().session_id
+        assert log.logger == logger.name
+        assert log_level_to_name(log.level).lower() == 'info'
+        # verify that the log entry is created between t_start and current time
+        assert t_start <= log.created_at <= t_stop

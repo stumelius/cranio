@@ -4,8 +4,8 @@ from cranio.model import session_scope, Patient
 
 
 @pytest.fixture(scope='function')
-def meta_data_widget():
-    widget = MetaDataWidget()
+def meta_data_widget(database_fixture):
+    widget = MetaDataWidget(database=database_fixture)
     return widget
 
 
@@ -15,12 +15,10 @@ def test_meta_data_widget_add_patient(meta_data_widget):
     assert meta_data_widget.active_patient == patient_id
 
 
-def test_meta_data_widget_update_patients_from_database(meta_data_widget, database_fixture):
+def test_meta_data_widget_update_patients_from_database(meta_data_widget):
     n = 10
-    # add patients to database
-    with session_scope() as s:
-        for i in range(n):
-            s.add(Patient(patient_id=i))
+    # Add patients to database
+    meta_data_widget.database.bulk_insert([Patient(patient_id=i) for i in range(n)])
     # update widget
     meta_data_widget.update_patients_from_database()
     patients = meta_data_widget.patients()

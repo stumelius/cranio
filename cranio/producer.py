@@ -146,8 +146,8 @@ class Sensor:
         return utc_datetime(), values
 
     @classmethod
-    def enter_info_to_database(cls, database: Database=DefaultDatabase.SQLITE):
-        """ Enter copy of self.sensor_info to the database. """
+    def enter_info_to_database(cls, database: Database):
+        """ Enter copy of self.sensor_info to a database. """
         logger.debug(f'Enter sensor info: {str(cls.sensor_info)}')
         database.insert(cls.sensor_info, insert_if_exists=False)
 

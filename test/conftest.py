@@ -1,13 +1,14 @@
 import pytest
 import logging.config
 from cranio.model import Database, Session, Patient, Document, DistractorType
-from cranio.utils import get_logging_config, generate_unique_id, utc_datetime
+from cranio.utils import get_logging_config, generate_unique_id, utc_datetime, logger
 from cranio.producer import ProducerProcess, Sensor
 
 
 @pytest.fixture(scope='function')
 def database_fixture():
     database = Database(drivername='sqlite')
+    logger.register_database(database)
     database.create_engine()
     try:
         Session.init(database=database)
@@ -15,6 +16,7 @@ def database_fixture():
         Session.reset_instance()
         Session.init(database=database)
     yield database
+    logger.unregister_database(database)
     database.clear()
 
 
@@ -31,16 +33,16 @@ def database_patient_fixture(database_fixture):
 
 @pytest.fixture(scope='function')
 def database_document_fixture(database_patient_fixture):
-    Sensor.enter_info_to_database()
+    Sensor.enter_info_to_database(database=database_patient_fixture)
     try:
         Document.init(patient_id=Patient.get_instance().patient_id,
                       sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-                      distractor_type=DistractorType.KLS, database=database_fixture)
+                      distractor_type=DistractorType.KLS, database=database_patient_fixture)
     except ValueError:
         Document.reset_instance()
         Document.init(patient_id=Patient.get_instance().patient_id,
                       sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-                      distractor_type=DistractorType.KLS, database=database_fixture)
+                      distractor_type=DistractorType.KLS, database=database_patient_fixture)
     yield database_patient_fixture
 
 
