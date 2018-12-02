@@ -15,7 +15,7 @@ List of tests:
 import pytest
 import numpy as np
 from typing import Iterable, List
-from cranio.database import AnnotatedEvent, Document, Measurement, session_scope, EventType
+from cranio.model import AnnotatedEvent, Document, Measurement, session_scope, EventType
 from cranio.app.widget import RegionPlotWidget, RegionEditWidget
 from cranio.app.window import RegionPlotWindow
 
@@ -125,40 +125,28 @@ def test_event_numbering_by_insertion_order(region_plot_widget):
     assert edit_widget.event_number == 3
 
 
-def insert_time_series_to_database(time_s: Iterable[float], torque_Nm: Iterable[float],
-                                   document: Document) -> List[Measurement]:
-    """ Helper function. """
-    measurements = []
-    with session_scope() as s:
-        for x, y in zip(time_s, torque_Nm):
-            m = Measurement(document_id=document.document_id, time_s=x, torque_Nm=y)
-            measurements.append(m)
-            s.add(m)
-    return measurements
-
-
 def test_region_plot_window_can_be_initialized_from_document_data(database_document_fixture):
     # generate data and associate with document
     n = 100
     document = Document.get_instance()
-    X = np.linspace(left_edge, right_edge, n)
-    Y = np.random.rand(n)
-    insert_time_series_to_database(X, Y, document)
+    x_arr = np.linspace(left_edge, right_edge, n)
+    y_arr = np.random.rand(n)
+    document.insert_time_series(database_document_fixture, x_arr, y_arr)
     region_plot_window = RegionPlotWindow()
-    region_plot_window.plot(*document.get_related_time_series())
-    np.testing.assert_array_almost_equal(region_plot_window.x_arr, X)
-    np.testing.assert_array_almost_equal(region_plot_window.y_arr, Y)
+    region_plot_window.plot(*document.get_related_time_series(database_document_fixture))
+    np.testing.assert_array_almost_equal(region_plot_window.x_arr, x_arr)
+    np.testing.assert_array_almost_equal(region_plot_window.y_arr, y_arr)
 
 
-def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is_clicked():
+def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is_clicked(database_document_fixture):
     # generate data and associate with document
     n = 100
     document = Document.get_instance()
-    X = np.linspace(left_edge, right_edge, n)
-    Y = np.random.rand(n)
-    insert_time_series_to_database(X, Y, document)
+    x_arr = np.linspace(left_edge, right_edge, n)
+    y_arr = np.random.rand(n)
+    document.insert_time_series(database_document_fixture, x_arr, y_arr)
     region_plot_window = RegionPlotWindow()
-    region_plot_window.plot(*document.get_related_time_series())
+    region_plot_window.plot(*document.get_related_time_series(database_document_fixture))
     # add regions using add button
     region_plot_window.set_add_count(region_count)
     region_plot_window.add_button.clicked.emit(True)

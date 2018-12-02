@@ -1,14 +1,14 @@
 import pytest
 from cranio.imada import Imada
 from cranio.producer import Sensor
-from cranio.database import Document, SensorInfo, DistractorInfo, DistractorType
+from cranio.model import Document, SensorInfo, DistractorInfo, DistractorType
 """
 List of tests:
 
 * (check) SensorInfo table contains the conversion factor for calculating the distraction achieved (mm) given the number of full 
 turns performed
 * (check) Imada and Sensor objects contain sensor_info
-* (check) Document has a relation to Sensor information (test_database.py)
+* (check) Document has a relation to Sensor information (test_model.py)
 * (check) Sensor information is inserted to database after Document is inserted (test_state_machine.py)
 """
 

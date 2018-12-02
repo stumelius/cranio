@@ -3,18 +3,18 @@ import time
 import logging
 from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
-from cranio.state import MyStateMachine, AreYouSureState
-from cranio.database import Patient, Document, Measurement, session_scope, insert_time_series_to_database, \
+from cranio.state import AreYouSureState
+from cranio.state_machine import StateMachine
+from cranio.model import Patient, Document, Measurement, session_scope, \
     AnnotatedEvent, Log, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook, logger
-
 wait_sec = 0.5
 attach_excepthook()
 
 
 @pytest.fixture(scope='function')
 def machine(producer_process, database_patient_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine(database=database_patient_fixture)
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     # Connect and register dummy sensor
@@ -32,7 +32,7 @@ def machine(producer_process, database_patient_fixture):
 
 @pytest.fixture
 def machine_without_patient(producer_process, database_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine(database=database_fixture)
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     state_machine.start()
@@ -44,9 +44,9 @@ def machine_without_patient(producer_process, database_fixture):
     state_machine.stop()
 
 
-def caught_exceptions():
+def caught_exceptions(database):
     """ Return caught exceptions from log database. """
-    with session_scope() as s:
+    with session_scope(database) as s:
         errors = s.query(Log).filter(Log.level == logging.ERROR).all()
     return errors
 
@@ -56,7 +56,7 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
     assert machine.document is not None
-    with session_scope() as s:
+    with session_scope(machine.database) as s:
         document = s.query(Document).first()
         assert document.document_id == machine.document.document_id
         # Verify patient, distractor and operator
@@ -77,7 +77,7 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
     machine.main_window.measurement_widget.stop_button.clicked.emit()
     app.processEvents()
     assert machine.producer_process.is_alive()
-    with session_scope() as s:
+    with session_scope(machine.database) as s:
         measurements = s.query(Measurement).filter(Measurement.document_id == machine.document.document_id).all()
         assert len(measurements) > 0
 
@@ -88,7 +88,7 @@ def test_prevent_measurement_start_if_no_patient_is_selected(machine_without_pat
     # start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
-    errors = caught_exceptions()
+    errors = caught_exceptions(machine.database)
     assert len(errors) == 1
     assert 'Invalid patient' in errors[0].message
 
@@ -99,7 +99,7 @@ def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
     # Start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
-    errors = caught_exceptions()
+    errors = caught_exceptions(machine.database)
     assert len(errors) == 1
     assert 'No sensors connected' in errors[0].message
     # Machine rolled back to initial state
@@ -111,14 +111,13 @@ def test_event_detection_state_flow(machine, qtbot):
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
-    machine.sensor.enter_info_to_database()
-    with session_scope() as s:
-        s.add(machine.document)
+    machine.sensor.enter_info_to_database(machine.database)
+    machine.database.insert(machine.document)
     # Generate and enter data
     n = 10
     time_s = list(range(n))
     torque_Nm = list(range(n))
-    insert_time_series_to_database(time_s, torque_Nm, machine.document)
+    machine.document.insert_time_series(machine.database, time_s, torque_Nm)
     # Trigger hidden transition from s1 to s3 (EventDetectionState)
     machine._s1_to_s3_signal.emit()
     app.processEvents()
@@ -151,7 +150,7 @@ def test_event_detection_state_flow(machine, qtbot):
         qtbot.keyPress(machine.s3.dialog, Qt.Key_Enter)
     assert machine.in_state(machine.s6)
     # Verify that annotated events were entered
-    with session_scope() as s:
+    with session_scope(machine.database) as s:
         events = s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == machine.document.document_id).all()
         assert len(events) == region_count
         region_edits = [machine.s3.dialog.get_region_edit(i) for i in range(region_count)]
@@ -184,7 +183,7 @@ def test_event_detection_state_flow(machine, qtbot):
     machine.s7.signal_yes.emit()
     app.processEvents()
     # Verify that document updates were entered to database
-    with session_scope() as s:
+    with session_scope(machine.database) as s:
         document = s.query(Document).filter(Document.document_id == machine.document.document_id).first()
         assert document.notes == notes
         assert float(document.full_turn_count) == full_turn_count
@@ -194,14 +193,13 @@ def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
-    machine.sensor.enter_info_to_database()
-    with session_scope() as s:
-        s.add(machine.document)
+    machine.sensor.enter_info_to_database(database=machine.database)
+    machine.database.insert(machine.document)
     # Generate and enter data
     n = 10
     time_s = list(range(n))
     torque_Nm = list(range(n))
-    insert_time_series_to_database(time_s, torque_Nm, machine.document)
+    machine.document.insert_time_series(machine.database, time_s, torque_Nm)
     # Trigger hidden transition from s1 to s3 (EventDetectionState)
     machine._s1_to_s3_signal.emit()
     assert machine.in_state(machine.s3)
@@ -228,17 +226,15 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
 
 
 def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times_per_turns_in_full_turn(database_document_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine(database=database_document_fixture)
     state_machine.document = Document.get_instance()
     state = state_machine.s6
     event_count = 3
-    with session_scope() as s:
-        # insert annotated events
-        for i in range(event_count):
-            s.add(AnnotatedEvent(document_id=state.document.document_id, event_begin=0, event_end=1,
+    # Generate and insert annotated events
+    state_machine.database.bulk_insert([AnnotatedEvent(document_id=state.document.document_id, event_begin=0, event_end=1,
                                  event_num=i+1, annotation_done=True, recorded=True,
-                                 event_type=EventType.distraction_event_type().event_type))
-    sensor_info = state.document.get_related_sensor_info()
+                                 event_type=EventType.distraction_event_type().event_type) for i in range(event_count)])
+    sensor_info = state.document.get_related_sensor_info(database=state_machine.database)
     # trigger entry with dummy event
     event = QEvent(QEvent.None_)
     state.onEntry(event)
@@ -247,13 +243,13 @@ def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times
 
 
 def test_event_detection_state_default_region_count_equals_turns_in_full_turn(database_document_fixture):
-    state_machine = MyStateMachine()
+    state_machine = StateMachine(database=database_document_fixture)
     state_machine.document = Document.get_instance()
     state = state_machine.s3
-    sensor_info = state.document.get_related_sensor_info()
+    sensor_info = state.document.get_related_sensor_info(database=state_machine.database)
     # generate and enter data
     n = 10
-    insert_time_series_to_database(list(range(n)), list(range(n)), state.document)
+    state.document.insert_time_series(state_machine.database, list(range(n)), list(range(n)))
     # trigger entry with dummy event
     event = QEvent(QEvent.None_)
     state.onEntry(event)
@@ -263,8 +259,7 @@ def test_event_detection_state_default_region_count_equals_turns_in_full_turn(da
 
 def test_state_machine_transitions_to_and_from_change_session_state(machine):
     # Add extra session to switch to
-    with session_scope() as s:
-        s.add(Session())
+    machine.database.insert(Session())
     assert machine.s1.signal_change_session is not None
     # Trigger transition from s1 to s9 (ChangeSessionState)
     machine.s1.signal_change_session.emit()

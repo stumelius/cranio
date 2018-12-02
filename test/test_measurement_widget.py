@@ -3,8 +3,8 @@ from cranio.app.widget import MeasurementWidget
 
 
 @pytest.fixture
-def measurement_widget():
-    widget = MeasurementWidget()
+def measurement_widget(database_fixture):
+    widget = MeasurementWidget(database=database_fixture)
     yield widget
 
 

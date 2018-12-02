@@ -8,10 +8,10 @@ from typing import Tuple, List, Iterable
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QLayout, QWidget, QWidgetItem, QSpacerItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
+    QLayout, QWidget, QWidgetItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
     QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
 from sqlalchemy.exc import IntegrityError
-from cranio.database import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session
+from cranio.model import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session, Database
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
 # Plot style settings
@@ -230,8 +230,9 @@ class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
     signal_close = QtCore.pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, database: Database, parent=None):
         super().__init__(parent=parent)
+        self.database = database
         self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.operator_widget = EditWidget('Operator', parent=self)
         self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
@@ -270,7 +271,7 @@ class MetaDataWidget(QGroupBox):
         """
         logger.debug('Update patients called')
         self.patient_widget.clear()
-        with session_scope() as s:
+        with session_scope(self.database) as s:
             for p in s.query(Patient).all():
                 # Populate patient widget
                 self.patient_widget.add_item(p.patient_id)
@@ -319,7 +320,7 @@ class MetaDataWidget(QGroupBox):
         self.lock_patient(self.enabled)
 
 
-def add_patient(patient_id: str) -> Patient:
+def add_patient(database: Database, patient_id: str) -> Patient:
     """
     Add new patient to the database.
 
@@ -327,10 +328,7 @@ def add_patient(patient_id: str) -> Patient:
     :return:
     :raises sqlalchemy.exc.IntegrityError: if the patient already exists.
     """
-    patient = Patient(patient_id=patient_id)
-    with session_scope() as session:
-        session.add(patient)
-    return patient
+    return database.insert(Patient(patient_id=patient_id))
 
 
 def prompt_create_patient(parent_widget) -> str:
@@ -359,8 +357,9 @@ class PatientWidget(QWidget):
     View existing patients and add new ones to the database
     """
 
-    def __init__(self):
+    def __init__(self, database: Database):
         super().__init__()
+        self.database = database
         self.main_layout = QVBoxLayout()
         self.label = QLabel('Patients')
         self.table_widget = QTableWidget(parent=self)
@@ -385,7 +384,7 @@ class PatientWidget(QWidget):
 
         :return:
         """
-        with session_scope() as session:
+        with session_scope(self.database) as session:
             for i, patient in enumerate(session.query(Patient).all()):
                 self.table_widget.setRowCount(i + 1)
                 self.table_widget.setItem(i, 0, QTableWidgetItem(patient.patient_id))
@@ -398,7 +397,7 @@ class PatientWidget(QWidget):
         :param patient_id:
         :return:
         """
-        add_patient(patient_id)
+        add_patient(database=self.database, patient_id=patient_id)
         self.update_patients()
 
     def add_button_clicked(self):
@@ -424,8 +423,9 @@ class SessionWidget(QWidget):
     View existing sessions and let user select one.
     """
 
-    def __init__(self):
+    def __init__(self, database: Database):
         super().__init__()
+        self.database = database
         self.main_layout = QVBoxLayout()
         self.label = QLabel('Sessions')
         self.table_widget = QTableWidget(parent=self)
@@ -457,7 +457,7 @@ class SessionWidget(QWidget):
         self.sessions = []
         self.table_widget.clear()
         # Add new contents
-        with session_scope() as s:
+        with session_scope(self.database) as s:
             for i, session in enumerate(s.query(Session).all()):
                 self.sessions.append(session)
                 self.table_widget.setRowCount(i + 1)
@@ -501,8 +501,9 @@ class SessionWidget(QWidget):
 class MeasurementWidget(QWidget):
     """ Multiplot measurement widget and buttons to start and stop data recording. Ok button to continue. """
 
-    def __init__(self, producer_process=None, parent=None):
+    def __init__(self, database: Database, producer_process=None, parent=None):
         super().__init__(parent)
+        self.database = database
         self.producer_process = producer_process
         self.main_layout = QVBoxLayout()
         self.plot_layout = QHBoxLayout()
@@ -577,20 +578,19 @@ class MeasurementWidget(QWidget):
 
         :return:
         """
-        measurements = []
         index_arr, value_dict_arr = get_all_from_queue(self.producer_process.queue)
         # No data available
         if not index_arr:
             return
         # Convert UTC+0 datetime to seconds
         time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
-        # Insert to database
-        with session_scope() as s:
-            for time_s, value_dict in zip(time_arr, value_dict_arr):
-                m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
-                                document_id=self.producer_process.document.document_id)
-                s.add(m)
-                measurements.append(m)
+        # Create measurements and insert to database
+        measurements = []
+        for time_s, value_dict in zip(time_arr, value_dict_arr):
+            m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
+                            document_id=self.producer_process.document.document_id)
+            measurements.append(m)
+        self.database.bulk_insert(measurements)
         # Convert data to DataFrame
         x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         df = pd.DataFrame({'torque (Nm)': y}, index=x)
