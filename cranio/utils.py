@@ -24,6 +24,10 @@ class CustomAdapter(logging.LoggerAdapter):
         self.machine = None
         self.database = None
 
+    @property
+    def name(self):
+        return self.logger.name
+
     def process(self, msg, kwargs):
         # Add state context
         if not self.machine:
