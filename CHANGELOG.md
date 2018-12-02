@@ -23,4 +23,4 @@ Initial prototype.
 * Real-time plotting of torque sensor data using [PyQt4](http://pyqt.sourceforge.net/Docs/PyQt4/introduction.html)
 
 
-[1.0.0]: https://github.com/smomni/cranio/compare/1.0.0...proto
+[1.0.0]: https://github.com/smomni/cranio/compare/v1.0.0...proto
