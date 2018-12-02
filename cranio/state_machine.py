@@ -1,3 +1,6 @@
+"""
+Finite-state machine.
+"""
 from PyQt5.QtCore import QStateMachine, QState,QFinalState, pyqtSignal
 from cranio.app.window import MainWindow
 from cranio.model import Session, Database

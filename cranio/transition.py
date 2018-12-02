@@ -1,5 +1,8 @@
+"""
+System state transitions.
+"""
 from PyQt5.QtCore import QEvent, QSignalTransition
-from cranio.model import session_scope, Session, Document, AnnotatedEvent, DefaultDatabase
+from cranio.model import session_scope, Session, Document, AnnotatedEvent
 from cranio.utils import logger
 from cranio.state import StateMachineContextMixin
 

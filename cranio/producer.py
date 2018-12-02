@@ -1,5 +1,5 @@
 """
-.. todo:: Module description
+Data producers and processes.
 """
 import datetime
 import time
@@ -9,7 +9,7 @@ import numpy as np
 from typing import Iterable, List, Tuple
 from contextlib import contextmanager
 from cranio.utils import random_value_generator, logger, generate_unique_id, utc_datetime
-from cranio.model import SensorInfo, Document, DefaultDatabase, Database
+from cranio.model import SensorInfo, Document, Database
 
 
 class SensorError(Exception):

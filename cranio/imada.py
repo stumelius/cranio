@@ -7,7 +7,7 @@ import datetime
 from collections import namedtuple
 from typing import Tuple
 from serial.tools.list_ports_common import ListPortInfo
-from cranio.producer import Sensor, ChannelInfo, ProducerProcess
+from cranio.producer import Sensor, ChannelInfo
 from cranio.model import SensorInfo
 from cranio.utils import logger, utc_datetime
 
