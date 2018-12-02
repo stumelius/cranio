@@ -1,3 +1,6 @@
+"""
+System states.
+"""
 from typing import List
 from PyQt5.QtCore import QState, QEvent
 from PyQt5.QtWidgets import QMessageBox

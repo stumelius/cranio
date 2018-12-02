@@ -1,5 +1,5 @@
 """
-.. todo:: To be documented.
+GUI windows.
 """
 from typing import List
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -42,7 +42,7 @@ class RegionPlotWindow(QDialog):
 
     def init_ui(self):
         """ Initialize UI elements. """
-        self.setWindowTitle('Region window')
+        self.setWindowTitle('Event window')
         # Add maximize button
         self.setWindowFlag(Qt.WindowMinMaxButtonsHint)
         self.setLayout(self.layout)

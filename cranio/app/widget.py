@@ -1,5 +1,5 @@
 """
-.. todo:: Module description.
+GUI widgets.
 """
 import pyqtgraph as pg
 import pandas as pd
@@ -745,7 +745,7 @@ class RegionEditWidget(QGroupBox):
 
     def init_ui(self):
         """ Initialize UI elements. """
-        self.setTitle('Region')
+        self.setTitle('Event')
         self.setLayout(self.main_layout)
         self.boundary_layout.addWidget(self.minimum_edit)
         self.boundary_layout.addWidget(self.maximum_edit)
@@ -899,6 +899,7 @@ class RegionPlotWidget(QWidget):
         self.add_layout = QGridLayout()
         # region items mapped as {LinearRegionItem: RegionEditWidget}
         self.region_edit_map = dict()
+        self.add_groupbox = QGroupBox('Add/remove events')
         self.add_count = QSpinBox()
         self.add_button = QPushButton('Add')
         self.remove_all_button = QPushButton('Remove all')
@@ -912,7 +913,8 @@ class RegionPlotWidget(QWidget):
         self.add_layout.addWidget(self.add_count, 0, 0)
         self.add_layout.addWidget(self.add_button, 0, 1)
         self.add_layout.addWidget(self.remove_all_button, 1, 0, 1, 2)
-        self.edit_layout.addLayout(self.add_layout)
+        self.add_groupbox.setLayout(self.add_layout)
+        self.edit_layout.addWidget(self.add_groupbox)
         self.add_button.clicked.connect(self.add_button_clicked)
         self.remove_all_button.clicked.connect(self.remove_all)
 
