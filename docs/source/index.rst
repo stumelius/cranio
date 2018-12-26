@@ -13,7 +13,22 @@ About cranio
 ------------
 
 Cranio is a Python library used for force measurements, data analysis and visualization in
-posterior calvarial vault osteodistraction (PCVO).
+posterior calvarial vault osteodistraction (PCVO). PCVO is used to treat patients with craniosynostosis.
+
+Craniosynostosis is a condition occurring in infants where bones in the skull are prematurely fused resulting in
+abnormal head shape, decreased intracranial volume (ICV) and increased intracranial pressure (ICP). Fibrous sutures
+bones of the skull are prematurely fused by turning into bone. This prevents the skull from growing perpendicular to the
+ossified suture which is compensated by increased growth parallel to the fused suture. The features of craniosynostosis
+are determined by which sutures are closed. In some case, the resulting growth pattern only leads to abnormal head shape
+while leaving enough room for the brain inside the skull. In other cases, in addition to abnormal head shape, intracranial volume is decreased leading to elevated intracranial pressure.
+Elevated ICP can cause headache, vomiting, visual impairment (e.g., papilledema), obstructive sleep apnea and
+neurobehavioral impairment. Cranisynostosis affects 1/2000 infants and usually occurs as an isolated condition.
+In 15% - 40% of cases craniosynostosis is part of a syndrome. Craniosynostosis can be treated with calvarial vault
+reconstruction/remodeling (CVR) or posterior calvarial vault osteodistraction (PCVO).
+
+.. figure:: ../Gray188.png
+
+.. figure:: ../types_of_craniosynostosis.jpg
 
 General description on PCVO goes here...
 
