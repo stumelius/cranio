@@ -14,7 +14,7 @@ pytest==4.0.2
 pytest-qt==3.2.2
 python-dateutil==2.7.5
 pytz==2018.7
-ruamel.yaml==0.15.77
+ruamel.yaml==0.15.82
 six==1.11.0
 SQLAlchemy==1.2.14
 Sphinx==1.8.2
