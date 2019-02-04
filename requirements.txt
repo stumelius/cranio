@@ -3,7 +3,7 @@ attrs==18.2.0
 colorama==0.4.1
 more-itertools==5.0.0
 numpy==1.16.1
-pandas==0.23.4
+pandas==0.24.1
 pluggy==0.8.0
 py==1.7.0
 PyQt5==5.11.3
