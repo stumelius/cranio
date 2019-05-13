@@ -15,7 +15,7 @@ pytest-qt==3.2.2
 python-dateutil==2.8.0
 pytz==2019.1
 ruamel.yaml==0.15.94
-six==1.11.0
+six==1.12.0
 SQLAlchemy==1.2.14
 Sphinx==1.8.2
 sphinx-autodoc-typehints==1.4.0
