@@ -64,6 +64,10 @@ def open_port(port):
     port.close()
 
 
+def get_nan() -> np.NaN:
+    return np.NaN
+
+
 class ChannelInfo:
     """ Input channel information. """
     # Default string representation
@@ -87,7 +91,7 @@ class Sensor:
     
     def __init__(self):
         self.channels = []
-        self.value_generator = lambda: np.NaN
+        self.value_generator = get_nan
     
     def open(self):
         """ Dummy method. """
