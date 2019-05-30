@@ -5,43 +5,11 @@ from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
 from cranio.state import AreYouSureState
 from cranio.state_machine import StateMachine
-from cranio.model import Patient, Document, Measurement, session_scope, \
+from cranio.model import Document, Measurement, session_scope, \
     AnnotatedEvent, Log, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook, logger
 wait_sec = 0.5
 attach_excepthook()
-
-
-@pytest.fixture(scope='function')
-def machine(producer_process, database_patient_fixture):
-    state_machine = StateMachine(database=database_patient_fixture)
-    logger.register_machine(state_machine)
-    state_machine.main_window.producer_process = producer_process
-    # Connect and register dummy sensor
-    state_machine.main_window.connect_dummy_sensor()
-    state_machine.main_window.register_sensor_with_producer()
-    # Set active patient
-    state_machine.active_patient = Patient.get_instance().patient_id
-    state_machine.start()
-    app.processEvents()
-    yield state_machine
-    # Kill producer
-    state_machine.producer_process.join()
-    state_machine.stop()
-
-
-@pytest.fixture
-def machine_without_patient(producer_process, database_fixture):
-    state_machine = StateMachine(database=database_fixture)
-    logger.register_machine(state_machine)
-    state_machine.main_window.producer_process = producer_process
-    state_machine.start()
-    app.processEvents()
-    yield state_machine
-    # kill producer
-    if state_machine.producer_process.is_alive():
-        state_machine.producer_process.join()
-    state_machine.stop()
 
 
 def caught_exceptions(database):

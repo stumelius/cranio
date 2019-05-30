@@ -408,8 +408,8 @@ class EventType(Base, DictMixin):
 
 
 class DistractorType:
-    KLS = 'KLS Arnaud'
-    RED = 'Rigid External Distractor'
+    KLS_ARNAUD = 'KLS Martin Arnaud'
+    KLS_RED = 'KLS Martin RED'
 
 
 class DistractorInfo(Base, DictMixin):
@@ -422,6 +422,7 @@ class DistractorInfo(Base, DictMixin):
 
     @classmethod
     def distractor_infos(cls):
-        # TODO: Update displacement_mm_per_full_turn after calibration
-        return [cls(distractor_type=DistractorType.KLS, displacement_mm_per_full_turn=0.00),
-                cls(distractor_type=DistractorType.RED, displacement_mm_per_full_turn=0.00)]
+        return [
+            cls(distractor_type=DistractorType.KLS_ARNAUD, displacement_mm_per_full_turn=1.0),
+            cls(distractor_type=DistractorType.KLS_RED, displacement_mm_per_full_turn=0.5)
+        ]

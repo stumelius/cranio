@@ -5,6 +5,32 @@ email, or any other method with the owners of this repository before making a ch
 
 Please note we have a code of conduct, please follow it in all your interactions with the project.
 
+## Authors
+
+* **Simo Tumelius** - *Initial work* - [smomni](https://github.com/smomni)
+
+See also the list of [contributors](https://github.com/smomni/cranio/contributors) who participated in this project.
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/smomni/cranio/tags). 
+
+## Workflow
+
+* File issues for features. They can be small or big, as long as they are solveable. You should be able to tell when something is done from reading the issue. Too open ended and it cannot be closed.
+
+* Develop created issues
+
+* Commits should touch one thing, preferably, with a label that matches the code. For example, a change that reads "reformat foo" shouldn't add new features, etc.
+
+* Open a pull request (PR) for review from the branch to master
+
+* Try to keep the commits on a PR branch below a dozen
+
+* Keep the PR open for 24 hours to give people the chance to comment and look at it
+
+* Review the changes
+
 ## Pull Request Process
 
 1. Ensure any install or build dependencies are removed before the end of the layer when doing a 

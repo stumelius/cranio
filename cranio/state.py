@@ -3,12 +3,13 @@ System states.
 """
 from typing import List
 from PyQt5.QtCore import QState, QEvent
-from PyQt5.QtWidgets import QMessageBox
-from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog
-from cranio.app.widget import SessionWidget
+from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QInputDialog
+from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog, PatientDialog
+from cranio.app.widget import SessionWidget, PatientWidget
 from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, Database
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
+from config import Config
 
 
 class StateMachineContextMixin:
@@ -62,6 +63,10 @@ class InitialState(MyState):
     @property
     def signal_change_session(self):
         return self.main_window.signal_change_session
+
+    @property
+    def signal_show_patients(self):
+        return self.main_window.signal_show_patients
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -120,12 +125,15 @@ class MeasurementState(MyState):
         :return:
         :raises ValueError: if active patient is invalid
         """
-        # FIXME: KLS distractor by default
-        return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
-                        distractor_number=self.machine().active_distractor, operator=self.machine().active_operator,
-                        started_at=utc_datetime(),
-                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
-                        distractor_type=DistractorType.KLS)
+        return Document(
+            session_id=Session.get_instance().session_id,
+            patient_id=self.machine().active_patient,
+            distractor_number=self.machine().active_distractor,
+            operator=self.machine().active_operator,
+            started_at=utc_datetime(),
+            sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+            distractor_type=Config.DEFAULT_DISTRACTOR
+        )
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -290,3 +298,47 @@ class NoteState(MyState):
     @full_turn_count.setter
     def full_turn_count(self, value):
         self.dialog.full_turn_count = value
+
+
+class ShowPatientsState(MyState):
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
+        # UI elements are not initialized here because self.database is undefined before assignment to a state machine
+        self.dialog = None
+        self.patient_widget = None
+        self.signal_add_patient = None
+        self.signal_close = None
+
+    def init_ui(self):
+        """ Initialize UI elements. Needs to be called before entry. """
+        self.patient_widget = PatientWidget(database=self.database)
+        self.dialog = PatientDialog(patient_widget=self.patient_widget)
+        self.signal_add_patient = self.patient_widget.add_button.clicked
+        self.signal_close = self.dialog.signal_close
+
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        self.patient_widget.update_patients()
+        self.dialog.open()
+
+    def onExit(self, event: QEvent):
+        super().onExit(event)
+        self.dialog.close()
+
+
+class AddPatientState(MyState):
+    def __init__(self, name: str, parent=None):
+        super().__init__(name=name, parent=parent)
+        self.dialog = QInputDialog()
+        self.dialog.setWindowTitle('Add patient')
+        self.dialog.setLabelText('Enter patient id:')
+        self.signal_cancel = self.dialog.rejected
+        self.signal_ok = self.dialog.accepted
+
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        self.dialog.open()
+
+    def onExit(self, event: QEvent):
+        super().onExit(event)
+        self.dialog.close()

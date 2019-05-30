@@ -14,8 +14,7 @@ cranio.egg-info/
 build/
 dist/
 _cache/
-.pytest_cache/
-
 sandbox/
 **/app.log*
 .coverage*
+cranio.db

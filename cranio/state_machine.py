@@ -5,9 +5,10 @@ from PyQt5.QtCore import QStateMachine, QState,QFinalState, pyqtSignal
 from cranio.app.window import MainWindow
 from cranio.model import Session, Database
 from cranio.state import InitialState, MeasurementState, EventDetectionState, AreYouSureState, NoteState, \
-    ChangeSessionState
+    ChangeSessionState, ShowPatientsState, AddPatientState
 from cranio.transition import StartMeasurementTransition, ChangeActiveSessionTransition, \
-    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition, UpdateDocumentTransition
+    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition, UpdateDocumentTransition, \
+    AddPatientTransition
 
 
 class StateMachine(QStateMachine):
@@ -35,12 +36,16 @@ class StateMachine(QStateMachine):
         self.s10 = AreYouSureState('You have selected session {session_info}. '
                                    'Are you sure you want to continue?', name='s10')
         self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
+        self.s12 = ShowPatientsState(name='s12')
+        self.s13 = AddPatientState(name='s13')
         self.s0 = QFinalState()
-        for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11):
+        for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11, self.s12,
+                  self.s13):
             self.addState(s)
         self.setInitialState(self.s1)
         # Additional initializations
         self.s9.init_ui()
+        self.s12.init_ui()
 
     def _initialize_transitions(self):
         self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
@@ -53,34 +58,67 @@ class StateMachine(QStateMachine):
         self.remove_annotated_events_transition.setTargetState(self.s3)
         self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
         self.update_document_transition.setTargetState(self.s1)
-        self.transition_map = {self.s1: {self.s2: self.start_measurement_transition,
-                                         self.s9: self.s1.signal_change_session,
-                                         self.s3: self._s1_to_s3_signal,
-                                         self.s11: self.main_window.signal_close},
-                               self.s2: {self.s3: self.main_window.signal_stop},
-                               self.s3: {self.s6: self.enter_annotated_events_transition,
-                                         self.s4: self.s3.signal_close},
-                               self.s4: {self.s3: self.s4.signal_no,
-                                         self.s1: self.s4.signal_yes},
-                               self.s6: {self.s7: self.s6.signal_ok,
-                                         self.s3: self.remove_annotated_events_transition},
-                               self.s7: {self.s6: self.s7.signal_no,
-                                         self.s1: self.update_document_transition},
-                               self.s9: {self.s10: self.s9.signal_select,
-                                         self.s1: self.s9.signal_cancel},
-                               self.s10: {self.s9: self.s10.signal_no,
-                                          self.s1: self.change_active_session_transition},
-                               self.s11: {self.s1: self.s11.signal_no,
-                                          self.s0: self.s11.signal_yes}}
+        self.add_patient_transition = AddPatientTransition(self.s13.signal_ok)
+        self.add_patient_transition.setTargetState(self.s12)
+        self.transition_map = {
+            self.s1: {
+                self.s2: self.start_measurement_transition,
+                self.s9: self.s1.signal_change_session,
+                self.s3: self._s1_to_s3_signal,
+                self.s11: self.main_window.signal_close,
+                self.s12: self.s1.signal_show_patients
+            },
+            self.s2: {
+               self.s3: self.main_window.signal_stop
+            },
+            self.s3: {
+               self.s6: self.enter_annotated_events_transition,
+               self.s4: self.s3.signal_close
+            },
+            self.s4: {
+                self.s3: self.s4.signal_no,
+                self.s1: self.s4.signal_yes
+            },
+            self.s6: {
+                self.s7: self.s6.signal_ok,
+                self.s3: self.remove_annotated_events_transition
+            },
+            self.s7: {
+                self.s6: self.s7.signal_no,
+                self.s1: self.update_document_transition
+            },
+            self.s9: {
+                self.s10: self.s9.signal_select,
+                self.s1: self.s9.signal_cancel
+            },
+            self.s10: {
+                self.s9: self.s10.signal_no,
+                self.s1: self.change_active_session_transition
+            },
+            self.s11: {
+                self.s1: self.s11.signal_no,
+                self.s0: self.s11.signal_yes
+            },
+            self.s12: {
+                self.s13: self.s12.signal_add_patient,
+                self.s1: self.s12.signal_close
+            },
+            self.s13: {
+                self.s12: [self.s13.signal_cancel, self.add_patient_transition]
+            }
+        }
         # Add transitions to state machine
         for source, targets in self.transition_map.items():
-            for target, signal in targets.items():
-                if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
-                                    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition,
-                                    UpdateDocumentTransition):
-                    source.addTransition(signal)
-                else:
-                    source.addTransition(signal, target)
+            for target, signal_arr in targets.items():
+                if not isinstance(signal_arr, list):
+                    signal_arr = [signal_arr]
+                for signal in signal_arr:
+                    if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
+                                        EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition,
+                                        UpdateDocumentTransition, AddPatientTransition):
+                        source.addTransition(signal)
+                    else:
+                        source.addTransition(signal, target)
 
     @property
     def active_session(self):

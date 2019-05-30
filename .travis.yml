@@ -12,6 +12,6 @@
     - pip install codecov
     - pip install -e .[test]
   script:
-    - pytest
+    - pytest --cov=cranio
   after_script:
     - codecov

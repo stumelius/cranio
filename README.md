@@ -1,14 +1,31 @@
 [![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
 [![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
 [![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
-[![Waffle.io - Columns and their card count](https://badge.waffle.io/smomni/cranio.svg?columns=all)](https://waffle.io/smomni/cranio)
 [![Maintainability](https://api.codeclimate.com/v1/badges/c14e1d3a9202d71024a3/maintainability)](https://codeclimate.com/github/smomni/cranio/maintainability)
 
-# Cranio
+# cranio
 
-Cranio is a Python library used for force measurements, data analysis and visualization in 
-posterior calvarial vault osteodistraction (PCVO). 
-The methods implemented in this library are based on a whitepaper by Ritvanen et al. (2017).
+Cranio is a Python package used for force measurements, data analysis and visualization in
+posterior calvarial vault osteodistraction (PCVO). PCVO is used to treat patients with craniosynostosis.
+
+Craniosynostosis is a condition occurring in infants where bones in the skull are prematurely fused resulting in
+abnormal head shape, decreased intracranial volume (ICV) and increased intracranial pressure (ICP). Fibrous sutures
+bones of the skull are prematurely fused by turning into bone. This prevents the skull from growing perpendicular to the
+ossified suture which is compensated by increased growth parallel to the fused suture. The features of craniosynostosis
+are determined by which sutures are closed. In some case, the resulting growth pattern only leads to abnormal head shape
+while leaving enough room for the brain inside the skull. In other cases, in addition to abnormal head shape, intracranial volume is decreased leading to elevated intracranial pressure.
+Elevated ICP can cause headache, vomiting, visual impairment (e.g., papilledema), obstructive sleep apnea and
+neurobehavioral impairment. Cranisynostosis affects 1/2000 infants and usually occurs as an isolated condition.
+In 15% - 40% of cases craniosynostosis is part of a syndrome. Craniosynostosis can be treated with calvarial vault
+reconstruction/remodeling (CVR) or posterior calvarial vault osteodistraction (PCVO).
+
+![](../Gray188.png)![](docs/Gray188.png)
+
+![](../../types_of_craniosynostosis.jpg)![](docs/types_of_craniosynostosis.jpg)
+
+General description on PCVO goes here...
+
+General description on force measurements goes here...
 
 
 ## Getting Started
@@ -17,21 +34,33 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Hardware
 
+#### External fixator
+
+[KLS Martix Rigid External Fixator (RED)](http://www.klsmartinnorthamerica.com/products/distraction-devices/lefort-i-and-ii/red-ii/) is used as the external fixator.
+
+![](../kls_martin_red.jpg)
+![](docs/kls_martin_red.jpg)
+![](../kls_martin_red_distraction.png)
+![](docs/kls_martin_red_distraction.png)
+
+#### Torque sensor
+
 The craniodistractor measurements are taken with a [Imada HTG2-4](https://imada.com/products/htg2-digital-torque-gauge/) 
 digital torque gauge. The gauge features a remote torque sensor with a Jacob's chuck.
 
-![Imada HTG2-4 digital torque gauge with Jacob's chuck (left) and USB serial interface (right).](docs/imada.jpg)
+![](../imada.jpg)
+![](docs/imada.jpg)
+
 
 ### Prerequisites
 
 * OS: Windows, Linux, OS X (tested on Windows 10 and Linux)
-* Python 3.6 or newer
+* [Python 3.6.x](https://www.python.org/downloads/)
+* [git](https://git-scm.com/downloads)
 
 ### Installing
 
-The source code is currently hosted on GitHub at https://github.com/smomni/cranio.
-
-You can use git clone and pip to install from sources:
+The source code is available on [GitHub](https://github.com/smomni/cranio). Install from source using `git` and `pip`:
 
 ```bash
 git clone https://github.com/smomni/cranio
@@ -39,15 +68,14 @@ cd cranio
 pip install -e .[test]
 ```
 
-## Running the tests
+### Running the tests
 
-The tests can be run using pytest as the test runner:
-
+Run the test suite using `pytest`:
 ```bash
-pytest tests
+pytest
 ```
 
-## Building the documentation
+### Building the documentation
 
 To build the documentation in HTML format using [Sphinx](http://www.sphinx-doc.org/en/stable/):
 
@@ -58,7 +86,7 @@ make html
 
 The built documentation is located in `docs/build/html`.
 
-## Running the software
+### Using the software for distraction measurements
 
 To start the measurement software:
 
@@ -68,51 +96,30 @@ python run.py
 
 This will open the main window. Before starting a measurement, you need to do to the following:
 
-1. Select a patient from the drop-down menu
-    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
-2. Connect an Imada HTG2-4 torque sensor from Connect menu
+
+1. Connect an Imada HTG2-4 torque sensor from Connect menu
     * NOTE: The serial number of the sensor must match the hard-coded `FTSLQ6QIA`
-    * If you don't have a matching sensor at hand, you can connect a dummy torque sensor
+    * For random-generated dummy measurements, you can connect a dummy torque sensor from the Connect menu
+2. Select a patient from the drop-down menu
+    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
+3. Enter operator name
+4. Select distractor number (next to the measurement graph)
+5. Click `Start` to start the measurement
+6. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
+7. Supports the screw driver with your free hand while repositioning the “rotating hand”
+8. Repeat steps 6 and 7 until 1 full turn has been performed
+9. Release the screw driver from the distractor
+10. Click `Stop`
+11. Event detection instructions go here...
     
-Now you can click `Start` to start the measurement. The recorded data is visualized as a real-time plot in the main window.
 
-Instructions for stopping and event detection goes here...
+### Data
+
+The distraction meta and raw data are stored locally in a [SQLite](https://www.sqlite.org/index.html) database file `cranio.db`. 
+The database file shall be sent to the investigators for data analysis periodically (e.g., daily or weekly) during the treatment.
+The database file contains no sensitive patient information as the patient data is pseudonymized.
 
 
-
-## Workflow
-
-* File issues for features. They can be small or big, as long as they are solveable. You should be able to tell when something is done from reading the issue. Too open ended and it cannot be closed.
-
-* Develop created issues
-
-* Commits should touch one thing, preferably, with a label that matches the code. For example, a change that reads "reformat foo" shouldn't add new features, etc.
-
-* Open a pull request (PR) for review from the branch to master
-
-* Try to keep the commits on a PR branch below a dozen
-
-* Keep the PR open for 24 hours to give people the chance to comment and look at it
-
-* Review the changes
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/smomni/cranio/tags). 
-
-## Authors
-
-* **Simo Tumelius** - *Initial work* - [smomni](https://github.com/smomni)
-
-See also the list of [contributors](https://github.com/smomni/cranio/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the GNU GPLv3 license - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 

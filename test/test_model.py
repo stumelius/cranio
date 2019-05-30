@@ -44,15 +44,22 @@ def test_create_query_and_delete_session(database_fixture):
 def test_create_query_and_delete_document(database_patient_fixture):
     Sensor.enter_info_to_database(database_patient_fixture)
     with session_scope(database_patient_fixture) as s:
-        d = Document(session_id=Session.get_instance().session_id, patient_id=Patient.get_instance().patient_id,
-                     sensor_serial_number=Sensor.sensor_info.sensor_serial_number, distractor_type=DistractorType.KLS)
+        d = Document(
+            session_id=Session.get_instance().session_id,
+            patient_id=Patient.get_instance().patient_id,
+            sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
+            distractor_type=DistractorType.KLS_RED
+        )
         assert_add_query_and_delete([d], s, Document)
 
 
 def test_create_query_and_delete_measurement(database_document_fixture):
     with session_scope(database_document_fixture) as s:
-        measurements = [Measurement(time_s=t, torque_Nm=np.random.rand(),
-                                    document_id=Document.get_instance().document_id) for t in range(10)]
+        measurements = [Measurement(
+            time_s=t,
+            torque_Nm=np.random.rand(),
+            document_id=Document.get_instance().document_id
+        ) for t in range(10)]
         assert_add_query_and_delete(measurements, s, Measurement)
 
 
@@ -95,8 +102,8 @@ def test_database_init_populate_lookup_tables(database_fixture):
         distractor_infos = s.query(DistractorInfo).all()
         assert len(distractor_infos) == len(DistractorInfo.distractor_infos())
         distractor_types = [d.distractor_type for d in distractor_infos]
-        assert DistractorType.KLS in distractor_types
-        assert DistractorType.RED in distractor_types
+        assert DistractorType.KLS_ARNAUD in distractor_types
+        assert DistractorType.KLS_RED in distractor_types
 
 
 def test_create_query_and_delete_annotated_event(database_document_fixture):
