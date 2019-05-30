@@ -2,7 +2,7 @@
 System state transitions.
 """
 from PyQt5.QtCore import QEvent, QSignalTransition
-from cranio.model import session_scope, Session, Document, AnnotatedEvent
+from cranio.model import session_scope, Session, Document, AnnotatedEvent, Patient
 from cranio.utils import logger
 from cranio.state import StateMachineContextMixin
 
@@ -71,3 +71,12 @@ class UpdateDocumentTransition(SignalTransition):
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
             logger.debug(str(document))
+
+
+class AddPatientTransition(SignalTransition):
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        patient_id = self.machine().s13.dialog.textValue()
+        logger.debug(f'Add patient "{patient_id}" to database')
+        patient = Patient(patient_id=patient_id)
+        self.database.insert(patient)

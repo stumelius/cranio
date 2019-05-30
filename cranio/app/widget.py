@@ -4,7 +4,7 @@ GUI widgets.
 import pyqtgraph as pg
 import pandas as pd
 from enum import Enum
-from typing import Tuple, List, Iterable
+from typing import Tuple, List, Iterable, Union
 from functools import partial
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, \
@@ -320,38 +320,6 @@ class MetaDataWidget(QGroupBox):
         self.lock_patient(self.enabled)
 
 
-def add_patient(database: Database, patient_id: str) -> Patient:
-    """
-    Add new patient to the database.
-
-    :param patient_id: Patient identifier
-    :return:
-    :raises sqlalchemy.exc.IntegrityError: if the patient already exists.
-    """
-    return database.insert(Patient(patient_id=patient_id))
-
-
-def prompt_create_patient(parent_widget) -> str:
-    """
-    Prompt the user to create a new patient id.
-    The patient is inserted to the database if the patient does not already exist.
-
-    :param parent_widget:
-    :return: Patient identifier or None if no patient was created (user cancelled or patient already exists)
-    """
-    # Open create patient dialog
-    patient_id, ok = QInputDialog.getText(parent_widget, 'Create patient', 'Enter patient id:')
-    if not ok:
-        return
-    # Try to insert patient to database
-    try:
-        add_patient(patient_id)
-        return patient_id
-    except IntegrityError:
-        QMessageBox.information(parent_widget, 'Invalid value',
-                                f'Patient id "{patient_id}" is invalid or already exists in the database')
-
-
 class PatientWidget(QWidget):
     """
     View existing patients and add new ones to the database
@@ -368,10 +336,9 @@ class PatientWidget(QWidget):
         self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
         # Column headers from Patient table
         self.table_widget.setHorizontalHeaderLabels(Patient.__table__.columns.keys())
-        self.table_widget.horizontalHeader().setStretchLastSection(True);
+        self.table_widget.horizontalHeader().setStretchLastSection(True)
         self.table_widget.resizeColumnsToContents()
         self.add_button = QPushButton('Add', parent=self)
-        self.add_button.clicked.connect(self.add_button_clicked)
         self.main_layout.addWidget(self.label)
         self.main_layout.addWidget(self.table_widget)
         self.main_layout.addWidget(self.add_button)
@@ -389,25 +356,6 @@ class PatientWidget(QWidget):
                 self.table_widget.setRowCount(i + 1)
                 self.table_widget.setItem(i, 0, QTableWidgetItem(patient.patient_id))
                 self.table_widget.setItem(i, 1, QTableWidgetItem(str(patient.created_at)))
-
-    def add_patient(self, patient_id: str):
-        """
-        Add patient to the database and update patient list.
-
-        :param patient_id:
-        :return:
-        """
-        add_patient(database=self.database, patient_id=patient_id)
-        self.update_patients()
-
-    def add_button_clicked(self):
-        """
-        Prompt user to insert new patient identifier and update patient list.
-
-        :return:
-        """
-        prompt_create_patient(self)
-        self.update_patients()
 
     def patient_count(self) -> int:
         """

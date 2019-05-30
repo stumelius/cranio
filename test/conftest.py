@@ -3,6 +3,8 @@ import logging.config
 from cranio.model import Database, Session, Patient, Document, DistractorType
 from cranio.utils import get_logging_config, generate_unique_id, utc_datetime, logger
 from cranio.producer import ProducerProcess, Sensor
+from cranio.state_machine import StateMachine
+from cranio.app import app
 
 
 @pytest.fixture(scope='function')
@@ -58,3 +60,35 @@ def producer_process():
     if p.is_alive():
         p.join()
     assert not p.is_alive()
+
+
+@pytest.fixture(scope='function')
+def machine(producer_process, database_patient_fixture):
+    state_machine = StateMachine(database=database_patient_fixture)
+    logger.register_machine(state_machine)
+    state_machine.main_window.producer_process = producer_process
+    # Connect and register dummy sensor
+    state_machine.main_window.connect_dummy_sensor()
+    state_machine.main_window.register_sensor_with_producer()
+    # Set active patient
+    state_machine.active_patient = Patient.get_instance().patient_id
+    state_machine.start()
+    app.processEvents()
+    yield state_machine
+    # Kill producer
+    state_machine.producer_process.join()
+    state_machine.stop()
+
+
+@pytest.fixture
+def machine_without_patient(producer_process, database_fixture):
+    state_machine = StateMachine(database=database_fixture)
+    logger.register_machine(state_machine)
+    state_machine.main_window.producer_process = producer_process
+    state_machine.start()
+    app.processEvents()
+    yield state_machine
+    # kill producer
+    if state_machine.producer_process.is_alive():
+        state_machine.producer_process.join()
+    state_machine.stop()

@@ -195,6 +195,22 @@ class SessionDialog(QDialog):
         self.signal_close.emit()
 
 
+class PatientDialog(QDialog):
+    signal_close = pyqtSignal()
+
+    def __init__(self, patient_widget: PatientWidget):
+        super().__init__()
+        self.patient_widget = patient_widget
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.patient_widget)
+        self.setLayout(self.main_layout)
+
+    def closeEvent(self, event):
+        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
+        super().closeEvent(event)
+        self.signal_close.emit()
+
+
 class MainWindow(QMainWindow):
     """ Craniodistraction application main window. """
     signal_close = pyqtSignal()
@@ -218,9 +234,8 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.measurement_widget)
         # Add File menu
         self.file_menu = self.menuBar().addMenu('File')
-        self.add_patient_action = QAction('Add patient', self)
-        self.add_patient_action.triggered.connect(self.open_patient_widget)
-        self.file_menu.addAction(self.add_patient_action)
+        self.show_patients_action = QAction('Patients', self)
+        self.file_menu.addAction(self.show_patients_action)
         self.change_session_action = QAction('Change session', self)
         self.file_menu.addAction(self.change_session_action)
         # Add Connect menu
@@ -235,6 +250,7 @@ class MainWindow(QMainWindow):
         self.signal_start = self.measurement_widget.start_button.clicked
         self.signal_stop = self.measurement_widget.stop_button.clicked
         self.signal_change_session = self.change_session_action.triggered
+        self.signal_show_patients = self.show_patients_action.triggered
         self.init_ui()
 
     @property
@@ -259,7 +275,7 @@ class MainWindow(QMainWindow):
         """
         dialog = QDialog(parent=self)
         layout = QVBoxLayout()
-        widget = PatientWidget()
+        widget = PatientWidget(database=self.database)
         layout.addWidget(widget)
         dialog.setLayout(layout)
         dialog.exec_()
