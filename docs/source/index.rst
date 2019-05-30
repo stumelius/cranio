@@ -3,98 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-cranio documentation
-====================
 
-.. contents:: Contents
-   :local:
+.. include:: README.rst
 
-About cranio
-------------
-
-Cranio is a Python library used for force measurements, data analysis and visualization in
-posterior calvarial vault osteodistraction (PCVO). PCVO is used to treat patients with craniosynostosis.
-
-Craniosynostosis is a condition occurring in infants where bones in the skull are prematurely fused resulting in
-abnormal head shape, decreased intracranial volume (ICV) and increased intracranial pressure (ICP). Fibrous sutures
-bones of the skull are prematurely fused by turning into bone. This prevents the skull from growing perpendicular to the
-ossified suture which is compensated by increased growth parallel to the fused suture. The features of craniosynostosis
-are determined by which sutures are closed. In some case, the resulting growth pattern only leads to abnormal head shape
-while leaving enough room for the brain inside the skull. In other cases, in addition to abnormal head shape, intracranial volume is decreased leading to elevated intracranial pressure.
-Elevated ICP can cause headache, vomiting, visual impairment (e.g., papilledema), obstructive sleep apnea and
-neurobehavioral impairment. Cranisynostosis affects 1/2000 infants and usually occurs as an isolated condition.
-In 15% - 40% of cases craniosynostosis is part of a syndrome. Craniosynostosis can be treated with calvarial vault
-reconstruction/remodeling (CVR) or posterior calvarial vault osteodistraction (PCVO).
-
-.. figure:: ../Gray188.png
-
-.. figure:: ../types_of_craniosynostosis.jpg
-
-General description on PCVO goes here...
-
-General description on force measurements goes here...
-
-Prequisites
------------
-
-Machine with one of the following operating systems
-
-* Windows (tested with Windows 10)
-* Linux (tested with Debian_)
-* OS X (not tested)
-
-In addition, you need the following software packages:
-
-* Python_ 3.6 or newer
-
-
-
-The craniodistractor measurements are taken with an `Imada HTG2-4`_ digital torque gauge. The gauge features a remote torque sensor with a Jacob's chuck.
-
-.. figure:: ../imada.jpg
-
-   Imada HTG2-4 digital torque gauge with Jacob's chuck (left) and USB serial interface (right).
-
-.. _Debian: https://www.debian.org/
-.. _Python: https://www.python.org/downloads/
-.. _Imada HTG2-4: https://imada.com/products/htg2-digital-torque-gauge/
-
-Installation
-------------
-
-The source code is currently hosted on GitHub at https://github.com/smomni/cranio.
-
-You can use git clone and pip to install from sources:
-
-::
-
-   git clone https://github.com/smomni/cranio
-   cd cranio
-   pip install -e .[test]
-
-
-
-Using cranio
-------------
-
-To start the measurement software:
-
-::
-
-   cd <cranio-installation-directory>
-   python run.py
-
-This will open the main window. Before starting a measurement, you need to do to the following:
-
-1. Select a patient from the drop-down menu
-    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
-2. Connect an Imada HTG2-4 torque sensor from the Connect menu
-    * NOTE: The serial number of the sensor must match the hard-coded ``FTSLQ6QIA``
-    * If you don't have a matching sensor at hand, you can connect a dummy torque sensor
-
-Now you can click ``Start`` to start the measurement. The recorded data is visualized as a real-time plot in the main window.
-
-Instructions for stopping and event detection goes here...
 
 
 Use cases

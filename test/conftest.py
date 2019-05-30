@@ -5,6 +5,7 @@ from cranio.utils import get_logging_config, generate_unique_id, utc_datetime, l
 from cranio.producer import ProducerProcess, Sensor
 from cranio.state_machine import StateMachine
 from cranio.app import app
+from config import Config
 
 
 @pytest.fixture(scope='function')
@@ -37,14 +38,20 @@ def database_patient_fixture(database_fixture):
 def database_document_fixture(database_patient_fixture):
     Sensor.enter_info_to_database(database=database_patient_fixture)
     try:
-        Document.init(patient_id=Patient.get_instance().patient_id,
-                      sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-                      distractor_type=DistractorType.KLS, database=database_patient_fixture)
+        Document.init(
+            patient_id=Patient.get_instance().patient_id,
+            sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
+            distractor_type=Config.DEFAULT_DISTRACTOR,
+            database=database_patient_fixture
+        )
     except ValueError:
         Document.reset_instance()
-        Document.init(patient_id=Patient.get_instance().patient_id,
-                      sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-                      distractor_type=DistractorType.KLS, database=database_patient_fixture)
+        Document.init(
+            patient_id=Patient.get_instance().patient_id,
+            sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
+            distractor_type=Config.DEFAULT_DISTRACTOR,
+            database=database_patient_fixture
+        )
     yield database_patient_fixture
 
 

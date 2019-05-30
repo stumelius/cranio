@@ -9,6 +9,7 @@ from cranio.app.widget import SessionWidget, PatientWidget
 from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, Database
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
+from config import Config
 
 
 class StateMachineContextMixin:
@@ -124,12 +125,15 @@ class MeasurementState(MyState):
         :return:
         :raises ValueError: if active patient is invalid
         """
-        # FIXME: KLS distractor by default
-        return Document(session_id=Session.get_instance().session_id, patient_id=self.machine().active_patient,
-                        distractor_number=self.machine().active_distractor, operator=self.machine().active_operator,
-                        started_at=utc_datetime(),
-                        sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
-                        distractor_type=DistractorType.KLS)
+        return Document(
+            session_id=Session.get_instance().session_id,
+            patient_id=self.machine().active_patient,
+            distractor_number=self.machine().active_distractor,
+            operator=self.machine().active_operator,
+            started_at=utc_datetime(),
+            sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+            distractor_type=Config.DEFAULT_DISTRACTOR
+        )
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
