@@ -97,20 +97,17 @@ python run.py
 This will open the main window. Before starting a measurement, you need to do to the following:
 
 
-1. Connect an Imada HTG2-4 torque sensor from Connect menu
-    * NOTE: The serial number of the sensor must match the hard-coded `FTSLQ6QIA`
-    * For random-generated dummy measurements, you can connect a dummy torque sensor from the Connect menu
-2. Select a patient from the drop-down menu
+1. Select a patient from the drop-down menu
     * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
-3. Enter operator name
-4. Select distractor number (next to the measurement graph)
-5. Click `Start` to start the measurement
-6. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
-7. Supports the screw driver with your free hand while repositioning the “rotating hand”
-8. Repeat steps 6 and 7 until 1 full turn has been performed
-9. Release the screw driver from the distractor
-10. Click `Stop`
-11. Event detection instructions go here...
+2. Enter operator name
+3. Select distractor number (next to the measurement graph)
+4. Click `Start` to start the measurement
+5. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
+6. Supports the screw driver with your free hand while repositioning the “rotating hand”
+7. Repeat steps 6 and 7 until 1 full turn has been performed
+8. Release the screw driver from the distractor
+9. Click `Stop`
+10. Event detection instructions go here...
     
 
 ### Data
