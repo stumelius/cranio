@@ -172,3 +172,9 @@ class StateMachine(QStateMachine):
         if len(active_states) != 1:
             raise ValueError(f'Current state not defined if {len(active_states)} states are active simultaneously')
         return list(active_states)[0]
+
+    def connect_sensor(self):
+        self.main_window.connect_imada_sensor()
+
+    def connect_dummy_sensor(self):
+        self.main_window.connect_dummy_sensor()

@@ -1,10 +1,12 @@
 """
 System state transitions.
 """
+from config import Config
 from PyQt5.QtCore import QEvent, QSignalTransition
 from cranio.model import session_scope, Session, Document, AnnotatedEvent, Patient
 from cranio.utils import logger
 from cranio.state import StateMachineContextMixin
+from cranio.exc import DeviceDetectionError
 
 
 class SignalTransition(QSignalTransition, StateMachineContextMixin):
@@ -21,8 +23,19 @@ class StartMeasurementTransition(SignalTransition):
             return False
         # No sensor connected
         if self.machine().sensor is None:
-            logger.error('No sensors connected')
-            return False
+            # Try and connect sensors with precedence: 1) imada and 2) dummy.
+            connect_method_precedence = [self.machine().connect_sensor]
+            if Config.ENABLE_DUMMY_SENSOR:
+                connect_method_precedence.append(self.machine().connect_dummy_sensor)
+            for connect_method in connect_method_precedence:
+                try:
+                    connect_method()
+                    break
+                except DeviceDetectionError:
+                    pass
+            else:
+                logger.error(f'No available devices detected (ENABLE_DUMMY_SENSOR = {Config.ENABLE_DUMMY_SENSOR})')
+                return False
         return True
 
 

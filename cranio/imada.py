@@ -10,13 +10,9 @@ from serial.tools.list_ports_common import ListPortInfo
 from cranio.producer import Sensor, ChannelInfo
 from cranio.model import SensorInfo
 from cranio.utils import logger, utc_datetime
+from cranio.exc import DeviceDetectionError, TelegramError
 
 IMADA_EOL = '\r'
-
-
-class TelegramError(Exception):
-    """ Telegram error. """
-    pass
 
 
 def find_serial_device(serial_number: str) -> ListPortInfo:
@@ -25,12 +21,12 @@ def find_serial_device(serial_number: str) -> ListPortInfo:
 
     :param serial_number: Device serial number
     :return: Serial port info
-    :raises ValueError: if no device found
+    :raises DeviceDetectionError: if no device detected
     """
     try:
         return [port for port in serial.tools.list_ports.comports() if port.serial_number == serial_number][0]
     except IndexError:
-        raise ValueError('No device found with serial number {}'.format(serial_number))
+        raise DeviceDetectionError('No device detected with serial number {}'.format(serial_number))
 
 
 def get_com_port(serial_number: str) -> str:

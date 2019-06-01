@@ -8,7 +8,7 @@ setup(
     install_requires=['pandas', 'pyserial', 'attrs', 'pyqtgraph'],
     extras_require={
         'dev': [],
-        'test': ['pytest', 'pytest-cov'],
+        'test': ['pytest', 'pytest-cov', 'pytest-helpers-namespace'],
         'docs': ['sphinx', 'sphinx-autodoc-typehints', 'm2r']
     },
     entry_points={

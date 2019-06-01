@@ -68,6 +68,14 @@ class InitialState(MyState):
     def signal_show_patients(self):
         return self.main_window.signal_show_patients
 
+    @property
+    def signal_start(self):
+        return self.main_window.signal_start
+
+    @property
+    def signal_stop(self):
+        return self.main_window.signal_stop
+
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         self.main_window.show()
@@ -153,7 +161,7 @@ class MeasurementState(MyState):
         if self.main_window.producer_process is not None:
             self.main_window.producer_process.join()
         # Create producer process and register connected sensor
-        self.main_window.producer_process = ProducerProcess('Imada torque producer', document=self.document)
+        self.main_window.producer_process = ProducerProcess('Torque producer process', document=self.document)
         self.main_window.register_sensor_with_producer()
         # Start producing!
         self.main_window.measurement_widget.producer_process.start()
