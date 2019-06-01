@@ -1,22 +1,13 @@
 import pytest
 import time
-import logging
 from PyQt5.QtCore import QEvent, Qt
 from cranio.app import app
 from cranio.state import AreYouSureState
 from cranio.state_machine import StateMachine
-from cranio.model import Document, Measurement, session_scope, \
-    AnnotatedEvent, Log, SensorInfo, EventType, Session
+from cranio.model import Document, Measurement, session_scope, AnnotatedEvent, SensorInfo, EventType, Session
 from cranio.utils import attach_excepthook, logger
 wait_sec = 0.5
 attach_excepthook()
-
-
-def caught_exceptions(database):
-    """ Return caught exceptions from log database. """
-    with session_scope(database) as s:
-        errors = s.query(Log).filter(Log.level == logging.ERROR).all()
-    return errors
 
 
 def test_start_measurement_inserts_document_and_sensor_info_to_database(machine):
@@ -48,31 +39,6 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
     with session_scope(machine.database) as s:
         measurements = s.query(Measurement).filter(Measurement.document_id == machine.document.document_id).all()
         assert len(measurements) > 0
-
-
-def test_prevent_measurement_start_if_no_patient_is_selected(machine_without_patient):
-    machine = machine_without_patient
-    machine.active_patient = ''
-    # start measurement
-    machine.main_window.measurement_widget.start_button.clicked.emit()
-    app.processEvents()
-    errors = caught_exceptions(machine.database)
-    assert len(errors) == 1
-    assert 'Invalid patient' in errors[0].message
-
-
-def test_prevent_measurement_start_if_no_sensor_is_connected(machine):
-    # Unregister connected dummy sensor
-    machine.main_window.unregister_sensor()
-    # Start measurement
-    machine.main_window.measurement_widget.start_button.clicked.emit()
-    app.processEvents()
-    errors = caught_exceptions(machine.database)
-    assert len(errors) == 1
-    assert 'No sensors connected' in errors[0].message
-    # Machine rolled back to initial state
-    assert not machine.in_state(machine.s2)
-    assert machine.in_state(machine.s1)
 
 
 def test_event_detection_state_flow(machine, qtbot):

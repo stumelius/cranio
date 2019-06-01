@@ -238,14 +238,6 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction(self.show_patients_action)
         self.change_session_action = QAction('Change session', self)
         self.file_menu.addAction(self.change_session_action)
-        # Add Connect menu
-        self.connect_menu = self.menuBar().addMenu('Connect')
-        self.connect_torque_sensor_action = QAction('Connect Imada torque sensor', self)
-        self.connect_torque_sensor_action.triggered.connect(self.connect_imada_sensor)
-        self.connect_dummy_sensor_action = QAction('Connect dummy torque sensor', self)
-        self.connect_dummy_sensor_action.triggered.connect(self.connect_dummy_sensor)
-        self.connect_menu.addAction(self.connect_torque_sensor_action)
-        self.connect_menu.addAction(self.connect_dummy_sensor_action)
         # Define signals
         self.signal_start = self.measurement_widget.start_button.clicked
         self.signal_stop = self.measurement_widget.stop_button.clicked

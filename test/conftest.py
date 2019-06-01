@@ -1,6 +1,7 @@
 import pytest
+import logging
 import logging.config
-from cranio.model import Database, Session, Patient, Document, DistractorType
+from cranio.model import Database, Session, Patient, Document, Log, session_scope
 from cranio.utils import get_logging_config, generate_unique_id, utc_datetime, logger
 from cranio.producer import ProducerProcess, Sensor
 from cranio.state_machine import StateMachine
@@ -99,3 +100,11 @@ def machine_without_patient(producer_process, database_fixture):
     if state_machine.producer_process.is_alive():
         state_machine.producer_process.join()
     state_machine.stop()
+
+
+@pytest.helpers.register
+def caught_exceptions(database):
+    """ Return caught exceptions from log database. """
+    with session_scope(database) as s:
+        errors = s.query(Log).filter(Log.level == logging.ERROR).all()
+    return errors
