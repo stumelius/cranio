@@ -97,17 +97,58 @@ python run.py
 This will open the main window. Before starting a measurement, you need to do to the following:
 
 
-1. Select a patient from the drop-down menu
-    * If no patients are listed in the drop-down menu, you need to add one from the File menu in the top left corner of the main window
+#### Measurement sequence
+
+1. Select a patient from the dropdown menu
+    * If no patients are listed in the dropdown menu, you need to add one from the File menu in the top left corner of the main window
 2. Enter operator name
-3. Select distractor number (next to the measurement graph)
-4. Click `Start` to start the measurement
-5. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
-6. Supports the screw driver with your free hand while repositioning the “rotating hand”
-7. Repeat steps 6 and 7 until 1 full turn has been performed
-8. Release the screw driver from the distractor
-9. Click `Stop`
-10. Event detection instructions go here...
+3. (Optional) Disable / Enable changing patient from the dropdown menu by clicking `Toggle Patient Lock`
+4. Select distractor number
+5. Click `Start` to start the measurement
+6. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
+7. Supports the screw driver with your free hand while repositioning the “rotating hand”
+8. Repeat steps 6 and 7 until 1 full turn has been performed
+9. Release the screw driver from the distractor
+10. Click `Stop` to stop the measurement and start the Event detection sequence
+
+
+![](../initial_state_instructions.png)
+![](docs/initial_state_instructions.png)
+
+
+#### Event detection sequence
+
+1. Verify that the number of distraction events (3 by default) is correct
+    * If not, remove redundant events by clicking `Remove` for an event or remove all events by clicking `Remove all`
+    * Add missing events by setting the number of events to be added in `Add/remove events` and click `Add`
+2. (Optional) Annotate distraction events by setting their boundaries to correct positions (i.e., beginning and end of distraction events) and 
+ticking `Annotation done` for the distraction events and 
+    * Boundaries can be set 
+        1) interactively by dragging the boundaries on the figure, or 
+        2) entering the boundary time values in the `Event` box
+3. If distractions were performed but not measured (e.g., due to operator error), untick `Recorded` for the unrecorded distraction events
+    * Example: Operator does the distraction and afterwards realizes that he/she forgot to record it. 
+    The operator clicks `Start` and `Stop` to get to the event detection sequence and unticks `Recorded` for the distraction events. 
+    This way the fact that the distractions were performed is stored in the database even though no data was recorded.
+4. Click `Ok` to continue to the Note sequence
+
+*NOTE: If the operator does not have enough time to do the annotations during the distraction session, 
+he/she can skip step 2. The distraction events can later be annotated as a post-processing step.*
+
+
+![](../event_detection_state_instructions.png)
+![](docs/event_detection_state_instructions.png)
+
+
+#### Note sequence
+
+1. Enter number of full turns (1 by default)
+2. Write any additional notes you may have regarding the distraction
+3. Click `Ok` to return to the Measurement sequence
+
+
+![](../note_state_instructions.png)
+![](docs/note_state_instructions.png)
     
 
 ### Data
