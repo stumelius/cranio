@@ -94,18 +94,22 @@ To start the measurement software:
 python run.py
 ```
 
-This will open the main window. Before starting a measurement, you need to do to the following:
+The distraction workflow consists of three subsequent sequences: 
 
+1. Measurement sequence, 
+2. Event detection sequence, and 
+3. Note sequence.
 
 #### Measurement sequence
 
 1. Select a patient from the dropdown menu
-    * If no patients are listed in the dropdown menu, you need to add one from the File menu in the top left corner of the main window
+    * If no patients are listed in the dropdown menu, you need to add one from the File menu in the top left corner
 2. Enter operator name
 3. (Optional) Disable / Enable changing patient from the dropdown menu by clicking `Toggle Patient Lock`
 4. Select distractor number
 5. Click `Start` to start the measurement
-6. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver.
+6. Rotate the distractor slowly and steadily approximately 1/3 of a full turn and monitors the amount of performed rotation from the holes located in the Jacobs Chuck of the screw driver
+    * 1/3 of a full turn = distraction event
 7. Supports the screw driver with your free hand while repositioning the “rotating hand”
 8. Repeat steps 6 and 7 until 1 full turn has been performed
 9. Release the screw driver from the distractor
