@@ -84,6 +84,8 @@ class InitialState(MyState):
         self.main_window.measurement_widget.stop_button.setDefault(False)
         self.main_window.measurement_widget.start_button.setDefault(True)
         self.main_window.measurement_widget.start_button.setFocus()
+        # Update patient dropdown list
+        self.main_window.meta_widget.update_patients_from_database()
 
 
 class ChangeSessionState(MyState):

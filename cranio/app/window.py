@@ -243,7 +243,6 @@ class MainWindow(QMainWindow):
         self.signal_stop = self.measurement_widget.stop_button.clicked
         self.signal_change_session = self.change_session_action.triggered
         self.signal_show_patients = self.show_patients_action.triggered
-        self.init_ui()
 
     @property
     def producer_process(self):
@@ -254,24 +253,6 @@ class MainWindow(QMainWindow):
         self._producer_process = value
         logger.debug(f'Set measurement widget producer process to {self._producer_process}')
         self.measurement_widget.producer_process = self._producer_process
-
-    def init_ui(self):
-        """ Initialize UI elements. """
-        self.meta_widget.update_patients_from_database()
-
-    def open_patient_widget(self):
-        """
-        Open widget to view existing patients and add new ones.
-
-        :return:
-        """
-        dialog = QDialog(parent=self)
-        layout = QVBoxLayout()
-        widget = PatientWidget(database=self.database)
-        layout.addWidget(widget)
-        dialog.setLayout(layout)
-        dialog.exec_()
-        self.meta_widget.update_patients_from_database()
 
     def set_patient(self, patient_id: str, lock: bool=False):
         """
