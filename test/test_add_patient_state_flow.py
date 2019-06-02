@@ -33,3 +33,5 @@ def test_add_patient_state_flow(machine):
     # Click X (i.e., trigger transition from s12 to s1)
     machine.s12.dialog.close()
     assert machine.in_state(machine.s1)
+    # Initial state updates main window patient dropdown list on entry
+    assert patient_id in machine.main_window.meta_widget.patients()
