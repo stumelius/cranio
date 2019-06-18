@@ -11,7 +11,7 @@ setup(
         'test': ['pytest', 'pytest-cov', 'pytest-helpers-namespace'],
         'docs': ['sphinx', 'sphinx-autodoc-typehints', 'm2r']
     },
-    entry_points={
-        'console_scripts': [],
-    },
+    scripts=[
+        'scripts/sqlite-to-csv.py'
+    ]
 )
