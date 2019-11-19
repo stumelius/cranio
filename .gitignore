@@ -1,5 +1,6 @@
 .pydevproject
 .project
+.commit
 .cache/
 craniodistractor.egg-info/
 *.pyc
