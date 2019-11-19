@@ -63,24 +63,28 @@ Prerequisites:
 
 #### Installing the software
 
-The source code is available on [GitHub](https://github.com/smomni/cranio). Install from source using `git` and `pip`:
+Install from source:
 
 ```bash
 git clone https://github.com/smomni/cranio
 cd cranio
+python3 -m virtualenv venv
+venv/Scripts/activate
+pip install -r requirements.txt
 pip install -e .[test]
 ```
 
 #### Running the tests
 
-Run the test suite using `pytest`:
+Run the test suite:
+
 ```bash
 pytest
 ```
 
 #### Building the documentation
 
-To build the documentation in HTML format using [Sphinx](http://www.sphinx-doc.org/en/stable/):
+Build HTML documentation:
 
 ```bash
 cd docs
@@ -91,10 +95,10 @@ The built documentation is located in `docs/build/html`.
 
 #### Running the software
 
-To start the measurement software:
+Start the measurement software:
 
 ```bash
-python run.py
+python -m run
 ```
 
 

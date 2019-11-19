@@ -5,7 +5,7 @@ setup(
     name='cranio',
     version=__version__,
     packages=['cranio', 'cranio.app'],
-    install_requires=['pandas', 'pyserial', 'attrs', 'pyqtgraph'],
+    install_requires=['pandas', 'pyserial', 'attrs', 'pyqtgraph', 'sqlalchemy'],
     extras_require={
         'dev': [],
         'test': ['pytest', 'pytest-cov', 'pytest-helpers-namespace'],
