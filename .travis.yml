@@ -10,8 +10,9 @@
     - pip install -r requirements.txt
     - pip install --upgrade sip
     - pip install codecov
-    - pip install -e .[test]
+    - pip install -e .[test,lint]
   script:
+    - black --check .
     - pytest --cov=cranio
     - sqlite-to-csv.py cranio.db
   after_script:
