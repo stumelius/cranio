@@ -4,9 +4,23 @@ System states.
 from typing import List
 from PyQt5.QtCore import QState, QEvent
 from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QInputDialog
-from cranio.app.window import MainWindow, RegionPlotWindow, NotesWindow, SessionDialog, PatientDialog
+from cranio.app.window import (
+    MainWindow,
+    RegionPlotWindow,
+    NotesWindow,
+    SessionDialog,
+    PatientDialog,
+)
 from cranio.app.widget import SessionWidget, PatientWidget
-from cranio.model import session_scope, Session, Document, AnnotatedEvent, SensorInfo, DistractorType, Database
+from cranio.model import (
+    session_scope,
+    Session,
+    Document,
+    AnnotatedEvent,
+    SensorInfo,
+    DistractorType,
+    Database,
+)
 from cranio.utils import logger, utc_datetime
 from cranio.producer import ProducerProcess
 from config import Config
@@ -142,7 +156,7 @@ class MeasurementState(MyState):
             operator=self.machine().active_operator,
             started_at=utc_datetime(),
             sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
-            distractor_type=Config.DEFAULT_DISTRACTOR
+            distractor_type=Config.DEFAULT_DISTRACTOR,
         )
 
     def onEntry(self, event: QEvent):
@@ -151,7 +165,9 @@ class MeasurementState(MyState):
         sensor = self.machine().sensor
         # Create new document
         self.document = self.create_document()
-        self.main_window.measurement_widget.update_timer.start(self.main_window.measurement_widget.update_interval*1000)
+        self.main_window.measurement_widget.update_timer.start(
+            self.main_window.measurement_widget.update_interval * 1000
+        )
         # Clear plot
         logger.debug('Clear plot')
         self.main_window.measurement_widget.clear()
@@ -163,7 +179,9 @@ class MeasurementState(MyState):
         if self.main_window.producer_process is not None:
             self.main_window.producer_process.join()
         # Create producer process and register connected sensor
-        self.main_window.producer_process = ProducerProcess('Torque producer process', document=self.document)
+        self.main_window.producer_process = ProducerProcess(
+            'Torque producer process', document=self.document
+        )
         self.main_window.register_sensor_with_producer()
         # Start producing!
         self.main_window.measurement_widget.producer_process.start()
@@ -185,7 +203,6 @@ class MeasurementState(MyState):
 
 
 class EventDetectionState(MyState):
-
     def __init__(self, name: str, parent=None):
         super().__init__(name=name, parent=parent)
         self.dialog = RegionPlotWindow()
@@ -226,8 +243,7 @@ class EventDetectionState(MyState):
 
 
 class AreYouSureState(MyState):
-
-    def __init__(self, text_template: str, name: str=None, parent=None):
+    def __init__(self, text_template: str, name: str = None, parent=None):
         """
 
         :param text: Text shown in the dialog
@@ -287,11 +303,19 @@ class NoteState(MyState):
         # Set default full turn count
         event_count = len(self.document.get_related_events(self.database))
         with session_scope(self.database) as s:
-            sensor_info = s.query(SensorInfo).\
-                filter(SensorInfo.sensor_serial_number == self.document.sensor_serial_number).first()
+            sensor_info = (
+                s.query(SensorInfo)
+                .filter(
+                    SensorInfo.sensor_serial_number
+                    == self.document.sensor_serial_number
+                )
+                .first()
+            )
         self.full_turn_count = event_count / float(sensor_info.turns_in_full_turn)
-        logger.debug(f'Calculate default full_turn_count = {self.full_turn_count} = '
-                     f'{event_count} / {sensor_info.turns_in_full_turn}')
+        logger.debug(
+            f'Calculate default full_turn_count = {self.full_turn_count} = '
+            f'{event_count} / {sensor_info.turns_in_full_turn}'
+        )
         self.dialog.open()
 
     def onExit(self, event: QEvent):

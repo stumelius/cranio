@@ -34,7 +34,9 @@ class StartMeasurementTransition(SignalTransition):
                 except DeviceDetectionError:
                     pass
             else:
-                logger.error(f'No available devices detected (ENABLE_DUMMY_SENSOR = {Config.ENABLE_DUMMY_SENSOR})')
+                logger.error(
+                    f'No available devices detected (ENABLE_DUMMY_SENSOR = {Config.ENABLE_DUMMY_SENSOR})'
+                )
                 return False
         return True
 
@@ -70,9 +72,11 @@ class RemoveAnnotatedEventsTransition(SignalTransition):
         with session_scope(self.database) as s:
             for e in self.machine().annotated_events:
                 logger.debug(f'Remove {str(e)} from database')
-                s.query(AnnotatedEvent).filter(AnnotatedEvent.document_id == e.document_id).\
-                    filter(AnnotatedEvent.event_type == e.event_type).\
-                    filter(AnnotatedEvent.event_num == e.event_num).delete()
+                s.query(AnnotatedEvent).filter(
+                    AnnotatedEvent.document_id == e.document_id
+                ).filter(AnnotatedEvent.event_type == e.event_type).filter(
+                    AnnotatedEvent.event_num == e.event_num
+                ).delete()
 
 
 class UpdateDocumentTransition(SignalTransition):
@@ -80,7 +84,11 @@ class UpdateDocumentTransition(SignalTransition):
         super().onTransition(event)
         logger.debug('Update document in database')
         with session_scope(self.database) as s:
-            document = s.query(Document).filter(Document.document_id == self.document.document_id).first()
+            document = (
+                s.query(Document)
+                .filter(Document.document_id == self.document.document_id)
+                .first()
+            )
             document.notes = self.document.notes
             document.full_turn_count = self.document.full_turn_count
             logger.debug(str(document))

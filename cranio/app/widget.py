@@ -7,21 +7,56 @@ from enum import Enum
 from typing import Tuple, List, Iterable, Union
 from functools import partial
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QLineEdit, QInputDialog, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, \
-    QLayout, QWidget, QWidgetItem, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QDoubleSpinBox, \
-    QGroupBox, QMessageBox, QSpinBox, QGridLayout, QCheckBox
+from PyQt5.QtWidgets import (
+    QLineEdit,
+    QInputDialog,
+    QComboBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QAbstractItemView,
+    QLayout,
+    QWidget,
+    QWidgetItem,
+    QLabel,
+    QVBoxLayout,
+    QPushButton,
+    QHBoxLayout,
+    QDoubleSpinBox,
+    QGroupBox,
+    QMessageBox,
+    QSpinBox,
+    QGridLayout,
+    QCheckBox,
+)
 from sqlalchemy.exc import IntegrityError
-from cranio.model import AnnotatedEvent, session_scope, Patient, EventType, Measurement, Session, Database
+from cranio.model import (
+    AnnotatedEvent,
+    session_scope,
+    Patient,
+    EventType,
+    Measurement,
+    Session,
+    Database,
+)
 from cranio.utils import logger
 from cranio.producer import get_all_from_queue, datetime_to_seconds
+
 # Plot style settings
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 # Custom color palette for plots
-color_palette = [(76, 114, 176), (85, 168, 104), (196, 78, 82),
-                 (129, 114, 178), (204, 185, 116), (100, 181, 205)]
-PATIENT_ID_TOOLTIP = ('Enter patient identifier.\n'
-                      'NOTE: Do not enter personal information, such as names.')
+color_palette = [
+    (76, 114, 176),
+    (85, 168, 104),
+    (196, 78, 82),
+    (129, 114, 178),
+    (204, 185, 116),
+    (100, 181, 205),
+]
+PATIENT_ID_TOOLTIP = (
+    'Enter patient identifier.\n'
+    'NOTE: Do not enter personal information, such as names.'
+)
 DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
 
 
@@ -68,6 +103,7 @@ class PlotMode(Enum):
 
 class EditWidget(QWidget):
     """ Line edit and label widgets in a horizontal layout. """
+
     _edit_widget_cls = QLineEdit
 
     def __init__(self, label, value=None, parent=None):
@@ -106,6 +142,7 @@ class EditWidget(QWidget):
 
 class ComboEditWidget(EditWidget):
     """ EditWidget variant with a popup list instead of a line edit. """
+
     _edit_widget_cls = QComboBox
 
     def add_item(self, text: str):
@@ -164,6 +201,7 @@ class ComboEditWidget(EditWidget):
 
 class SpinEditWidget(EditWidget):
     """ EditWidget variant with a spin box instead of a line edit. """
+
     _edit_widget_cls = QSpinBox
 
     @property
@@ -204,6 +242,7 @@ class SpinEditWidget(EditWidget):
 
 class DoubleSpinEditWidget(SpinEditWidget):
     """ EditWidget variant with a spin box instead of a line edit. """
+
     _edit_widget_cls = QDoubleSpinBox
 
     def __init__(self, *args, **kwargs):
@@ -213,6 +252,7 @@ class DoubleSpinEditWidget(SpinEditWidget):
 
 class CheckBoxEditWidget(EditWidget):
     """ EditWidget variant with a spin box instead of a line edit. """
+
     _edit_widget_cls = QCheckBox
     state_map = {True: QtCore.Qt.Checked, False: QtCore.Qt.Unchecked}
 
@@ -228,6 +268,7 @@ class CheckBoxEditWidget(EditWidget):
 
 class MetaDataWidget(QGroupBox):
     """ Widget for editing distraction session -related meta data. """
+
     signal_close = QtCore.pyqtSignal()
 
     def __init__(self, database: Database, parent=None):
@@ -281,7 +322,9 @@ class MetaDataWidget(QGroupBox):
 
         :return: List of patient identifiers
         """
-        return [self.patient_widget.item_at(i) for i in range(self.patient_widget.count())]
+        return [
+            self.patient_widget.item_at(i) for i in range(self.patient_widget.count())
+        ]
 
     @property
     def active_patient(self) -> str:
@@ -355,7 +398,9 @@ class PatientWidget(QWidget):
             for i, patient in enumerate(session.query(Patient).all()):
                 self.table_widget.setRowCount(i + 1)
                 self.table_widget.setItem(i, 0, QTableWidgetItem(patient.patient_id))
-                self.table_widget.setItem(i, 1, QTableWidgetItem(str(patient.created_at)))
+                self.table_widget.setItem(
+                    i, 1, QTableWidgetItem(str(patient.created_at))
+                )
 
     def patient_count(self) -> int:
         """
@@ -410,7 +455,9 @@ class SessionWidget(QWidget):
                 self.sessions.append(session)
                 self.table_widget.setRowCount(i + 1)
                 self.table_widget.setItem(i, 0, QTableWidgetItem(session.session_id))
-                self.table_widget.setItem(i, 1, QTableWidgetItem(str(session.started_at)))
+                self.table_widget.setItem(
+                    i, 1, QTableWidgetItem(str(session.started_at))
+                )
 
     def session_count(self) -> int:
         """
@@ -423,7 +470,9 @@ class SessionWidget(QWidget):
     def active_session_id(self) -> str:
         """ Return session_id of active (selected) session. If no session is selected, None is returned. """
         try:
-            session_id = self.table_widget.item(self.table_widget.currentRow(), 0).text()
+            session_id = self.table_widget.item(
+                self.table_widget.currentRow(), 0
+            ).text()
         except AttributeError:
             # AttributeError: 'NoneType' object has no attribute 'text'
             session_id = None
@@ -492,7 +541,7 @@ class MeasurementWidget(QWidget):
     def active_distractor(self, distractor_number: int):
         self.distractor_widget.value = distractor_number
 
-    def plot(self, df: pd.DataFrame, mode: PlotMode=PlotMode.OVERWRITE):
+    def plot(self, df: pd.DataFrame, mode: PlotMode = PlotMode.OVERWRITE):
         """
         Plot a dataframe in the multiplot widget.
 
@@ -531,12 +580,17 @@ class MeasurementWidget(QWidget):
         if not index_arr:
             return
         # Convert UTC+0 datetime to seconds
-        time_arr = datetime_to_seconds(index_arr, self.producer_process.document.started_at)
+        time_arr = datetime_to_seconds(
+            index_arr, self.producer_process.document.started_at
+        )
         # Create measurements and insert to database
         measurements = []
         for time_s, value_dict in zip(time_arr, value_dict_arr):
-            m = Measurement(time_s=time_s, torque_Nm=value_dict['torque (Nm)'],
-                            document_id=self.producer_process.document.document_id)
+            m = Measurement(
+                time_s=time_s,
+                torque_Nm=value_dict['torque (Nm)'],
+                document_id=self.producer_process.document.document_id,
+            )
             measurements.append(m)
         self.database.bulk_insert(measurements)
         # Convert data to DataFrame
@@ -557,16 +611,21 @@ class MeasurementWidget(QWidget):
         # Increase active distractor when up arrow is pressed
         if event.key() == QtCore.Qt.Key_Up:
             self.active_distractor = self.active_distractor + 1
-            logger.debug(f'Change active distractor to {self.active_distractor} (Up arrow pressed)')
+            logger.debug(
+                f'Change active distractor to {self.active_distractor} (Up arrow pressed)'
+            )
         # Decrease active distractor when down arrow is pressed
         elif event.key() == QtCore.Qt.Key_Down:
             self.active_distractor = self.active_distractor - 1
-            logger.debug(f'Change active distractor to {self.active_distractor} (Down arrow pressed)')
+            logger.debug(
+                f'Change active distractor to {self.active_distractor} (Down arrow pressed)'
+            )
         return super().keyPressEvent(event)
 
 
 class PlotWidget(pg.PlotWidget):
     """ Widget for displaying a (real-time) plot """
+
     # Default plot configuration
     plot_configuration = {'antialias': True, 'pen': pg.mkPen(color_palette[0])}
 
@@ -624,7 +683,12 @@ class PlotWidget(pg.PlotWidget):
         self.y_arr = []
         return self.getPlotItem().clear()
 
-    def plot(self, x: Iterable[float], y: Iterable[float], mode: PlotMode=PlotMode.OVERWRITE):
+    def plot(
+        self,
+        x: Iterable[float],
+        y: Iterable[float],
+        mode: PlotMode = PlotMode.OVERWRITE,
+    ):
         """
         Plot (x, y) data.
 
@@ -644,7 +708,9 @@ class PlotWidget(pg.PlotWidget):
             raise ValueError('Invalid mode {}'.format(mode))
         # Apply filters
         self.apply_filters()
-        self.getPlotItem().plot(self.x_arr, self.y_arr, clear=True, **self.plot_configuration)
+        self.getPlotItem().plot(
+            self.x_arr, self.y_arr, clear=True, **self.plot_configuration
+        )
         return self
 
     def apply_filters(self):
@@ -713,8 +779,12 @@ class RegionEditWidget(QGroupBox):
         self.minimum_edit.setValue(self.region()[0])
         self.maximum_edit.setValue(self.region()[1])
         # connect signals
-        self.minimum_edit.valueChanged.connect(partial(self.value_changed, self.minimum_edit))
-        self.maximum_edit.valueChanged.connect(partial(self.value_changed, self.maximum_edit))
+        self.minimum_edit.valueChanged.connect(
+            partial(self.value_changed, self.minimum_edit)
+        )
+        self.maximum_edit.valueChanged.connect(
+            partial(self.value_changed, self.maximum_edit)
+        )
         self.parent.sigRegionChanged.connect(self.region_changed)
         # responsibility for connecting the remove button lies in the RegionWidget
 
@@ -784,10 +854,15 @@ class RegionEditWidget(QGroupBox):
         """
         # only distraction events are supported
         # NOTE: document_is is left empty (i.e,. None)
-        return AnnotatedEvent(event_type=EventType.distraction_event_type().event_type,
-                              event_num=self.event_number, document_id=None,
-                              event_begin=self.left_edge(), event_end=self.right_edge(), annotation_done=self.is_done(),
-                              recorded=self.is_recorded())
+        return AnnotatedEvent(
+            event_type=EventType.distraction_event_type().event_type,
+            event_num=self.event_number,
+            document_id=None,
+            event_begin=self.left_edge(),
+            event_end=self.right_edge(),
+            annotation_done=self.is_done(),
+            recorded=self.is_recorded(),
+        )
 
     def set_region(self, edges: Tuple[float, float]):
         """
@@ -876,7 +951,7 @@ class RegionPlotWidget(QWidget):
         """ Plot y values property. """
         return self.plot_widget.y_arr
 
-    def plot(self, x_arr, y_arr, mode: PlotMode=PlotMode.OVERWRITE):
+    def plot(self, x_arr, y_arr, mode: PlotMode = PlotMode.OVERWRITE):
         """
         Plot (x, y) data.
 
@@ -931,12 +1006,20 @@ class RegionPlotWidget(QWidget):
         :raises ValueError: if no matching region edit widget was found
         """
         try:
-            return [key for key, value in self.region_edit_map.items() if value == edit_widget][0]
+            return [
+                key
+                for key, value in self.region_edit_map.items()
+                if value == edit_widget
+            ][0]
         except IndexError:
             raise ValueError('No matching edit widget found')
 
-    def add_region(self, edges: Tuple[float, float], bounds: Tuple[float, float] = None,
-                   movable: bool = True) -> RegionEditWidget:
+    def add_region(
+        self,
+        edges: Tuple[float, float],
+        bounds: Tuple[float, float] = None,
+        movable: bool = True,
+    ) -> RegionEditWidget:
         """
         Add a region to the plot.
 
@@ -949,11 +1032,15 @@ class RegionPlotWidget(QWidget):
             bounds = [min(self.x_arr), max(self.x_arr)]
         alpha = 125
         color = list(color_palette[len(self.region_edit_map)]) + [alpha]
-        item = pg.LinearRegionItem(edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color))
+        item = pg.LinearRegionItem(
+            edges, bounds=bounds, movable=movable, brush=pg.mkBrush(*color)
+        )
         self.plot_widget.addItem(item)
         # Event numbering by insertion order
         edit_widget = RegionEditWidget(item, event_number=self.region_count() + 1)
-        edit_widget.remove_button.clicked.connect(partial(self.remove_region, edit_widget))
+        edit_widget.remove_button.clicked.connect(
+            partial(self.remove_region, edit_widget)
+        )
         self.edit_layout.insertWidget(self.edit_layout.count() - 1, edit_widget)
         self.region_edit_map[item] = edit_widget
         return edit_widget
@@ -1017,7 +1104,10 @@ class RegionPlotWidget(QWidget):
 
         :return:
         """
-        return [self.get_region_edit(i).get_annotated_event() for i in range(self.region_count())]
+        return [
+            self.get_region_edit(i).get_annotated_event()
+            for i in range(self.region_count())
+        ]
 
 
 class VMultiPlotWidget(QWidget):
@@ -1068,6 +1158,7 @@ class VMultiPlotWidget(QWidget):
         :raises ValueError: if a plot with the specified label already exists
         """
         from cranio.constants import PLOT_N_SECONDS
+
         if self.find_plot_widget_by_label(label) is not None:
             raise ValueError('A plot widget with label {} already exists'.format(label))
         # If placeholder exists, use it
@@ -1086,7 +1177,9 @@ class VMultiPlotWidget(QWidget):
         self.plot_widgets.append(plot_widget)
         return plot_widget
 
-    def plot(self, df: pd.DataFrame, title: str = '', mode: PlotMode=PlotMode.OVERWRITE):
+    def plot(
+        self, df: pd.DataFrame, title: str = '', mode: PlotMode = PlotMode.OVERWRITE
+    ):
         """
         Plot a dataframe.
 
@@ -1102,7 +1195,9 @@ class VMultiPlotWidget(QWidget):
         # Find already initialized columns
         initialized_columns = [p.y_label for p in self.plot_widgets if p.y_label in df]
         # Leftover columns need to be initialized
-        non_initialized_columns = filter(lambda c: c not in initialized_columns, df.columns)
+        non_initialized_columns = filter(
+            lambda c: c not in initialized_columns, df.columns
+        )
         for c in non_initialized_columns:
             self.add_plot_widget(c)
         # Plot each column

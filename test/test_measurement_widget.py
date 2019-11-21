@@ -23,7 +23,9 @@ def test_clicking_distractor_widget_down_decreases_value_by_one(measurement_widg
     assert measurement_widget.distractor_widget.value == 1
 
 
-def test_distractor_widget_down_has_no_effect_when_distractor_is_one(measurement_widget):
+def test_distractor_widget_down_has_no_effect_when_distractor_is_one(
+    measurement_widget,
+):
     measurement_widget.distractor_widget.step_down()
     assert measurement_widget.distractor_widget.value == 1
 
@@ -32,4 +34,3 @@ def test_distractor_widget_up_has_no_effect_when_distractor_is_ten(measurement_w
     measurement_widget.distractor_widget.value = 10
     measurement_widget.distractor_widget.step_up()
     assert measurement_widget.distractor_widget.value == 10
-

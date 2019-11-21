@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from cranio.model import Database, session_scope, Base, Measurement
 from cranio.utils import logger, configure_logging
+
 parser = argparse.ArgumentParser()
 parser.add_argument('path', help='Path to SQLite file (.db)', type=str)
 

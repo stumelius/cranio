@@ -5,6 +5,7 @@ from cranio.utils import attach_excepthook, logger, configure_logging
 from cranio.model import Session, DefaultDatabase
 from cranio.state_machine import StateMachine
 from config import Config
+
 # Attach custom excepthook
 attach_excepthook()
 
@@ -12,10 +13,16 @@ parser = ArgumentParser(description='Cranio measurement software')
 subparsers = parser.add_subparsers(title='cmd', dest='cmd')
 
 parser_initdb = subparsers.add_parser('initdb')
-parser_initdb.add_argument('--reset', action='store_true', help='Clear database before initialization (i.e., fresh start)')
+parser_initdb.add_argument(
+    '--reset',
+    action='store_true',
+    help='Clear database before initialization (i.e., fresh start)',
+)
 
 parser_run = subparsers.add_parser('run')
-parser_run.add_argument('-d', '--enable-dummy-sensor', action='store_true', help='Allow dummy sensor')
+parser_run.add_argument(
+    '-d', '--enable-dummy-sensor', action='store_true', help='Allow dummy sensor'
+)
 
 
 def initdb(args):
@@ -52,10 +59,7 @@ def run(args):
     return ret
 
 
-commands = {
-        'initdb': initdb,
-        'run': run
-    }
+commands = {'initdb': initdb, 'run': run}
 
 
 def main():
