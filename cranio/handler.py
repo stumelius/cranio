@@ -6,6 +6,8 @@ import traceback
 from datetime import datetime, timedelta
 from cranio.constants import DEFAULT_DATEFMT
 from cranio.model import Log, Session
+from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 
 
 class DatabaseHandler(logging.Handler):
@@ -35,5 +37,5 @@ class DatabaseHandler(logging.Handler):
         database = record.__dict__['database']
         # Insert if database is defined and initialized
         if database is not None:
-            if database.is_initialized():
+            if database.initialized:
                 database.insert(log)

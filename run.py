@@ -1,21 +1,47 @@
 import sys
+from argparse import ArgumentParser
 from cranio.app import app
 from cranio.utils import attach_excepthook, logger, configure_logging
 from cranio.model import Session, DefaultDatabase
 from cranio.state_machine import StateMachine
-database = DefaultDatabase.SQLITE
-database.create_engine()
-Session.init(database=database)
+from config import Config
 # Attach custom excepthook
 attach_excepthook()
 
+parser = ArgumentParser(description='Cranio measurement software')
+subparsers = parser.add_subparsers(title='cmd', dest='cmd')
 
-def run():
+parser_initdb = subparsers.add_parser('initdb')
+parser_initdb.add_argument('--reset', action='store_true', help='Clear database before initialization (i.e., fresh start)')
+
+parser_run = subparsers.add_parser('run')
+parser_run.add_argument('-d', '--enable-dummy-sensor', action='store_true', help='Allow dummy sensor')
+
+
+def initdb(args):
+    """
+    Initialize cranio.db.
+
+    :return:
+    """
+    database = DefaultDatabase.SQLITE
+    database.create_engine()
+    if args.reset:
+        database.clear()
+    database.init()
+
+
+def run(args):
     """
     Run the craniodistractor application.
 
     :return: 
     """
+    if args.enable_dummy_sensor:
+        Config.ENABLE_DUMMY_SENSOR = True
+    database = DefaultDatabase.SQLITE
+    database.create_engine()
+    Session.init(database=database)
     machine = StateMachine(database)
     logger.register_machine(machine)
     logger.info('Start state machine')
@@ -26,6 +52,18 @@ def run():
     return ret
 
 
-if __name__ == '__main__':
+commands = {
+        'initdb': initdb,
+        'run': run
+    }
+
+
+def main():
+    args = parser.parse_args()
     configure_logging()
-    sys.exit(run())
+    command = commands[args.cmd]
+    sys.exit(command(args))
+
+
+if __name__ == '__main__':
+    main()

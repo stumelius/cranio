@@ -13,5 +13,10 @@ setup(
     },
     scripts=[
         'scripts/sqlite-to-csv.py'
-    ]
+    ],
+    entry_points={
+        'console_scripts': [
+            'cranio = run:main'
+        ]
+    }
 )

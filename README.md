@@ -95,10 +95,17 @@ The built documentation is located in `docs/build/html`.
 
 #### Running the software
 
+
+Initialize database (first time only):
+
+```bash
+cranio initdb
+```
+
 Start the measurement software:
 
 ```bash
-python -m run
+cranio run
 ```
 
 

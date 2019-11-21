@@ -12,8 +12,9 @@ from config import Config
 @pytest.fixture(scope='function')
 def database_fixture():
     database = Database(drivername='sqlite')
-    logger.register_database(database)
     database.create_engine()
+    logger.register_database(database)
+    database.init()
     try:
         Session.init(database=database)
     except ValueError:

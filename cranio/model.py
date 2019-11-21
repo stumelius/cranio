@@ -19,6 +19,7 @@ class Database:
                  database: str=None):
         self.url = URL(drivername, username, password, host, port, database)
         self.engine = None
+        self.initialized = False
 
     @classmethod
     def from_str(cls, url_str: str):
@@ -28,22 +29,26 @@ class Database:
                         'database': url.database}
         return cls(**connect_args)
 
-    def is_initialized(self) -> bool:
-        return self.engine is not None
-
     def create_engine(self) -> Engine:
         """
         Initialize a database connection and return the database engine.
 
         :return:
         """
-        logger.info(f'Initialize connection to {self.url}')
+        logger.info(f'Initialize database {self.url}')
         self.engine = create_engine(self.url)
         # Enforce sqlite foreign keys
         event.listen(self.engine, 'connect', _fk_pragma_on_connect)
-        # Create all tables
+        return self.engine
+
+    def init(self):
+        """
+        Create declarative tables and populate lookup tables.
+        :return:
+        """
+        logger.info(f'Create declarative tables in {self.url}')
         Base.metadata.create_all(self.engine)
-        # Populate lookup tables
+        logger.info(f'Populate lookup tables in {self.url}')
         with session_scope(self) as s:
             for level, level_name in get_logging_levels().items():
                 enter_if_not_exists(s, LogLevel(level=level, level_name=level_name))
@@ -51,7 +56,10 @@ class Database:
                 enter_if_not_exists(s, event_type)
             for distractor_info in DistractorInfo.distractor_infos():
                 enter_if_not_exists(s, distractor_info)
-        return self.engine
+        self.initialized = True
+
+    def session_scope(self):
+        return session_scope(self)
 
     def insert(self, row: Table, insert_if_exists: bool=True) -> Table:
         """
@@ -88,6 +96,7 @@ class Database:
 
         :return: None
         """
+        logger.info(f'Clear database {self.url}')
         with closing(self.engine.connect()) as con:
             trans = con.begin()
             for table in reversed(Base.metadata.sorted_tables):
@@ -239,21 +248,21 @@ class Session(Base, InstanceMixin, DictMixin):
         logger.info(f'Continue from session {session}')
         cls.set_instance(session)
 
+class EventType(Base, DictMixin):
+    """ Event types lookup table. """
+    __tablename__ = 'dim_event_type'
+    event_type = Column(String, primary_key=True, comment='Event type identifier (e.g., "D" for distraction)')
+    event_type_description = Column(String)
 
-class AnnotatedEvent(Base, DictMixin):
-    """ Annotated events table. """
-    __tablename__ = 'fact_annotated_event'
-    event_type = Column(String, ForeignKey('dim_event_type.event_type'), primary_key=True,
-                        comment='Event type identifier')
-    event_num = Column(Integer, primary_key=True, comment='Event number')
-    document_id = Column(String, ForeignKey('dim_document.document_id'), primary_key=True)
-    event_begin = Column(Numeric, comment='Allow placeholder as NULL')
-    event_end = Column(Numeric, comment='Allow placeholder as NULL')
-    annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
-                                              'just a placeholder to be annotated later', nullable=False)
-    recorded = Column(Boolean, comment='Indicates if the event was recorded. '
-                                       'If false, the event did occur but the operator failed to record it.',
-                      nullable=False)
+    @classmethod
+    def distraction_event_type(cls):
+        """ Return EventType for distraction event. """
+        return cls(event_type='D', event_type_description='Distraction event')
+
+    @classmethod
+    def event_types(cls) -> List:
+        """ Return list of supported event types. """
+        return [cls.distraction_event_type()]
 
 
 class SensorInfo(Base, DictMixin):
@@ -265,13 +274,25 @@ class SensorInfo(Base, DictMixin):
     turns_in_full_turn = Column(Numeric, comment='Sensor-specific number of turns in one full turn.')
 
 
-class Measurement(Base, DictMixin):
-    """ Measurement table. """
-    __tablename__ = 'fact_measurement'
-    measurement_id = Column(Integer, primary_key=True, autoincrement=True)
-    document_id = Column(String, ForeignKey('dim_document.document_id'), nullable=False)
-    time_s = Column(Numeric, nullable=False, comment='Time since start of data collection in seconds')
-    torque_Nm = Column(Numeric, nullable=False, comment='Torque measured from the torque sensor')
+class DistractorType:
+    KLS_ARNAUD = 'KLS Martin Arnaud'
+    KLS_RED = 'KLS Martin RED'
+
+
+class DistractorInfo(Base, DictMixin):
+    """ Distractor information table. """
+    __tablename__ = 'dim_hw_distractor'
+    distractor_type = Column(String, primary_key=True)
+    displacement_mm_per_full_turn = Column(Numeric, nullable=False,
+                                           comment='Distractor-specific displacement (mm) per full turn. '
+                                                   'The value is determined during hardware calibration.')
+
+    @classmethod
+    def distractor_infos(cls):
+        return [
+            cls(distractor_type=DistractorType.KLS_ARNAUD, displacement_mm_per_full_turn=1.0),
+            cls(distractor_type=DistractorType.KLS_RED, displacement_mm_per_full_turn=0.5)
+        ]
 
 
 class Document(Base, InstanceMixin, DictMixin):
@@ -279,12 +300,12 @@ class Document(Base, InstanceMixin, DictMixin):
     __tablename__ = 'dim_document'
     document_id = Column(String, primary_key=True, default=generate_unique_id,
                 comment='Autogenerated document identifier (UUID v1)')
-    session_id = Column(String, ForeignKey('dim_session.session_id'), nullable=False)
-    patient_id = Column(String, ForeignKey('dim_patient.patient_id'), nullable=False)
-    sensor_serial_number = Column(String, ForeignKey('dim_hw_sensor.sensor_serial_number'), nullable=False,
+    session_id = Column(String, ForeignKey(Session.session_id), nullable=False)
+    patient_id = Column(String, ForeignKey(Patient.patient_id), nullable=False)
+    sensor_serial_number = Column(String, ForeignKey(SensorInfo.sensor_serial_number), nullable=False,
                                   comment='Sensor serial number (e.g., FTSLQ6QIA)')
     distractor_number = Column(Integer, comment='Distractor number')
-    distractor_type = Column(String, ForeignKey('dim_hw_distractor.distractor_type'), nullable=False)
+    distractor_type = Column(String, ForeignKey(DistractorInfo.distractor_type), nullable=False)
     started_at = Column(DateTime, comment='Data collection start date and time (UTC+0)')
     operator = Column(String, comment='Person responsible for the distraction')
     notes = Column(String, comment='User notes')
@@ -333,7 +354,7 @@ class Document(Base, InstanceMixin, DictMixin):
             x, y = zip(*[(float(m.time_s), float(m.torque_Nm)) for m in measurements])
         return x, y
 
-    def get_related_events(self, database: Database) -> List[AnnotatedEvent]:
+    def get_related_events(self, database: Database) -> List['AnnotatedEvent']:
         """
         Return list of annotated events related to the document.
 
@@ -355,7 +376,7 @@ class Document(Base, InstanceMixin, DictMixin):
         return sensor_info
 
     def insert_time_series(self, database: Database, time_s: Iterable[float],
-                           torque_Nm: Iterable[float]) -> List[Measurement]:
+                           torque_Nm: Iterable[float]) -> List['Measurement']:
         """
         Insert torque as a function of time to database.
 
@@ -371,6 +392,30 @@ class Document(Base, InstanceMixin, DictMixin):
         return measurements
 
 
+class AnnotatedEvent(Base, DictMixin):
+    """ Annotated events table. """
+    __tablename__ = 'fact_annotated_event'
+    event_type = Column(String, ForeignKey(EventType.event_type), primary_key=True,
+                        comment='Event type identifier')
+    event_num = Column(Integer, primary_key=True, comment='Event number')
+    document_id = Column(String, ForeignKey(Document.document_id), primary_key=True)
+    event_begin = Column(Numeric, comment='Allow placeholder as NULL')
+    event_end = Column(Numeric, comment='Allow placeholder as NULL')
+    annotation_done = Column(Boolean, comment='Indicates whether the annotation has been done or if the event is '
+                                              'just a placeholder to be annotated later', nullable=False)
+    recorded = Column(Boolean, comment='Indicates if the event was recorded. '
+                                       'If false, the event did occur but the operator failed to record it.',
+                      nullable=False)
+
+class Measurement(Base, DictMixin):
+    """ Measurement table. """
+    __tablename__ = 'fact_measurement'
+    measurement_id = Column(Integer, primary_key=True, autoincrement=True)
+    document_id = Column(String, ForeignKey(Document.document_id), nullable=False)
+    time_s = Column(Numeric, nullable=False, comment='Time since start of data collection in seconds')
+    torque_Nm = Column(Numeric, nullable=False, comment='Torque measured from the torque sensor')
+
+
 class LogLevel(Base, DictMixin):
     """ Log level Lookup table. """
     __tablename__ = 'dim_log_level'
@@ -382,47 +427,9 @@ class Log(Base, DictMixin):
     """ Log table. """
     __tablename__ = 'fact_log'
     log_id = Column(Integer, primary_key=True, autoincrement=True)
-    session_id = Column(String, ForeignKey('dim_session.session_id'), nullable=False)
+    session_id = Column(String, ForeignKey(Session.session_id), nullable=False)
     created_at = Column(DateTime, nullable=False, comment='Log entry date and time with second precision (UTC+0)')
     logger = Column(String, nullable=False, comment='Name of the logger')
-    level = Column(Integer, ForeignKey('dim_log_level.level'), nullable=False)
+    level = Column(Integer, ForeignKey(LogLevel.level), nullable=False)
     trace = Column(String, comment='Error traceback')
     message = Column(String, nullable=False, comment='Log entry')
-
-
-class EventType(Base, DictMixin):
-    """ Event types lookup table. """
-    __tablename__ = 'dim_event_type'
-    event_type = Column(String, primary_key=True, comment='Event type identifier (e.g., "D" for distraction)')
-    event_type_description = Column(String)
-
-    @classmethod
-    def distraction_event_type(cls):
-        """ Return EventType for distraction event. """
-        return cls(event_type='D', event_type_description='Distraction event')
-
-    @classmethod
-    def event_types(cls) -> List:
-        """ Return list of supported event types. """
-        return [cls.distraction_event_type()]
-
-
-class DistractorType:
-    KLS_ARNAUD = 'KLS Martin Arnaud'
-    KLS_RED = 'KLS Martin RED'
-
-
-class DistractorInfo(Base, DictMixin):
-    """ Distractor information table. """
-    __tablename__ = 'dim_hw_distractor'
-    distractor_type = Column(String, primary_key=True)
-    displacement_mm_per_full_turn = Column(Numeric, nullable=False,
-                                           comment='Distractor-specific displacement (mm) per full turn. '
-                                                   'The value is determined during hardware calibration.')
-
-    @classmethod
-    def distractor_infos(cls):
-        return [
-            cls(distractor_type=DistractorType.KLS_ARNAUD, displacement_mm_per_full_turn=1.0),
-            cls(distractor_type=DistractorType.KLS_RED, displacement_mm_per_full_turn=0.5)
-        ]
