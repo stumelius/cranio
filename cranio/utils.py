@@ -102,7 +102,7 @@ def get_logging_config(path: Union[Path, str] = None) -> dict:
         return yaml.safe_load(stream)
 
 
-def configure_logging(log_level: str):
+def configure_logging(log_level: str = 'INFO'):
     d = get_logging_config()
     logging.config.dictConfig(d)
     logger.setLevel(log_level)
