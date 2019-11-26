@@ -51,6 +51,7 @@ jobs:
           name: run sqlite-to-csv.py
           command: |
             . venv/bin/activate
+            cranio initdb
             sqlite-to-csv.py cranio.db
 
       - store_artifacts:

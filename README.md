@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
+[![CircleCI](https://circleci.com/gh/smomni/cranio.svg?style=svg)](https://circleci.com/gh/smomni/cranio)
 [![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
 [![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
 [![Maintainability](https://api.codeclimate.com/v1/badges/c14e1d3a9202d71024a3/maintainability)](https://codeclimate.com/github/smomni/cranio/maintainability)
