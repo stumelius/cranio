@@ -24,9 +24,15 @@ def find_serial_device(serial_number: str) -> ListPortInfo:
     :raises DeviceDetectionError: if no device detected
     """
     try:
-        return [port for port in serial.tools.list_ports.comports() if port.serial_number == serial_number][0]
+        return [
+            port
+            for port in serial.tools.list_ports.comports()
+            if port.serial_number == serial_number
+        ][0]
     except IndexError:
-        raise DeviceDetectionError('No device detected with serial number {}'.format(serial_number))
+        raise DeviceDetectionError(
+            'No device detected with serial number {}'.format(serial_number)
+        )
 
 
 def get_com_port(serial_number: str) -> str:
@@ -61,12 +67,17 @@ def decode_telegram(telegram: str) -> Tuple[str, str, str, str]:
 
 
 # RS232 communication protocol configuration
-RS232Configuration = namedtuple('RS232Configuration', ['baudrate', 'bytesize', 'parity', 'stopbits', 'timeout'])
+RS232Configuration = namedtuple(
+    'RS232Configuration', ['baudrate', 'bytesize', 'parity', 'stopbits', 'timeout']
+)
 
 
 class Imada(Sensor):
     """ Imada HTG2-4 digital torque gauge with USB serial (RS-232) interface. """
-    rs232_config = RS232Configuration(19200, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, 1/50)
+
+    rs232_config = RS232Configuration(
+        19200, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, 1 / 50
+    )
     sensor_info = SensorInfo(sensor_serial_number='FTSLQ6QIA', turns_in_full_turn=3)
 
     def __init__(self):
@@ -74,7 +85,7 @@ class Imada(Sensor):
         self.serial = serial.Serial(port=None, **self.rs232_config._asdict())
         self.serial.port = get_com_port(self.sensor_info.sensor_serial_number)
         self.register_channel(ChannelInfo('torque', 'Nm'))
-    
+
     def open(self):
         """
         Open the serial port.
@@ -82,7 +93,7 @@ class Imada(Sensor):
         :return:
         """
         return self.serial.open()
-    
+
     def close(self):
         """
         Close the serial port.
@@ -90,7 +101,7 @@ class Imada(Sensor):
         :return:
         """
         return self.serial.close()
-    
+
     def readline(self) -> str:
         """
         Read bytes from the serial port until an EOL character and returns a string.
@@ -104,7 +115,7 @@ class Imada(Sensor):
                 break
             line.append(c)
         return ''.join(line)
-    
+
     def poll(self) -> str:
         """
         Poll the display value from the sensor. To decode the display value string, use decode_telegram().
@@ -115,7 +126,7 @@ class Imada(Sensor):
         self.serial.write(('D' + IMADA_EOL).encode('utf-8'))
         # return display value
         return self.readline()
-    
+
     def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read a single value from the sensor.

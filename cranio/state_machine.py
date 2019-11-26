@@ -1,14 +1,27 @@
 """
 Finite-state machine.
 """
-from PyQt5.QtCore import QStateMachine, QState,QFinalState, pyqtSignal
+from PyQt5.QtCore import QStateMachine, QState, QFinalState, pyqtSignal
 from cranio.app.window import MainWindow
 from cranio.model import Session, Database
-from cranio.state import InitialState, MeasurementState, EventDetectionState, AreYouSureState, NoteState, \
-    ChangeSessionState, ShowPatientsState, AddPatientState
-from cranio.transition import StartMeasurementTransition, ChangeActiveSessionTransition, \
-    EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition, UpdateDocumentTransition, \
-    AddPatientTransition
+from cranio.state import (
+    InitialState,
+    MeasurementState,
+    EventDetectionState,
+    AreYouSureState,
+    NoteState,
+    ChangeSessionState,
+    ShowPatientsState,
+    AddPatientState,
+)
+from cranio.transition import (
+    StartMeasurementTransition,
+    ChangeActiveSessionTransition,
+    EnterAnnotatedEventsTransition,
+    RemoveAnnotatedEventsTransition,
+    UpdateDocumentTransition,
+    AddPatientTransition,
+)
 
 
 class StateMachine(QStateMachine):
@@ -28,19 +41,39 @@ class StateMachine(QStateMachine):
         self.s1 = InitialState(name='s1')
         self.s2 = MeasurementState(name='s2')
         self.s3 = EventDetectionState(name='s3')
-        self.s4 = AreYouSureState('Are you sure you want to continue without annotating '
-                                  'any events for the recorded data?', name='s4')
+        self.s4 = AreYouSureState(
+            'Are you sure you want to continue without annotating '
+            'any events for the recorded data?',
+            name='s4',
+        )
         self.s6 = NoteState(name='s6')
         self.s7 = AreYouSureState('Are you sure you want to continue?', name='s7')
         self.s9 = ChangeSessionState(name='s9')
-        self.s10 = AreYouSureState('You have selected session {session_info}. '
-                                   'Are you sure you want to continue?', name='s10')
-        self.s11 = AreYouSureState('Are you sure you want to exit the application?', name='s11')
+        self.s10 = AreYouSureState(
+            'You have selected session {session_info}. '
+            'Are you sure you want to continue?',
+            name='s10',
+        )
+        self.s11 = AreYouSureState(
+            'Are you sure you want to exit the application?', name='s11'
+        )
         self.s12 = ShowPatientsState(name='s12')
         self.s13 = AddPatientState(name='s13')
         self.s0 = QFinalState()
-        for s in (self.s0, self.s1, self.s2, self.s3, self.s4, self.s6, self.s7, self.s9, self.s10, self.s11, self.s12,
-                  self.s13):
+        for s in (
+            self.s0,
+            self.s1,
+            self.s2,
+            self.s3,
+            self.s4,
+            self.s6,
+            self.s7,
+            self.s9,
+            self.s10,
+            self.s11,
+            self.s12,
+            self.s13,
+        ):
             self.addState(s)
         self.setInitialState(self.s1)
         # Additional initializations
@@ -48,13 +81,21 @@ class StateMachine(QStateMachine):
         self.s12.init_ui()
 
     def _initialize_transitions(self):
-        self.start_measurement_transition = StartMeasurementTransition(self.main_window.signal_start)
+        self.start_measurement_transition = StartMeasurementTransition(
+            self.main_window.signal_start
+        )
         self.start_measurement_transition.setTargetState(self.s2)
-        self.change_active_session_transition = ChangeActiveSessionTransition(self.s10.signal_yes)
+        self.change_active_session_transition = ChangeActiveSessionTransition(
+            self.s10.signal_yes
+        )
         self.change_active_session_transition.setTargetState(self.s1)
-        self.enter_annotated_events_transition = EnterAnnotatedEventsTransition(self.s3.signal_ok)
+        self.enter_annotated_events_transition = EnterAnnotatedEventsTransition(
+            self.s3.signal_ok
+        )
         self.enter_annotated_events_transition.setTargetState(self.s6)
-        self.remove_annotated_events_transition = RemoveAnnotatedEventsTransition(self.s6.signal_close)
+        self.remove_annotated_events_transition = RemoveAnnotatedEventsTransition(
+            self.s6.signal_close
+        )
         self.remove_annotated_events_transition.setTargetState(self.s3)
         self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
         self.update_document_transition.setTargetState(self.s1)
@@ -66,46 +107,33 @@ class StateMachine(QStateMachine):
                 self.s9: self.s1.signal_change_session,
                 self.s3: self._s1_to_s3_signal,
                 self.s11: self.main_window.signal_close,
-                self.s12: self.s1.signal_show_patients
+                self.s12: self.s1.signal_show_patients,
             },
-            self.s2: {
-               self.s3: self.main_window.signal_stop
-            },
+            self.s2: {self.s3: self.main_window.signal_stop},
             self.s3: {
-               self.s6: self.enter_annotated_events_transition,
-               self.s4: self.s3.signal_close
+                self.s6: self.enter_annotated_events_transition,
+                self.s4: self.s3.signal_close,
             },
-            self.s4: {
-                self.s3: self.s4.signal_no,
-                self.s1: self.s4.signal_yes
-            },
+            self.s4: {self.s3: self.s4.signal_no, self.s1: self.s4.signal_yes},
             self.s6: {
                 self.s7: self.s6.signal_ok,
-                self.s3: self.remove_annotated_events_transition
+                self.s3: self.remove_annotated_events_transition,
             },
             self.s7: {
                 self.s6: self.s7.signal_no,
-                self.s1: self.update_document_transition
+                self.s1: self.update_document_transition,
             },
-            self.s9: {
-                self.s10: self.s9.signal_select,
-                self.s1: self.s9.signal_cancel
-            },
+            self.s9: {self.s10: self.s9.signal_select, self.s1: self.s9.signal_cancel},
             self.s10: {
                 self.s9: self.s10.signal_no,
-                self.s1: self.change_active_session_transition
+                self.s1: self.change_active_session_transition,
             },
-            self.s11: {
-                self.s1: self.s11.signal_no,
-                self.s0: self.s11.signal_yes
-            },
+            self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes},
             self.s12: {
                 self.s13: self.s12.signal_add_patient,
-                self.s1: self.s12.signal_close
+                self.s1: self.s12.signal_close,
             },
-            self.s13: {
-                self.s12: [self.s13.signal_cancel, self.add_patient_transition]
-            }
+            self.s13: {self.s12: [self.s13.signal_cancel, self.add_patient_transition]},
         }
         # Add transitions to state machine
         for source, targets in self.transition_map.items():
@@ -113,9 +141,14 @@ class StateMachine(QStateMachine):
                 if not isinstance(signal_arr, list):
                     signal_arr = [signal_arr]
                 for signal in signal_arr:
-                    if type(signal) in (StartMeasurementTransition, ChangeActiveSessionTransition,
-                                        EnterAnnotatedEventsTransition, RemoveAnnotatedEventsTransition,
-                                        UpdateDocumentTransition, AddPatientTransition):
+                    if type(signal) in (
+                        StartMeasurementTransition,
+                        ChangeActiveSessionTransition,
+                        EnterAnnotatedEventsTransition,
+                        RemoveAnnotatedEventsTransition,
+                        UpdateDocumentTransition,
+                        AddPatientTransition,
+                    ):
                         source.addTransition(signal)
                     else:
                         source.addTransition(signal, target)
@@ -170,7 +203,9 @@ class StateMachine(QStateMachine):
         """
         active_states = self.configuration()
         if len(active_states) != 1:
-            raise ValueError(f'Current state not defined if {len(active_states)} states are active simultaneously')
+            raise ValueError(
+                f'Current state not defined if {len(active_states)} states are active simultaneously'
+            )
         return list(active_states)[0]
 
     def connect_sensor(self):

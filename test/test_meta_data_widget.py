@@ -28,7 +28,9 @@ def test_meta_data_widget_update_patients_from_database(meta_data_widget):
     assert meta_data_widget.active_patient == patients[0]
 
 
-def test_clicking_toggle_patient_lock_button_disables_patient_edit_only(meta_data_widget):
+def test_clicking_toggle_patient_lock_button_disables_patient_edit_only(
+    meta_data_widget,
+):
     patient_id = 'foo'
     meta_data_widget.add_patient(patient_id)
     # lock / disable patient edit

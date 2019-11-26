@@ -5,13 +5,13 @@ setup(
     name='cranio',
     version=__version__,
     packages=['cranio', 'cranio.app'],
-    install_requires=['pandas', 'pyserial', 'attrs', 'pyqtgraph'],
+    install_requires=['pandas', 'pyserial', 'attrs', 'pyqtgraph', 'sqlalchemy'],
     extras_require={
         'dev': [],
+        'lint': ['black'],
         'test': ['pytest', 'pytest-cov', 'pytest-helpers-namespace'],
-        'docs': ['sphinx', 'sphinx-autodoc-typehints', 'm2r']
+        'docs': ['sphinx', 'sphinx-autodoc-typehints', 'm2r'],
     },
-    entry_points={
-        'console_scripts': [],
-    },
+    scripts=['scripts/sqlite-to-csv.py'],
+    entry_points={'console_scripts': ['cranio = run:main']},
 )

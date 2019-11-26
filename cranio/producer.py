@@ -8,7 +8,12 @@ import pandas as pd
 import numpy as np
 from typing import Iterable, List, Tuple
 from contextlib import contextmanager
-from cranio.utils import random_value_generator, logger, generate_unique_id, utc_datetime
+from cranio.utils import (
+    random_value_generator,
+    logger,
+    generate_unique_id,
+    utc_datetime,
+)
 from cranio.model import SensorInfo, Document, Database
 
 
@@ -30,7 +35,9 @@ def get_all_from_queue(queue) -> Tuple[List, List]:
     return index_arr, value_arr
 
 
-def datetime_to_seconds(array: Iterable[datetime.datetime], t0: datetime.datetime) -> Iterable[float]:
+def datetime_to_seconds(
+    array: Iterable[datetime.datetime], t0: datetime.datetime
+) -> Iterable[float]:
     """
     Convert datetime to difference in seconds between a reference datetime.
 
@@ -39,7 +46,9 @@ def datetime_to_seconds(array: Iterable[datetime.datetime], t0: datetime.datetim
     :return: Float iterable
     """
     # Conversion to pd.Timestamp for datetime and np.datetime support
-    def to_total_seconds(x): return (pd.Timestamp(x)-t0).total_seconds()
+    def to_total_seconds(x):
+        return (pd.Timestamp(x) - t0).total_seconds()
+
     try:
         return list(map(to_total_seconds, array))
     except TypeError:
@@ -70,13 +79,14 @@ def get_nan() -> np.NaN:
 
 class ChannelInfo:
     """ Input channel information. """
+
     # Default string representation
     strfmt = '{self.name} ({self.unit})'
-        
+
     def __init__(self, name: str, unit: str):
         self.name = name
         self.unit = unit
-        
+
     def __str__(self):
         return self.strfmt.format(self=self)
 
@@ -86,21 +96,24 @@ class Sensor:
     Sensor for recording one or more input channels. Channels are stored as ChannelInfo objects.
     Open(), close() and read() method must be overloaded.
     """
+
     # Dummy sensor info
-    sensor_info = SensorInfo(sensor_serial_number='DUMMY53N50RFTW', turns_in_full_turn=3)
-    
+    sensor_info = SensorInfo(
+        sensor_serial_number='DUMMY53N50RFTW', turns_in_full_turn=3
+    )
+
     def __init__(self):
         self.channels = []
         self.value_generator = get_nan
-    
+
     def open(self):
         """ Dummy method. """
         pass
-    
+
     def close(self):
         """ Dummy method. """
         pass
-    
+
     def self_test(self) -> bool:
         """
         Self test the sensor by opening and closing the port.
@@ -110,7 +123,7 @@ class Sensor:
         with open_port(self):
             pass
         return True
-    
+
     def register_channel(self, channel_info: ChannelInfo) -> None:
         """
         Register an input channel with the sensor.
@@ -121,7 +134,7 @@ class Sensor:
         :return: None
         """
         return self.channels.append(channel_info)
-        
+
     def unregister_channel(self, channel_info: ChannelInfo) -> None:
         """
         Unregister an input channel with the sensor.
@@ -130,7 +143,7 @@ class Sensor:
         :return: None
         """
         return self.channels.remove(channel_info)
-    
+
     def read(self) -> Tuple[datetime.datetime, dict]:
         """
         Read values from the registered input channels.
@@ -158,21 +171,21 @@ class Sensor:
 
 class Producer:
     """ Data producer for recording one or more input sensors. """
-        
+
     def __init__(self):
         self.sensors = []
         self.id = generate_unique_id()
-        
+
     def open(self):
         """ Open all sensor ports. """
         for s in self.sensors:
             s.open()
-    
+
     def close(self):
         """ Close all sensor ports. """
         for s in self.sensors:
             s.close()
-        
+
     def register_sensor(self, sensor: Sensor) -> None:
         """
         Register an input sensor with the producer.
@@ -185,7 +198,7 @@ class Producer:
         if not sensor.self_test():
             raise SensorError(f'{type(sensor).__name__} did not pass self test')
         self.sensors.append(sensor)
-        
+
     def unregister_sensor(self, sensor: Sensor):
         """
         Unregister an input sensor with the producer.
@@ -197,9 +210,11 @@ class Producer:
         try:
             self.sensors.remove(sensor)
         except ValueError:
-            raise ValueError(f'{type(sensor).__name__} is not registered with the producer')
-        
-    def read(self, queue: mp.Queue=None) -> List[Tuple[datetime.datetime, dict]]:
+            raise ValueError(
+                f'{type(sensor).__name__} is not registered with the producer'
+            )
+
+    def read(self, queue: mp.Queue = None) -> List[Tuple[datetime.datetime, dict]]:
         """
         Read values from the registered input sensors. The read values are pushed to a queue if specified.
 
@@ -215,9 +230,10 @@ class Producer:
 
 class ProducerProcess:
     """ Process for recording data from a Producer. """
+
     # Default producer class
     producer_class = Producer
-    
+
     def __init__(self, name: str, document: Document):
         self.queue = mp.Queue()
         self.document = document
@@ -225,7 +241,7 @@ class ProducerProcess:
         self.stop_event = mp.Event()
         self.producer = self.producer_class()
         self._process = mp.Process(name=name, target=self.run)
-    
+
     def __str__(self):
         return self.name
 
@@ -284,7 +300,7 @@ class ProducerProcess:
         :return:
         """
         self.start_event.clear()
-        
+
     def resume(self) -> None:
         """
         Resume the process after pause.
@@ -292,7 +308,7 @@ class ProducerProcess:
         :return:
         """
         self.start_event.set()
-        
+
     def join(self, timeout=1) -> int:
         """
         Join the process. If the process is not alive to begin with, nothing happens.
@@ -307,8 +323,10 @@ class ProducerProcess:
         if self.is_alive():
             self._process.join(timeout)
             if self.is_alive():
-                logger.error('Producer process "{}" is not shutting down gracefully. '
-                             'Resorting to force terminate and join...'.format(str(self)))
+                logger.error(
+                    'Producer process "{}" is not shutting down gracefully. '
+                    'Resorting to force terminate and join...'.format(str(self))
+                )
                 self._process.terminate()
                 self._process.join(timeout)
         logger.info('Producer process "{}" joined successfully'.format(str(self)))

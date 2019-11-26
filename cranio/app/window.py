@@ -3,12 +3,26 @@ GUI windows.
 """
 from typing import List
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QAction, QMainWindow, QWidget, QDialog, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import (
+    QAction,
+    QMainWindow,
+    QWidget,
+    QDialog,
+    QVBoxLayout,
+    QPushButton,
+)
 from cranio.producer import ProducerProcess, create_dummy_sensor
 from cranio.imada import Imada
 from cranio.model import AnnotatedEvent, Database
-from cranio.app.widget import PatientWidget, MetaDataWidget, MeasurementWidget, RegionPlotWidget, EditWidget, \
-    DoubleSpinEditWidget, SessionWidget
+from cranio.app.widget import (
+    PatientWidget,
+    MetaDataWidget,
+    MeasurementWidget,
+    RegionPlotWidget,
+    EditWidget,
+    DoubleSpinEditWidget,
+    SessionWidget,
+)
 from cranio.utils import logger
 
 
@@ -24,6 +38,7 @@ def load_document():
 
 class RegionPlotWindow(QDialog):
     """ Dialog with a region plot widget and an "Ok" button. """
+
     signal_close = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -213,6 +228,7 @@ class PatientDialog(QDialog):
 
 class MainWindow(QMainWindow):
     """ Craniodistraction application main window. """
+
     signal_close = pyqtSignal()
 
     def __init__(self, database: Database):
@@ -230,7 +246,9 @@ class MainWindow(QMainWindow):
         self.meta_widget = MetaDataWidget(database=self.database)
         self.main_layout.addWidget(self.meta_widget)
         # Add measurement widget
-        self.measurement_widget = MeasurementWidget(database=self.database, producer_process=self.producer_process)
+        self.measurement_widget = MeasurementWidget(
+            database=self.database, producer_process=self.producer_process
+        )
         self.main_layout.addWidget(self.measurement_widget)
         # Add File menu
         self.file_menu = self.menuBar().addMenu('File')
@@ -251,10 +269,12 @@ class MainWindow(QMainWindow):
     @producer_process.setter
     def producer_process(self, value: ProducerProcess):
         self._producer_process = value
-        logger.debug(f'Set measurement widget producer process to {self._producer_process}')
+        logger.debug(
+            f'Set measurement widget producer process to {self._producer_process}'
+        )
         self.measurement_widget.producer_process = self._producer_process
 
-    def set_patient(self, patient_id: str, lock: bool=False):
+    def set_patient(self, patient_id: str, lock: bool = False):
         """
         Set active patient.
 
@@ -303,7 +323,9 @@ class MainWindow(QMainWindow):
 
     def connect_imada_sensor(self):
         self.sensor = Imada()
-        logger.debug(f'Connected Imada sensor with serial number "{self.sensor.sensor_info.sensor_serial_number}"')
+        logger.debug(
+            f'Connected Imada sensor with serial number "{self.sensor.sensor_info.sensor_serial_number}"'
+        )
 
     def register_sensor_with_producer(self):
         if self.sensor is not None:

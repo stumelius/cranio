@@ -12,8 +12,9 @@ from config import Config
 @pytest.fixture(scope='function')
 def database_fixture():
     database = Database(drivername='sqlite')
-    logger.register_database(database)
     database.create_engine()
+    logger.register_database(database)
+    database.init()
     try:
         Session.init(database=database)
     except ValueError:
@@ -43,7 +44,7 @@ def database_document_fixture(database_patient_fixture):
             patient_id=Patient.get_instance().patient_id,
             sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
             distractor_type=Config.DEFAULT_DISTRACTOR,
-            database=database_patient_fixture
+            database=database_patient_fixture,
         )
     except ValueError:
         Document.reset_instance()
@@ -51,7 +52,7 @@ def database_document_fixture(database_patient_fixture):
             patient_id=Patient.get_instance().patient_id,
             sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
             distractor_type=Config.DEFAULT_DISTRACTOR,
-            database=database_patient_fixture
+            database=database_patient_fixture,
         )
     yield database_patient_fixture
 
@@ -63,7 +64,10 @@ def logging_fixture():
 
 @pytest.fixture
 def producer_process():
-    p = ProducerProcess('test_process', document=Document(document_id=generate_unique_id(), started_at=utc_datetime()))
+    p = ProducerProcess(
+        'test_process',
+        document=Document(document_id=generate_unique_id(), started_at=utc_datetime()),
+    )
     yield p
     if p.is_alive():
         p.join()

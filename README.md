@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/smomni/cranio.svg?branch=master)](https://travis-ci.org/smomni/cranio)
+[![CircleCI](https://circleci.com/gh/smomni/cranio.svg?style=svg)](https://circleci.com/gh/smomni/cranio)
 [![Coverage Status](https://codecov.io/gh/smomni/cranio/branch/master/graph/badge.svg)](https://codecov.io/gh/smomni/cranio)
 [![Documentation Status](https://readthedocs.org/projects/cranio/badge/?version=latest)](https://cranio.readthedocs.io/en/latest/?badge=latest)
 [![Maintainability](https://api.codeclimate.com/v1/badges/c14e1d3a9202d71024a3/maintainability)](https://codeclimate.com/github/smomni/cranio/maintainability)
@@ -52,32 +52,39 @@ digital torque gauge. The gauge features a remote torque sensor with a Jacob's c
 ![](docs/imada.jpg)
 
 
-### Prerequisites
+### Software
+
+Prerequisites:
 
 * OS: Windows, Linux, OS X (tested on Windows 10 and Linux)
 * [Python 3.6.x](https://www.python.org/downloads/)
 * [git](https://git-scm.com/downloads)
+* [FTDI USB Serial Port driver for Windows (32-bit)](https://www.ftdichip.com/Drivers/CDM/CDM%20v2.12.28%20WHQL%20Certified.zip)
 
-### Installing
+#### Installing the software
 
-The source code is available on [GitHub](https://github.com/smomni/cranio). Install from source using `git` and `pip`:
+Install from source:
 
 ```bash
 git clone https://github.com/smomni/cranio
 cd cranio
+python3 -m virtualenv venv
+venv/Scripts/activate
+pip install -r requirements.txt
 pip install -e .[test]
 ```
 
-### Running the tests
+#### Running the tests
 
-Run the test suite using `pytest`:
+Run the test suite:
+
 ```bash
 pytest
 ```
 
-### Building the documentation
+#### Building the documentation
 
-To build the documentation in HTML format using [Sphinx](http://www.sphinx-doc.org/en/stable/):
+Build HTML documentation:
 
 ```bash
 cd docs
@@ -86,13 +93,23 @@ make html
 
 The built documentation is located in `docs/build/html`.
 
-### Using the software for distraction measurements
+#### Running the software
 
-To start the measurement software:
+
+Initialize database (first time only):
 
 ```bash
-python run.py
+cranio initdb
 ```
+
+Start the measurement software:
+
+```bash
+cranio run
+```
+
+
+### Distraction and measurement workflow
 
 The distraction workflow consists of three subsequent sequences: 
 
@@ -160,7 +177,6 @@ he/she can skip step 2. The distraction events can later be annotated as a post-
 The distraction meta and raw data are stored locally in a [SQLite](https://www.sqlite.org/index.html) database file `cranio.db`. 
 The database file shall be sent to the investigators for data analysis periodically (e.g., daily or weekly) during the treatment.
 The database file contains no sensitive patient information as the patient data is pseudonymized.
-
 
 
 ## Acknowledgments

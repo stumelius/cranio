@@ -7,7 +7,13 @@ import cranio.constants
 from functools import partial
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
-from cranio.app.widget import PlotWidget, VMultiPlotWidget, RegionPlotWidget, PlotMode, filter_last_n_seconds
+from cranio.app.widget import (
+    PlotWidget,
+    VMultiPlotWidget,
+    RegionPlotWidget,
+    PlotMode,
+    filter_last_n_seconds,
+)
 from cranio.app.window import RegionPlotWindow
 
 left_edge = 0
@@ -56,11 +62,12 @@ def test_plot_widget_dtypes():
     w = PlotWidget()
     x = [random.random() for _ in range(10)]
     y = [random.random() for _ in range(10)]
-    
+
     def _assert_plot(x_in, y_in):
         w.plot(x, y, PlotMode.OVERWRITE)
         assert w.x_arr == list(x)
         assert w.y_arr == list(y)
+
     # numpy array
     x_np = np.array(x)
     y_np = np.array(y)
@@ -79,7 +86,9 @@ def test_plot_widget_x_label():
         label_map[c] = c
     for i, o in label_map.items():
         p.x_label = i
-        assert p.x_label == o, 'x_label: {} - output: {} (input: {})'.format(p.x_label, o, i)
+        assert p.x_label == o, 'x_label: {} - output: {} (input: {})'.format(
+            p.x_label, o, i
+        )
 
 
 def test_plot_widget_y_label():
@@ -89,7 +98,9 @@ def test_plot_widget_y_label():
         label_map[c] = c
     for i, o in label_map.items():
         p.y_label = i
-        assert p.y_label == o, 'y_label: {} - output: {} (input: {})'.format(p.y_label, o, i)
+        assert p.y_label == o, 'y_label: {} - output: {} (input: {})'.format(
+            p.y_label, o, i
+        )
 
 
 def test_plot_widget_filter_last_10_seconds_excludes_entries_older_than_10_seconds_from_the_plot():
@@ -108,18 +119,16 @@ def test_plot_widget_filter_last_10_seconds_excludes_entries_older_than_10_secon
 def test_vmulti_plot_widget_plot_and_overwrite(rows):
     p = VMultiPlotWidget()
     for _ in range(2):
-        data = pd.DataFrame(np.random.rand(rows, 4), 
-                            columns=list('ABCD'))
+        data = pd.DataFrame(np.random.rand(rows, 4), columns=list('ABCD'))
         p.plot(data, 'title', mode=PlotMode.OVERWRITE)
         assert p.title == 'title'
         assert len(p.plot_widgets) == 4
-        
+
         # assert data in each plot widget
         for c in data.columns:
             pw = p.find_plot_widget_by_label(c)
             assert pw.x_arr == data[c].index.tolist()
             assert pw.y_arr == data[c].tolist()
-
 
 
 def test_vmulti_plot_widget_placeholder():
@@ -133,8 +142,7 @@ def test_vmulti_plot_widget_placeholder():
 def test_vmulti_plot_widget_clear_all_plots():
     p = VMultiPlotWidget()
     n = 100
-    data = pd.DataFrame(np.random.rand(n, 4),
-                        columns=list('ABCD'))
+    data = pd.DataFrame(np.random.rand(n, 4), columns=list('ABCD'))
     p.plot(data, 'title', mode=PlotMode.OVERWRITE)
     for pw in p.plot_widgets:
         assert len(pw.x_arr) == n
@@ -193,6 +201,7 @@ def test_region_plot_window_ok_button_closes_the_window():
         w = QApplication.activeWindow()
         b = w.button(standard_button)
         b.clicked.emit()
+
     timer = QTimer()
     timer.setSingleShot(True)
     timer.setInterval(100)

@@ -18,8 +18,10 @@ def test_session_widget_contains_all_sessions_from_the_database(session_widget):
 
 def test_session_widget_select_and_click_ok_changes_active_session(session_widget):
     with session_scope(session_widget.database) as s:
-        session = s.query(Session).filter(Session.session_id != Session.get_instance().session_id).first()
+        session = (
+            s.query(Session)
+            .filter(Session.session_id != Session.get_instance().session_id)
+            .first()
+        )
     session_widget.select_session(session_id=session.session_id)
     assert session_widget.active_session_id() == session.session_id
-
-

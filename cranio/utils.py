@@ -18,7 +18,6 @@ from cranio.constants import DEFAULT_LOGGING_CONFIG_PATH
 
 
 class CustomAdapter(logging.LoggerAdapter):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.machine = None
@@ -51,7 +50,9 @@ class CustomAdapter(logging.LoggerAdapter):
 
     def unregister_database(self, database):
         if database != self.database:
-            raise ValueError(f'Database {database.url} not registered with logging adapter')
+            raise ValueError(
+                f'Database {database.url} not registered with logging adapter'
+            )
         logger.debug(f'Database {self.database.url} unregistered with logging adapter')
         self.database = None
 
@@ -61,6 +62,7 @@ logger = CustomAdapter(logging.getLogger('cranio'), {})
 
 class UTCFormatter(logging.Formatter):
     """ Logging formatter that converts timestamps to UTC+0. """
+
     converter = time.gmtime
 
 
@@ -87,7 +89,7 @@ def try_remove(name: Union[str, Path]):
             os.remove(str(name))
 
 
-def get_logging_config(path: Union[Path, str]=None) -> dict:
+def get_logging_config(path: Union[Path, str] = None) -> dict:
     """
     Return logging configuration dictionary. If path is None, default configuration path is used.
 
@@ -100,10 +102,10 @@ def get_logging_config(path: Union[Path, str]=None) -> dict:
         return yaml.safe_load(stream)
 
 
-def configure_logging():
-    # logging configuration
+def configure_logging(log_level: str = 'INFO'):
     d = get_logging_config()
     logging.config.dictConfig(d)
+    logger.setLevel(log_level)
 
 
 def get_logging_levels() -> Dict[int, str]:
@@ -143,7 +145,9 @@ def default_excepthook(exctype: Exception, value: str, tb):
     :param tb:
     :return:
     """
-    logging.exception(f'UNHANDLED {exctype.__name__}: {value}', exc_info=(exctype, value, tb))
+    logging.exception(
+        f'UNHANDLED {exctype.__name__}: {value}', exc_info=(exctype, value, tb)
+    )
     sys.__excepthook__(exctype, value, tb)
 
 

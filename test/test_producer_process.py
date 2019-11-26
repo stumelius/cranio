@@ -58,7 +58,11 @@ def test_producer_process_with_sensors(producer_process, database_document_fixtu
     p = producer_process
     s = Sensor()
     s.value_generator = random_value_generator
-    channels = [ChannelInfo('torque', 'Nm'), ChannelInfo('load', 'N'), ChannelInfo('extension', 'mm')]
+    channels = [
+        ChannelInfo('torque', 'Nm'),
+        ChannelInfo('load', 'N'),
+        ChannelInfo('extension', 'mm'),
+    ]
     for c in channels:
         s.register_channel(c)
     p.producer.register_sensor(s)
