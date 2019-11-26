@@ -6,10 +6,21 @@ from cranio.model import Session, DefaultDatabase
 from cranio.state_machine import StateMachine
 from config import Config
 
+log_level_parser = ArgumentParser(add_help=False)
+log_level_parser.add_argument(
+    '--log-level',
+    help='Logging level',
+    type=str,
+    default='INFO',
+    choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+)
+
 # Attach custom excepthook
 attach_excepthook()
 
-parser = ArgumentParser(description='Cranio measurement software')
+parser = ArgumentParser(
+    description='Cranio measurement software', parents=[log_level_parser]
+)
 subparsers = parser.add_subparsers(title='cmd', dest='cmd')
 
 parser_initdb = subparsers.add_parser('initdb')
@@ -64,7 +75,7 @@ commands = {'initdb': initdb, 'run': run}
 
 def main():
     args = parser.parse_args()
-    configure_logging()
+    configure_logging(log_level=args.log_level)
     command = commands[args.cmd]
     sys.exit(command(args))
 
