@@ -53,10 +53,6 @@ color_palette = [
     (204, 185, 116),
     (100, 181, 205),
 ]
-PATIENT_ID_TOOLTIP = (
-    'Enter patient identifier.\n'
-    'NOTE: Do not enter personal information, such as names.'
-)
 DISTRACTOR_ID_TOOLTIP = 'Enter distractor identifier/number.'
 
 
@@ -274,9 +270,7 @@ class MetaDataWidget(QGroupBox):
     def __init__(self, database: Database, parent=None):
         super().__init__(parent=parent)
         self.database = database
-        self.patient_widget = ComboEditWidget('Patient', parent=self)
         self.operator_widget = EditWidget('Operator', parent=self)
-        self.toggle_patient_lock_button = QPushButton('Toggle Patient Lock')
         self.layout = QVBoxLayout()
         self.enabled = True
         self.init_ui()
@@ -287,53 +281,9 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
-        self.toggle_patient_lock_button.clicked.connect(self.toggle_lock_button_clicked)
-        self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.operator_widget)
-        self.layout.addWidget(self.toggle_patient_lock_button)
         self.setLayout(self.layout)
         self.setTitle('Session information')
-        self.patient_widget.tooltip = PATIENT_ID_TOOLTIP
-
-    def add_patient(self, text: str):
-        """
-        Add patient to popup list.
-
-        :param text:
-        :return:
-        """
-        self.patient_widget.add_item(text)
-
-    def update_patients_from_database(self):
-        """
-        Clear and populate patient popup list from database.
-
-        :return:
-        """
-        logger.debug('Update patients called')
-        self.patient_widget.clear()
-        with session_scope(self.database) as s:
-            for p in s.query(Patient).all():
-                # Populate patient widget
-                self.patient_widget.add_item(p.patient_id)
-
-    def patients(self) -> List[str]:
-        """
-
-        :return: List of patient identifiers
-        """
-        return [
-            self.patient_widget.item_at(i) for i in range(self.patient_widget.count())
-        ]
-
-    @property
-    def active_patient(self) -> str:
-        """ Active patient in the popup list. """
-        return self.patient_widget.value
-
-    @active_patient.setter
-    def active_patient(self, patient_id: str):
-        self.patient_widget.value = patient_id
 
     @property
     def active_operator(self) -> str:
@@ -342,25 +292,6 @@ class MetaDataWidget(QGroupBox):
     @active_operator.setter
     def active_operator(self, operator: str):
         self.operator_widget.value = str(operator)
-
-    def lock_patient(self, lock: bool):
-        """
-        Lock patient edit widget.
-
-        :param lock:
-        :return:
-        """
-        self.enabled = not lock
-        self.patient_widget.setEnabled(self.enabled)
-        logger.debug(f'Patient lock = {lock}')
-
-    def toggle_lock_button_clicked(self):
-        """
-        Toggle patient widget lock.
-
-        :return:
-        """
-        self.lock_patient(self.enabled)
 
 
 class PatientWidget(QWidget):
@@ -372,19 +303,16 @@ class PatientWidget(QWidget):
         super().__init__()
         self.database = database
         self.main_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
         self.label = QLabel('Patients')
-        self.table_widget = QTableWidget(parent=self)
-        self.table_widget.setColumnCount(2)
-        # Disable editing
-        self.table_widget.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # Column headers from Patient table
-        self.table_widget.setHorizontalHeaderLabels(Patient.__table__.columns.keys())
-        self.table_widget.horizontalHeader().setStretchLastSection(True)
-        self.table_widget.resizeColumnsToContents()
+        self.select_widget = QComboBox(parent=self)
         self.add_button = QPushButton('Add', parent=self)
+        self.ok_button = QPushButton('OK', parent=self)
         self.main_layout.addWidget(self.label)
-        self.main_layout.addWidget(self.table_widget)
-        self.main_layout.addWidget(self.add_button)
+        self.main_layout.addWidget(self.select_widget)
+        self.button_layout.addWidget(self.add_button)
+        self.button_layout.addWidget(self.ok_button)
+        self.main_layout.addLayout(self.button_layout)
         self.setLayout(self.main_layout)
         self.update_patients()
 
@@ -394,13 +322,10 @@ class PatientWidget(QWidget):
 
         :return:
         """
+        self.select_widget.clear()
         with session_scope(self.database) as session:
-            for i, patient in enumerate(session.query(Patient).all()):
-                self.table_widget.setRowCount(i + 1)
-                self.table_widget.setItem(i, 0, QTableWidgetItem(patient.patient_id))
-                self.table_widget.setItem(
-                    i, 1, QTableWidgetItem(str(patient.created_at))
-                )
+            for patient in session.query(Patient).all():
+                self.select_widget.addItem(patient.patient_id)
 
     def patient_count(self) -> int:
         """
@@ -408,7 +333,10 @@ class PatientWidget(QWidget):
 
         :return:
         """
-        return self.table_widget.rowCount()
+        return self.select_widget.count()
+
+    def get_selected_patient_id(self) -> str:
+        return self.select_widget.currentText()
 
 
 class SessionWidget(QWidget):

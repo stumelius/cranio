@@ -73,6 +73,15 @@ class MyState(QState, StateMachineContextMixin):
 class InitialState(MyState):
     def __init__(self, name: str, parent=None):
         super().__init__(name=name, parent=parent)
+        self._active_patient = None
+
+    @property
+    def active_patient(self):
+        return self._active_patient
+
+    @active_patient.setter
+    def active_patient(self, value: str):
+        self._active_patient = value
 
     @property
     def signal_change_session(self):
@@ -98,8 +107,6 @@ class InitialState(MyState):
         self.main_window.measurement_widget.stop_button.setDefault(False)
         self.main_window.measurement_widget.start_button.setDefault(True)
         self.main_window.measurement_widget.start_button.setFocus()
-        # Update patient dropdown list
-        self.main_window.meta_widget.update_patients_from_database()
 
 
 class ChangeSessionState(MyState):
@@ -342,6 +349,7 @@ class ShowPatientsState(MyState):
         self.patient_widget = None
         self.signal_add_patient = None
         self.signal_close = None
+        self.signal_ok = None
 
     def init_ui(self):
         """ Initialize UI elements. Needs to be called before entry. """
@@ -349,6 +357,7 @@ class ShowPatientsState(MyState):
         self.dialog = PatientDialog(patient_widget=self.patient_widget)
         self.signal_add_patient = self.patient_widget.add_button.clicked
         self.signal_close = self.dialog.signal_close
+        self.signal_ok = self.patient_widget.ok_button.clicked
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -358,6 +367,9 @@ class ShowPatientsState(MyState):
     def onExit(self, event: QEvent):
         super().onExit(event)
         self.dialog.close()
+
+    def get_selected_patient_id(self) -> str:
+        return self.patient_widget.get_selected_patient_id()
 
 
 class AddPatientState(MyState):

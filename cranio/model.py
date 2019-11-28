@@ -248,6 +248,12 @@ class Patient(Base, InstanceMixin, DictMixin):
         cls.set_instance(patient)
         return cls.get_instance()
 
+    @classmethod
+    def add_new(cls, patient_id: str, database: Database):
+        patient = cls(patient_id=patient_id)
+        logger.debug(f'Add patient {patient.patient_id} to database')
+        database.insert(patient)
+
 
 class Session(Base, InstanceMixin, DictMixin):
     """ Session table. """

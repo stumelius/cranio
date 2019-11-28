@@ -112,3 +112,9 @@ def caught_exceptions(database):
     with session_scope(database) as s:
         errors = s.query(Log).filter(Log.level == logging.ERROR).all()
     return errors
+
+
+@pytest.helpers.register
+def transition_machine_to_s1(machine):
+    machine.s0.signal_ok.emit()
+    assert machine.in_state(machine.s1)

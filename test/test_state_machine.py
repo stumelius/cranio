@@ -20,6 +20,7 @@ attach_excepthook()
 
 
 def test_start_measurement_inserts_document_and_sensor_info_to_database(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
@@ -41,6 +42,7 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
 
 
 def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # start measurement for 2 seconds
     machine.main_window.measurement_widget.start_button.clicked.emit()
     time.sleep(2)
@@ -59,6 +61,7 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
 
 
 def test_event_detection_state_flow(machine, qtbot):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
@@ -153,6 +156,7 @@ def test_event_detection_state_flow(machine, qtbot):
 def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_you_sure_prompt(
     machine, qtbot
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
@@ -244,6 +248,7 @@ def test_event_detection_state_default_region_count_equals_turns_in_full_turn(
 
 
 def test_state_machine_transitions_to_and_from_change_session_state(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Add extra session to switch to
     machine.database.insert(Session())
     assert machine.s1.signal_change_session is not None
@@ -288,6 +293,7 @@ def test_state_machine_transitions_to_and_from_change_session_state(machine):
 def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_cancel_button(
     machine,
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Trigger transition from s1 to s9 (ChangeSessionState)
     machine.s1.signal_change_session.emit()
     assert machine.in_state(machine.s9)
@@ -298,6 +304,7 @@ def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_c
 def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is_stop(
     qtbot, machine
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     with qtbot.waitSignal(machine.main_window.signal_start):
         qtbot.keyPress(
             machine.main_window.measurement_widget.start_button, Qt.Key_Enter
@@ -309,6 +316,7 @@ def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is
 
 
 def test_click_close_in_main_window_prompts_verification_from_user(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Trigger close and verify that state changed to s11
     machine.main_window.signal_close.emit()
     assert machine.in_state(machine.s11)

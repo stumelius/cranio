@@ -21,6 +21,7 @@ from cranio.transition import (
     RemoveAnnotatedEventsTransition,
     UpdateDocumentTransition,
     AddPatientTransition,
+    SetPatientTransition,
 )
 
 
@@ -38,6 +39,8 @@ class StateMachine(QStateMachine):
         self._initialize_transitions()
 
     def _initialize_states(self):
+        self.s0 = ShowPatientsState(name='s0')
+        self.s0_1 = AddPatientState(name='s0_1')
         self.s1 = InitialState(name='s1')
         self.s2 = MeasurementState(name='s2')
         self.s3 = EventDetectionState(name='s3')
@@ -57,11 +60,11 @@ class StateMachine(QStateMachine):
         self.s11 = AreYouSureState(
             'Are you sure you want to exit the application?', name='s11'
         )
-        self.s12 = ShowPatientsState(name='s12')
-        self.s13 = AddPatientState(name='s13')
-        self.s0 = QFinalState()
+        self.s_final = QFinalState()
         for s in (
+            self.s_final,
             self.s0,
+            self.s0_1,
             self.s1,
             self.s2,
             self.s3,
@@ -71,16 +74,22 @@ class StateMachine(QStateMachine):
             self.s9,
             self.s10,
             self.s11,
-            self.s12,
-            self.s13,
         ):
             self.addState(s)
-        self.setInitialState(self.s1)
+        self.setInitialState(self.s0)
         # Additional initializations
+        self.s0.init_ui()
         self.s9.init_ui()
-        self.s12.init_ui()
 
     def _initialize_transitions(self):
+        self.set_patient_transition_on_close = SetPatientTransition(
+            self.s0.signal_close
+        )
+        self.set_patient_transition_on_close.setTargetState(self.s1)
+        self.set_patient_transition_on_ok = SetPatientTransition(self.s0.signal_ok)
+        self.set_patient_transition_on_ok.setTargetState(self.s1)
+        self.add_patient_transition = AddPatientTransition(self.s0_1.signal_ok)
+        self.add_patient_transition.setTargetState(self.s0)
         self.start_measurement_transition = StartMeasurementTransition(
             self.main_window.signal_start
         )
@@ -99,15 +108,23 @@ class StateMachine(QStateMachine):
         self.remove_annotated_events_transition.setTargetState(self.s3)
         self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
         self.update_document_transition.setTargetState(self.s1)
-        self.add_patient_transition = AddPatientTransition(self.s13.signal_ok)
-        self.add_patient_transition.setTargetState(self.s12)
         self.transition_map = {
+            # TODO: set_patient_transition_on_ok
+            self.s0: {
+                self.s0_1: self.s0.signal_add_patient,
+                self.s1: [
+                    self.set_patient_transition_on_close,
+                    self.set_patient_transition_on_ok,
+                ],
+            },
+            self.s0_1: {
+                self.s0: [self.s0_1.signal_cancel, self.add_patient_transition]
+            },
             self.s1: {
                 self.s2: self.start_measurement_transition,
                 self.s9: self.s1.signal_change_session,
                 self.s3: self._s1_to_s3_signal,
                 self.s11: self.main_window.signal_close,
-                self.s12: self.s1.signal_show_patients,
             },
             self.s2: {self.s3: self.main_window.signal_stop},
             self.s3: {
@@ -128,12 +145,7 @@ class StateMachine(QStateMachine):
                 self.s9: self.s10.signal_no,
                 self.s1: self.change_active_session_transition,
             },
-            self.s11: {self.s1: self.s11.signal_no, self.s0: self.s11.signal_yes},
-            self.s12: {
-                self.s13: self.s12.signal_add_patient,
-                self.s1: self.s12.signal_close,
-            },
-            self.s13: {self.s12: [self.s13.signal_cancel, self.add_patient_transition]},
+            self.s11: {self.s1: self.s11.signal_no, self.s_final: self.s11.signal_yes},
         }
         # Add transitions to state machine
         for source, targets in self.transition_map.items():
@@ -141,14 +153,7 @@ class StateMachine(QStateMachine):
                 if not isinstance(signal_arr, list):
                     signal_arr = [signal_arr]
                 for signal in signal_arr:
-                    if type(signal) in (
-                        StartMeasurementTransition,
-                        ChangeActiveSessionTransition,
-                        EnterAnnotatedEventsTransition,
-                        RemoveAnnotatedEventsTransition,
-                        UpdateDocumentTransition,
-                        AddPatientTransition,
-                    ):
+                    if hasattr(signal, 'custom_signal'):
                         source.addTransition(signal)
                     else:
                         source.addTransition(signal, target)

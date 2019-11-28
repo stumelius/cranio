@@ -2,7 +2,7 @@ import sys
 from argparse import ArgumentParser
 from cranio.app import app
 from cranio.utils import attach_excepthook, logger, configure_logging
-from cranio.model import Session, DefaultDatabase
+from cranio.model import Session, DefaultDatabase, Patient
 from cranio.state_machine import StateMachine
 from config import Config
 
@@ -30,6 +30,9 @@ parser_initdb.add_argument(
     help='Clear database before initialization (i.e., fresh start)',
 )
 
+parser_add_patient = subparsers.add_parser('add_patient')
+parser_add_patient.add_argument('patient_id', help='Pseudonymized patient identifier')
+
 parser_run = subparsers.add_parser('run')
 parser_run.add_argument(
     '-d', '--enable-dummy-sensor', action='store_true', help='Allow dummy sensor'
@@ -47,6 +50,12 @@ def initdb(args):
     if args.reset:
         database.clear()
     database.init()
+
+
+def add_patient(args):
+    database = DefaultDatabase.SQLITE
+    database.create_engine()
+    Patient.add_new(patient_id=args.patient_id, database=database)
 
 
 def run(args):
@@ -70,12 +79,15 @@ def run(args):
     return ret
 
 
-commands = {'initdb': initdb, 'run': run}
+commands = {'initdb': initdb, 'run': run, 'add_patient': add_patient}
 
 
 def main():
     args = parser.parse_args()
     configure_logging(log_level=args.log_level)
+    if args.cmd is None:
+        parser.print_help()
+        return
     command = commands[args.cmd]
     sys.exit(command(args))
 

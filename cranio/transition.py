@@ -10,7 +10,7 @@ from cranio.exc import DeviceDetectionError
 
 
 class SignalTransition(QSignalTransition, StateMachineContextMixin):
-    pass
+    custom_signal = True
 
 
 class StartMeasurementTransition(SignalTransition):
@@ -97,7 +97,13 @@ class UpdateDocumentTransition(SignalTransition):
 class AddPatientTransition(SignalTransition):
     def onTransition(self, event: QEvent):
         super().onTransition(event)
-        patient_id = self.machine().s13.dialog.textValue()
+        patient_id = self.machine().s0_1.dialog.textValue()
         logger.debug(f'Add patient "{patient_id}" to database')
-        patient = Patient(patient_id=patient_id)
-        self.database.insert(patient)
+        Patient.add_new(patient_id=patient_id, database=self.database)
+
+
+class SetPatientTransition(SignalTransition):
+    def onTransition(self, event: QEvent):
+        super().onTransition(event)
+        self.machine().s1.active_patient = self.machine().s0.get_selected_patient_id()
+        logger.debug('SET PATIENT')
