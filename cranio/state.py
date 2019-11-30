@@ -73,15 +73,14 @@ class MyState(QState, StateMachineContextMixin):
 class InitialState(MyState):
     def __init__(self, name: str, parent=None):
         super().__init__(name=name, parent=parent)
-        self._active_patient = None
 
     @property
-    def active_patient(self) -> str:
-        return self.main_window.active_patient
+    def patient_id(self) -> str:
+        return self.main_window.patient_id
 
-    @active_patient.setter
-    def active_patient(self, value: str):
-        self.main_window.active_patient = value
+    @patient_id.setter
+    def patient_id(self, value: str):
+        self.main_window.patient_id = value
 
     @property
     def signal_change_session(self):
@@ -127,13 +126,14 @@ class ChangeSessionState(MyState):
         # Close equals to Cancel
         self.session_dialog.signal_close = self.signal_cancel
 
-    def active_session_id(self):
-        return self.session_widget.active_session_id()
+    @property
+    def session_id(self):
+        return self.session_widget.session_id
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         # Keep selection, update and open dialog
-        session_id = self.session_widget.active_session_id()
+        session_id = self.session_widget.session_id
         self.session_widget.update_sessions()
         if session_id is not None:
             self.session_widget.select_session(session_id)
@@ -158,9 +158,9 @@ class MeasurementState(MyState):
         """
         return Document(
             session_id=self.machine().session_id,
-            patient_id=self.machine().active_patient,
-            distractor_number=self.machine().active_distractor,
-            operator=self.machine().active_operator,
+            patient_id=self.machine().patient_id,
+            distractor_number=self.machine().distractor,
+            operator=self.machine().operator,
             started_at=utc_datetime(),
             sensor_serial_number=self.machine().sensor_serial_number,
             distractor_type=Config.DEFAULT_DISTRACTOR,
@@ -278,7 +278,7 @@ class AreYouSureState(MyState):
             # Object has no attribute 'annotated_events' or annotated_events = None
             region_count = None
         try:
-            session_info = self.machine().s9.session_widget.active_session_id
+            session_info = self.machine().session_id
         except AttributeError:
             # 'NoneType' object has no attribute 's9'
             session_info = None

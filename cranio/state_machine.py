@@ -35,7 +35,7 @@ class StateMachine(QStateMachine):
         self.main_window = MainWindow(database)
         self.document = None
         self.annotated_events = None
-        self._active_session = None
+        self._session = None
         self._initialize_states()
         self._initialize_transitions()
 
@@ -160,34 +160,33 @@ class StateMachine(QStateMachine):
                         source.addTransition(signal, target)
 
     @property
-    def active_session(self):
-        return self._active_session
+    def session(self) -> Session:
+        return self._session
 
-    @active_session.setter
-    def active_session(self, value: Session):
-        self._active_session = value
-
-    @property
-    def active_patient(self) -> str:
-        return self.main_window.active_patient
-
-    @active_patient.setter
-    def active_patient(self, patient_id: str):
-        self.main_window.active_patient = patient_id
+    @session.setter
+    def session(self, value: Session):
+        self._session = value
 
     @property
-    def active_distractor(self):
-        return self.main_window.measurement_widget.active_distractor
+    def patient_id(self) -> str:
+        return self.main_window.patient_id
+
+    @patient_id.setter
+    def patient_id(self, patient_id: str):
+        self.main_window.patient_id = patient_id
 
     @property
-    def active_operator(self):
-        return self.main_window.meta_widget.active_operator
+    def distractor(self):
+        return self.main_window.measurement_widget.distractor
+
+    @property
+    def operator(self):
+        return self.main_window.meta_widget.operator
 
     @property
     def producer_process(self):
         return self.main_window.producer_process
 
-    # TODO: Rename as active_sensor
     @property
     def sensor(self):
         return self.main_window.sensor
@@ -198,7 +197,7 @@ class StateMachine(QStateMachine):
 
     @property
     def session_id(self):
-        return self.active_session.session_id
+        return self.session.session_id
 
     @property
     def distractor_type(self):

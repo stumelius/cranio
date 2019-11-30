@@ -41,8 +41,8 @@ def producer_process():
 @pytest.fixture(scope='function')
 def machine(producer_process, database_fixture):
     state_machine = StateMachine(database=database_fixture)
-    state_machine.active_session = add_session(database_fixture)
-    state_machine.active_patient = add_patient(database_fixture)
+    state_machine.session = add_session(database_fixture)
+    state_machine.patient_id = add_patient(database_fixture).patient_id
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     # Connect and register dummy sensor
@@ -59,7 +59,7 @@ def machine(producer_process, database_fixture):
 @pytest.fixture
 def machine_without_patient(producer_process, database_fixture):
     state_machine = StateMachine(database=database_fixture)
-    state_machine.active_session = add_session(database_fixture)
+    state_machine.session = add_session(database_fixture)
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     state_machine.start()

@@ -42,7 +42,7 @@ def test_s0_signals_to_transition_to_s1_and_patient_is_displayed_in_main_window(
     signal = getattr(machine.s0, signal_name)
     signal.emit()
     assert machine.in_state(machine.s1)
-    assert machine.main_window.active_patient == machine.s1.active_patient == patient_id
+    assert machine.main_window.patient_id == machine.s1.patient_id == patient_id
 
 
 def test_s0_selects_most_recently_used_patient_by_default(machine):

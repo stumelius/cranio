@@ -9,7 +9,7 @@ def test_start_measurement_transition_prevents_start_if_no_patient_is_selected(
 ):
     pytest.helpers.transition_machine_to_s1(machine_without_patient)
     machine = machine_without_patient
-    machine.active_patient = ''
+    machine.patient_id = ''
     # Try and start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()

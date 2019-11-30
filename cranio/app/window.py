@@ -275,12 +275,12 @@ class MainWindow(QMainWindow):
         self.measurement_widget.producer_process = self._producer_process
 
     @property
-    def active_patient(self) -> str:
-        return self.meta_widget.active_patient
+    def patient_id(self) -> str:
+        return self.meta_widget.patient_id
 
-    @active_patient.setter
-    def active_patient(self, value: str):
-        self.meta_widget.active_patient = value
+    @patient_id.setter
+    def patient_id(self, value: str):
+        self.meta_widget.patient_id = value
 
     def start_measurement(self):
         """

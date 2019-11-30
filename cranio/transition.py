@@ -18,8 +18,8 @@ class StartMeasurementTransition(SignalTransition):
         if not super().eventTest(event):
             return False
         # Invalid patient
-        if not self.machine().active_patient:
-            logger.error(f'Invalid patient "{self.machine().active_patient}"')
+        if not self.machine().patient_id:
+            logger.error(f'Invalid patient "{self.machine().patient_id}"')
             return False
         # No sensor connected
         if self.machine().sensor is None:
@@ -45,11 +45,11 @@ class ChangeActiveSessionTransition(SignalTransition):
     def onTransition(self, event: QEvent):
         super().onTransition(event)
         # Change active session
-        session_id = self.machine().s9.active_session_id()
+        session_id = self.machine().s9.session_id
         logger.debug(f'[{type(self).__name__}] Change active session to {session_id}')
         with session_scope(self.database) as s:
             session = s.query(Session).filter(Session.session_id == session_id).first()
-        self.machine().active_session = session
+        self.machine().session = session
 
 
 class EnterAnnotatedEventsTransition(SignalTransition):
@@ -105,4 +105,4 @@ class AddPatientTransition(SignalTransition):
 class SetPatientTransition(SignalTransition):
     def onTransition(self, event: QEvent):
         super().onTransition(event)
-        self.machine().s1.active_patient = self.machine().s0.get_selected_patient_id()
+        self.machine().s1.patient_id = self.machine().s0.get_selected_patient_id()

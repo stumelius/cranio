@@ -289,19 +289,19 @@ class MetaDataWidget(QGroupBox):
         self.setTitle('Session information')
 
     @property
-    def active_patient(self) -> str:
+    def patient_id(self) -> str:
         return self.patient_widget.value
 
-    @active_patient.setter
-    def active_patient(self, value: str):
+    @patient_id.setter
+    def patient_id(self, value: str):
         self.patient_widget.value = str(value)
 
     @property
-    def active_operator(self) -> str:
+    def operator(self) -> str:
         return self.operator_widget.value
 
-    @active_operator.setter
-    def active_operator(self, operator: str):
+    @operator.setter
+    def operator(self, operator: str):
         self.operator_widget.value = str(operator)
 
 
@@ -406,7 +406,8 @@ class SessionWidget(QWidget):
         """
         return self.table_widget.rowCount()
 
-    def active_session_id(self) -> str:
+    @property
+    def session_id(self) -> str:
         """ Return session_id of active (selected) session. If no session is selected, None is returned. """
         try:
             session_id = self.table_widget.item(
@@ -450,8 +451,6 @@ class MeasurementWidget(QWidget):
         self.stop_button = QPushButton('Stop')
         self.update_timer = QtCore.QTimer()
         self.update_interval = 0.05  # seconds
-        # Initialize distractor as 1 and set range between 1 and 10
-        self.active_distractor = 1
         self.distractor_widget.set_range(1, 10)
         self.init_ui()
 
@@ -473,11 +472,11 @@ class MeasurementWidget(QWidget):
         self.update_timer.timeout.connect(self.update)
 
     @property
-    def active_distractor(self) -> int:
+    def distractor(self) -> int:
         return self.distractor_widget.value
 
-    @active_distractor.setter
-    def active_distractor(self, distractor_number: int):
+    @distractor.setter
+    def distractor(self, distractor_number: int):
         self.distractor_widget.value = distractor_number
 
     def plot(self, df: pd.DataFrame, mode: PlotMode = PlotMode.OVERWRITE):
@@ -549,15 +548,15 @@ class MeasurementWidget(QWidget):
     def keyPressEvent(self, event):
         # Increase active distractor when up arrow is pressed
         if event.key() == QtCore.Qt.Key_Up:
-            self.active_distractor = self.active_distractor + 1
+            self.distractor = self.distractor + 1
             logger.debug(
-                f'Change active distractor to {self.active_distractor} (Up arrow pressed)'
+                f'Change active distractor to {self.distractor} (Up arrow pressed)'
             )
         # Decrease active distractor when down arrow is pressed
         elif event.key() == QtCore.Qt.Key_Down:
-            self.active_distractor = self.active_distractor - 1
+            self.distractor = self.distractor - 1
             logger.debug(
-                f'Change active distractor to {self.active_distractor} (Down arrow pressed)'
+                f'Change active distractor to {self.distractor} (Down arrow pressed)'
             )
         return super().keyPressEvent(event)
 
