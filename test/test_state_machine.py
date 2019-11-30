@@ -20,6 +20,7 @@ attach_excepthook()
 
 
 def test_start_measurement_inserts_document_and_sensor_info_to_database(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
@@ -28,9 +29,9 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
         document = s.query(Document).first()
         assert document.document_id == machine.document.document_id
         # Verify patient, distractor and operator
-        assert document.patient_id == machine.active_patient
-        assert document.distractor_number == machine.active_distractor
-        assert document.operator == machine.active_operator
+        assert document.patient_id == machine.patient_id
+        assert document.distractor_number == machine.distractor
+        assert document.operator == machine.operator
         assert document.sensor_serial_number
         sensor_info = (
             s.query(SensorInfo)
@@ -41,6 +42,7 @@ def test_start_measurement_inserts_document_and_sensor_info_to_database(machine)
 
 
 def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # start measurement for 2 seconds
     machine.main_window.measurement_widget.start_button.clicked.emit()
     time.sleep(2)
@@ -59,6 +61,7 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
 
 
 def test_event_detection_state_flow(machine, qtbot):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
@@ -153,6 +156,7 @@ def test_event_detection_state_flow(machine, qtbot):
 def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_you_sure_prompt(
     machine, qtbot
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Assign document
     machine.document = machine.s2.create_document()
     # Enter sensor info and document
@@ -189,10 +193,12 @@ def test_are_you_sure_state_opens_dialog_on_entry_and_closes_on_exit():
 
 
 def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times_per_turns_in_full_turn(
-    database_document_fixture,
+    database_fixture,
 ):
-    state_machine = StateMachine(database=database_document_fixture)
-    state_machine.document = Document.get_instance()
+    state_machine = StateMachine(database=database_fixture)
+    state_machine.document, *_ = pytest.helpers.add_document_and_foreign_keys(
+        database_fixture
+    )
     state = state_machine.s6
     event_count = 3
     # Generate and insert annotated events
@@ -223,10 +229,12 @@ def test_note_state_number_of_full_turns_equals_number_of_annotated_events_times
 
 
 def test_event_detection_state_default_region_count_equals_turns_in_full_turn(
-    database_document_fixture,
+    database_fixture,
 ):
-    state_machine = StateMachine(database=database_document_fixture)
-    state_machine.document = Document.get_instance()
+    state_machine = StateMachine(database=database_fixture)
+    state_machine.document, *_ = pytest.helpers.add_document_and_foreign_keys(
+        database_fixture
+    )
     state = state_machine.s3
     sensor_info = state.document.get_related_sensor_info(
         database=state_machine.database
@@ -244,8 +252,9 @@ def test_event_detection_state_default_region_count_equals_turns_in_full_turn(
 
 
 def test_state_machine_transitions_to_and_from_change_session_state(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Add extra session to switch to
-    machine.database.insert(Session())
+    session = pytest.helpers.add_session(machine.database)
     assert machine.s1.signal_change_session is not None
     # Trigger transition from s1 to s9 (ChangeSessionState)
     machine.s1.signal_change_session.emit()
@@ -259,7 +268,7 @@ def test_state_machine_transitions_to_and_from_change_session_state(machine):
     other_sessions = [
         s
         for s in machine.s9.session_widget.sessions
-        if s.session_id != Session.get_instance().session_id
+        if s.session_id != machine.session_id
     ]
     assert len(other_sessions) == 1
     active_session_id = other_sessions[0].session_id
@@ -282,12 +291,13 @@ def test_state_machine_transitions_to_and_from_change_session_state(machine):
     machine.s10.signal_yes.emit()
     assert machine.in_state(machine.s1)
     # Verify that session has changed
-    assert Session.get_instance().session_id == active_session_id
+    assert machine.session_id == active_session_id
 
 
 def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_cancel_button(
     machine,
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Trigger transition from s1 to s9 (ChangeSessionState)
     machine.s1.signal_change_session.emit()
     assert machine.in_state(machine.s9)
@@ -298,6 +308,7 @@ def test_state_machine_change_session_widget_clicking_x_in_top_right_equals_to_c
 def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is_stop(
     qtbot, machine
 ):
+    pytest.helpers.transition_machine_to_s1(machine)
     with qtbot.waitSignal(machine.main_window.signal_start):
         qtbot.keyPress(
             machine.main_window.measurement_widget.start_button, Qt.Key_Enter
@@ -309,6 +320,7 @@ def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is
 
 
 def test_click_close_in_main_window_prompts_verification_from_user(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
     # Trigger close and verify that state changed to s11
     machine.main_window.signal_close.emit()
     assert machine.in_state(machine.s11)
@@ -321,7 +333,7 @@ def test_click_close_in_main_window_prompts_verification_from_user(machine):
     assert not machine.isRunning()
 
 
-def test_press_enter_in_are_you_sure_state_means_yes(database_patient_fixture, qtbot):
+def test_press_enter_in_are_you_sure_state_means_yes(qtbot):
     event = QEvent(QEvent.None_)
     state = AreYouSureState('foo')
     state.onEntry(event)

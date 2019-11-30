@@ -37,7 +37,7 @@ def test_producer_add_and_remove_sensors():
     assert len(p.sensors) == 0
 
 
-def test_producer_process_start_and_join(producer_process, database_document_fixture):
+def test_producer_process_start_and_join(producer_process):
     p = producer_process
     p.start()
     assert p.is_alive()
@@ -54,7 +54,7 @@ def test_producer_process_start_and_join(producer_process, database_document_fix
     assert len(index_arr) == 0
 
 
-def test_producer_process_with_sensors(producer_process, database_document_fixture):
+def test_producer_process_with_sensors(producer_process):
     p = producer_process
     s = Sensor()
     s.value_generator = random_value_generator

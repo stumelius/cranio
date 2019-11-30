@@ -18,7 +18,7 @@ from cranio.model import (
     Document,
     AnnotatedEvent,
     SensorInfo,
-    DistractorType,
+    Patient,
     Database,
 )
 from cranio.utils import logger, utc_datetime
@@ -75,6 +75,14 @@ class InitialState(MyState):
         super().__init__(name=name, parent=parent)
 
     @property
+    def patient_id(self) -> str:
+        return self.main_window.patient_id
+
+    @patient_id.setter
+    def patient_id(self, value: str):
+        self.main_window.patient_id = value
+
+    @property
     def signal_change_session(self):
         return self.main_window.signal_change_session
 
@@ -98,8 +106,6 @@ class InitialState(MyState):
         self.main_window.measurement_widget.stop_button.setDefault(False)
         self.main_window.measurement_widget.start_button.setDefault(True)
         self.main_window.measurement_widget.start_button.setFocus()
-        # Update patient dropdown list
-        self.main_window.meta_widget.update_patients_from_database()
 
 
 class ChangeSessionState(MyState):
@@ -120,13 +126,14 @@ class ChangeSessionState(MyState):
         # Close equals to Cancel
         self.session_dialog.signal_close = self.signal_cancel
 
-    def active_session_id(self):
-        return self.session_widget.active_session_id()
+    @property
+    def session_id(self):
+        return self.session_widget.session_id
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
         # Keep selection, update and open dialog
-        session_id = self.session_widget.active_session_id()
+        session_id = self.session_widget.session_id
         self.session_widget.update_sessions()
         if session_id is not None:
             self.session_widget.select_session(session_id)
@@ -150,12 +157,12 @@ class MeasurementState(MyState):
         :raises ValueError: if active patient is invalid
         """
         return Document(
-            session_id=Session.get_instance().session_id,
-            patient_id=self.machine().active_patient,
-            distractor_number=self.machine().active_distractor,
-            operator=self.machine().active_operator,
+            session_id=self.machine().session_id,
+            patient_id=self.machine().patient_id,
+            distractor_number=self.machine().distractor,
+            operator=self.machine().operator,
             started_at=utc_datetime(),
-            sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+            sensor_serial_number=self.machine().sensor_serial_number,
             distractor_type=Config.DEFAULT_DISTRACTOR,
         )
 
@@ -271,7 +278,7 @@ class AreYouSureState(MyState):
             # Object has no attribute 'annotated_events' or annotated_events = None
             region_count = None
         try:
-            session_info = self.machine().s9.session_widget.active_session_id
+            session_info = self.machine().session_id
         except AttributeError:
             # 'NoneType' object has no attribute 's9'
             session_info = None
@@ -342,6 +349,7 @@ class ShowPatientsState(MyState):
         self.patient_widget = None
         self.signal_add_patient = None
         self.signal_close = None
+        self.signal_ok = None
 
     def init_ui(self):
         """ Initialize UI elements. Needs to be called before entry. """
@@ -349,6 +357,7 @@ class ShowPatientsState(MyState):
         self.dialog = PatientDialog(patient_widget=self.patient_widget)
         self.signal_add_patient = self.patient_widget.add_button.clicked
         self.signal_close = self.dialog.signal_close
+        self.signal_ok = self.patient_widget.ok_button.clicked
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -358,6 +367,27 @@ class ShowPatientsState(MyState):
     def onExit(self, event: QEvent):
         super().onExit(event)
         self.dialog.close()
+
+    def get_selected_patient_id(self) -> str:
+        return self.patient_widget.get_selected_patient_id()
+
+    def select_patient(self, patient_id: str):
+        index = self.patient_widget.select_widget.findText(patient_id)
+        self.patient_widget.select_widget.setCurrentIndex(index)
+
+    def select_most_recently_used_patient(self, database: Database):
+        with database.session_scope() as s:
+            patient = (
+                s.query(Patient)
+                .join(Document)
+                .join(Session)
+                .order_by(Session.started_at.desc())
+                .first()
+            )
+            self.select_patient(patient_id=patient.patient_id)
+
+    def update_patients(self):
+        return self.patient_widget.update_patients()
 
 
 class AddPatientState(MyState):
