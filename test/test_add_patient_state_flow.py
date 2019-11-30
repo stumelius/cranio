@@ -31,7 +31,9 @@ def test_add_patient_state_flow(machine):
 
 
 @pytest.mark.parametrize('signal_name', ('signal_close', 'signal_ok'))
-def test_s0_signals_to_transition_to_s1(machine, signal_name):
+def test_s0_signals_to_transition_to_s1_and_patient_is_displayed_in_main_window(
+    machine, signal_name
+):
     patient_id = 'pytest-patient-state-flow'
     Patient.add_new(patient_id=patient_id, database=machine.database)
     machine.s0.patient_widget.update_patients()
@@ -42,4 +44,4 @@ def test_s0_signals_to_transition_to_s1(machine, signal_name):
     signal = getattr(machine.s0, signal_name)
     signal.emit()
     assert machine.in_state(machine.s1)
-    assert machine.s1.active_patient == patient_id
+    assert machine.main_window.active_patient == machine.s1.active_patient == patient_id

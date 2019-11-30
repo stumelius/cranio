@@ -76,12 +76,12 @@ class InitialState(MyState):
         self._active_patient = None
 
     @property
-    def active_patient(self):
-        return self._active_patient
+    def active_patient(self) -> str:
+        return self.main_window.active_patient
 
     @active_patient.setter
     def active_patient(self, value: str):
-        self._active_patient = value
+        self.main_window.active_patient = value
 
     @property
     def signal_change_session(self):

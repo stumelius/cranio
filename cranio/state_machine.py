@@ -167,12 +167,12 @@ class StateMachine(QStateMachine):
         Session.set_instance(value)
 
     @property
-    def active_patient(self):
-        return self.main_window.meta_widget.active_patient
+    def active_patient(self) -> str:
+        return self.main_window.active_patient
 
     @active_patient.setter
     def active_patient(self, patient_id: str):
-        self.main_window.meta_widget.active_patient = patient_id
+        self.main_window.active_patient = patient_id
 
     @property
     def active_distractor(self):

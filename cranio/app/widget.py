@@ -270,6 +270,8 @@ class MetaDataWidget(QGroupBox):
     def __init__(self, database: Database, parent=None):
         super().__init__(parent=parent)
         self.database = database
+        self.patient_widget = EditWidget('Patient', parent=self)
+        self.patient_widget.setEnabled(False)
         self.operator_widget = EditWidget('Operator', parent=self)
         self.layout = QVBoxLayout()
         self.enabled = True
@@ -281,9 +283,18 @@ class MetaDataWidget(QGroupBox):
 
         :return:
         """
+        self.layout.addWidget(self.patient_widget)
         self.layout.addWidget(self.operator_widget)
         self.setLayout(self.layout)
         self.setTitle('Session information')
+
+    @property
+    def active_patient(self) -> str:
+        return self.patient_widget.value
+
+    @active_patient.setter
+    def active_patient(self, value: str):
+        self.patient_widget.value = str(value)
 
     @property
     def active_operator(self) -> str:

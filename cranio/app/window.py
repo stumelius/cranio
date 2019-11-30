@@ -274,24 +274,13 @@ class MainWindow(QMainWindow):
         )
         self.measurement_widget.producer_process = self._producer_process
 
-    def set_patient(self, patient_id: str, lock: bool = False):
-        """
-        Set active patient.
-
-        :param patient_id:
-        :param lock: lock patient
-        :return:
-        """
-        self.meta_widget.active_patient = patient_id
-        self.meta_widget.lock_patient(lock)
-
-    def get_patient(self) -> str:
-        """
-        Return active patient id.
-
-        :return:
-        """
+    @property
+    def active_patient(self) -> str:
         return self.meta_widget.active_patient
+
+    @active_patient.setter
+    def active_patient(self, value: str):
+        self.meta_widget.active_patient = value
 
     def start_measurement(self):
         """

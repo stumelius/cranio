@@ -106,4 +106,3 @@ class SetPatientTransition(SignalTransition):
     def onTransition(self, event: QEvent):
         super().onTransition(event)
         self.machine().s1.active_patient = self.machine().s0.get_selected_patient_id()
-        logger.debug('SET PATIENT')
