@@ -103,7 +103,7 @@ def add_sensor_info(database: Database) -> SensorInfo:
 
 @pytest.helpers.register
 def add_document_and_foreign_keys(
-    database: Database
+    database: Database,
 ) -> Tuple[Document, Patient, Session, SensorInfo]:
     session = add_session(database)
     patient = add_patient(database)
