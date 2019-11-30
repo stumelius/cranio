@@ -1,9 +1,10 @@
 import pytest
 import logging
 import logging.config
-from cranio.model import Database, Session, Patient, Document, Log, session_scope
+from typing import Tuple
+from cranio.model import Database, Session, Patient, Document, SensorInfo
 from cranio.utils import get_logging_config, generate_unique_id, utc_datetime, logger
-from cranio.producer import ProducerProcess, Sensor
+from cranio.producer import ProducerProcess
 from cranio.state_machine import StateMachine
 from cranio.app import app
 from config import Config
@@ -15,46 +16,9 @@ def database_fixture():
     database.create_engine()
     logger.register_database(database)
     database.init()
-    try:
-        Session.init(database=database)
-    except ValueError:
-        Session.reset_instance()
-        Session.init(database=database)
     yield database
     logger.unregister_database(database)
     database.clear()
-
-
-@pytest.fixture(scope='function')
-def database_patient_fixture(database_fixture):
-    patient_id = generate_unique_id()
-    try:
-        Patient.init(patient_id=patient_id, database=database_fixture)
-    except ValueError:
-        Patient.reset_instance()
-        Patient.init(patient_id=patient_id, database=database_fixture)
-    yield database_fixture
-
-
-@pytest.fixture(scope='function')
-def database_document_fixture(database_patient_fixture):
-    Sensor.enter_info_to_database(database=database_patient_fixture)
-    try:
-        Document.init(
-            patient_id=Patient.get_instance().patient_id,
-            sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-            distractor_type=Config.DEFAULT_DISTRACTOR,
-            database=database_patient_fixture,
-        )
-    except ValueError:
-        Document.reset_instance()
-        Document.init(
-            patient_id=Patient.get_instance().patient_id,
-            sensor_serial_number=Sensor.sensor_info.sensor_serial_number,
-            distractor_type=Config.DEFAULT_DISTRACTOR,
-            database=database_patient_fixture,
-        )
-    yield database_patient_fixture
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -75,15 +39,15 @@ def producer_process():
 
 
 @pytest.fixture(scope='function')
-def machine(producer_process, database_patient_fixture):
-    state_machine = StateMachine(database=database_patient_fixture)
+def machine(producer_process, database_fixture):
+    state_machine = StateMachine(database=database_fixture)
+    state_machine.active_session = add_session(database_fixture)
+    state_machine.active_patient = add_patient(database_fixture)
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     # Connect and register dummy sensor
     state_machine.main_window.connect_dummy_sensor()
     state_machine.main_window.register_sensor_with_producer()
-    # Set active patient
-    state_machine.active_patient = Patient.get_instance().patient_id
     state_machine.start()
     app.processEvents()
     yield state_machine
@@ -95,6 +59,7 @@ def machine(producer_process, database_patient_fixture):
 @pytest.fixture
 def machine_without_patient(producer_process, database_fixture):
     state_machine = StateMachine(database=database_fixture)
+    state_machine.active_session = add_session(database_fixture)
     logger.register_machine(state_machine)
     state_machine.main_window.producer_process = producer_process
     state_machine.start()
@@ -107,14 +72,48 @@ def machine_without_patient(producer_process, database_fixture):
 
 
 @pytest.helpers.register
-def caught_exceptions(database):
-    """ Return caught exceptions from log database. """
-    with session_scope(database) as s:
-        errors = s.query(Log).filter(Log.level == logging.ERROR).all()
-    return errors
-
-
-@pytest.helpers.register
 def transition_machine_to_s1(machine):
     machine.s0.signal_ok.emit()
     assert machine.in_state(machine.s1)
+
+
+@pytest.helpers.register
+def add_session(database: Database) -> Session:
+    with database.session_scope() as s:
+        session = Session()
+        s.add(session)
+    return session
+
+
+@pytest.helpers.register
+def add_patient(database: Database) -> Patient:
+    with database.session_scope() as s:
+        patient = Patient(patient_id=generate_unique_id())
+        s.add(patient)
+    return patient
+
+
+@pytest.helpers.register
+def add_sensor_info(database: Database) -> SensorInfo:
+    with database.session_scope() as s:
+        sensor_info = SensorInfo(sensor_serial_number='pytest', turns_in_full_turn=3)
+        s.add(sensor_info)
+    return sensor_info
+
+
+@pytest.helpers.register
+def add_document_and_foreign_keys(
+    database: Database
+) -> Tuple[Document, Patient, Session, SensorInfo]:
+    session = add_session(database)
+    patient = add_patient(database)
+    sensor_info = add_sensor_info(database)
+    with database.session_scope() as s:
+        document = Document(
+            session_id=session.session_id,
+            patient_id=patient.patient_id,
+            sensor_serial_number=sensor_info.sensor_serial_number,
+            distractor_type=Config.DEFAULT_DISTRACTOR,
+        )
+        s.add(document)
+    return document, patient, session, sensor_info

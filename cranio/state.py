@@ -157,12 +157,12 @@ class MeasurementState(MyState):
         :raises ValueError: if active patient is invalid
         """
         return Document(
-            session_id=Session.get_instance().session_id,
+            session_id=self.machine().session_id,
             patient_id=self.machine().active_patient,
             distractor_number=self.machine().active_distractor,
             operator=self.machine().active_operator,
             started_at=utc_datetime(),
-            sensor_serial_number=self.machine().sensor.sensor_info.sensor_serial_number,
+            sensor_serial_number=self.machine().sensor_serial_number,
             distractor_type=Config.DEFAULT_DISTRACTOR,
         )
 

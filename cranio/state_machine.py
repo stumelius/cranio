@@ -35,6 +35,7 @@ class StateMachine(QStateMachine):
         self.main_window = MainWindow(database)
         self.document = None
         self.annotated_events = None
+        self._active_session = None
         self._initialize_states()
         self._initialize_transitions()
 
@@ -160,11 +161,11 @@ class StateMachine(QStateMachine):
 
     @property
     def active_session(self):
-        return Session.get_instance()
+        return self._active_session
 
     @active_session.setter
     def active_session(self, value: Session):
-        Session.set_instance(value)
+        self._active_session = value
 
     @property
     def active_patient(self) -> str:

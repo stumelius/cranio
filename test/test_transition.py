@@ -10,29 +10,21 @@ def test_start_measurement_transition_prevents_start_if_no_patient_is_selected(
     pytest.helpers.transition_machine_to_s1(machine_without_patient)
     machine = machine_without_patient
     machine.active_patient = ''
-    # start measurement
+    # Try and start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
-    errors = pytest.helpers.caught_exceptions(machine.database)
-    assert len(errors) == 1
-    assert 'Invalid patient' in errors[0].message
+    # Machine stays in state s1
+    assert machine.in_state(machine.s1)
 
 
 def test_start_measurement_transition_prevents_start_if_no_sensor_is_connected(machine):
     pytest.helpers.transition_machine_to_s1(machine)
     # Unregister connected dummy sensor
     machine.main_window.unregister_sensor()
-    # Start measurement
+    # Try and start measurement
     machine.main_window.measurement_widget.start_button.clicked.emit()
     app.processEvents()
-    errors = pytest.helpers.caught_exceptions(machine.database)
-    assert len(errors) == 1
-    assert (
-        errors[0].message
-        == 'No available devices detected (ENABLE_DUMMY_SENSOR = False)'
-    )
-    # Machine rolled back to initial state
-    assert not machine.in_state(machine.s2)
+    # Machine stays in state s1
     assert machine.in_state(machine.s1)
 
 

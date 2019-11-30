@@ -1,21 +1,6 @@
-'''
-List of tests:
-* (check) Annotated event can be flagged as undone and unrecorded
-' (check) Done checkbox is unchecked by default
-* (check) Recorded checkbox is checked by default
-* (check) Checking and unchecking Done checkbox toggles Done state
-* (check) Checking and unchecking Recorded checkbox toggles Recorded state
-* (check) Annotated event number matches region edit widget number
-* (check) Region count is zero when no regions are added
-* (check) Event numbering starts from one
-* (check) Event number increases by one for each added region
-* (check) Event numbering by insertion order
-* (check) Region edit widget is assigned parent region plot widget documenta
-'''
 import pytest
 import numpy as np
-from typing import Iterable, List
-from cranio.model import AnnotatedEvent, Document, Measurement, session_scope, EventType
+from cranio.model import AnnotatedEvent, EventType
 from cranio.app.widget import RegionPlotWidget, RegionEditWidget
 from cranio.app.window import RegionPlotWindow
 
@@ -44,15 +29,13 @@ def add_dummy_region(widget: RegionPlotWidget) -> RegionEditWidget:
     return widget.add_region((left_edge, (left_edge + right_edge) / 2))
 
 
-def test_annotated_event_can_be_flagged_as_undone_and_not_recorded(
-    database_document_fixture,
-):
-    document_id = Document.get_instance().document_id
+def test_annotated_event_can_be_flagged_as_undone_and_not_recorded(database_fixture,):
+    document, *_ = pytest.helpers.add_document_and_foreign_keys(database_fixture)
     event_type = EventType.distraction_event_type().event_type
     annotated_event = AnnotatedEvent(
         event_num=1,
         event_type=event_type,
-        document_id=document_id,
+        document_id=document.document_id,
         annotation_done=False,
         recorded=False,
     )
@@ -134,36 +117,30 @@ def test_event_numbering_by_insertion_order(region_plot_widget):
     assert edit_widget.event_number == 3
 
 
-def test_region_plot_window_can_be_initialized_from_document_data(
-    database_document_fixture,
-):
+def test_region_plot_window_can_be_initialized_from_document_data(database_fixture,):
     # generate data and associate with document
     n = 100
-    document = Document.get_instance()
+    document, *_ = pytest.helpers.add_document_and_foreign_keys(database_fixture)
     x_arr = np.linspace(left_edge, right_edge, n)
     y_arr = np.random.rand(n)
-    document.insert_time_series(database_document_fixture, x_arr, y_arr)
+    document.insert_time_series(database_fixture, x_arr, y_arr)
     region_plot_window = RegionPlotWindow()
-    region_plot_window.plot(
-        *document.get_related_time_series(database_document_fixture)
-    )
+    region_plot_window.plot(*document.get_related_time_series(database_fixture))
     np.testing.assert_array_almost_equal(region_plot_window.x_arr, x_arr)
     np.testing.assert_array_almost_equal(region_plot_window.y_arr, y_arr)
 
 
 def test_annotated_events_inserted_to_database_after_ok_on_region_plot_window_is_clicked(
-    database_document_fixture,
+    database_fixture,
 ):
     # generate data and associate with document
     n = 100
-    document = Document.get_instance()
+    document, *_ = pytest.helpers.add_document_and_foreign_keys(database_fixture)
     x_arr = np.linspace(left_edge, right_edge, n)
     y_arr = np.random.rand(n)
-    document.insert_time_series(database_document_fixture, x_arr, y_arr)
+    document.insert_time_series(database_fixture, x_arr, y_arr)
     region_plot_window = RegionPlotWindow()
-    region_plot_window.plot(
-        *document.get_related_time_series(database_document_fixture)
-    )
+    region_plot_window.plot(*document.get_related_time_series(database_fixture))
     # add regions using add button
     region_plot_window.set_add_count(region_count)
     region_plot_window.add_button.clicked.emit(True)

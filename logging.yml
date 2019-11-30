@@ -17,15 +17,11 @@ handlers:
     filename: app.log
     maxBytes: 1000000
     backupCount: 3
-  database:
-    class: cranio.handler.DatabaseHandler
-    level: NOTSET
-    formatter: default
 loggers:
   cranio:
     level: DEBUG
-    handlers: [console, file, database]
+    handlers: [console, file]
     propagate: False
 root:
   level: DEBUG
-  handlers: [console, file, database]
+  handlers: [console, file]
