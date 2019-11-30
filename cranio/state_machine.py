@@ -186,9 +186,24 @@ class StateMachine(QStateMachine):
     def producer_process(self):
         return self.main_window.producer_process
 
+    # TODO: Rename as active_sensor
     @property
     def sensor(self):
         return self.main_window.sensor
+
+    @property
+    def sensor_serial_number(self):
+        return self.main_window.sensor.sensor_info.sensor_serial_number
+
+    @property
+    def session_id(self):
+        return self.active_session.session_id
+
+    @property
+    def distractor_type(self):
+        from config import Config
+
+        return Config.DEFAULT_DISTRACTOR
 
     def in_state(self, state: QState) -> bool:
         """

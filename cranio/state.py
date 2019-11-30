@@ -18,7 +18,7 @@ from cranio.model import (
     Document,
     AnnotatedEvent,
     SensorInfo,
-    DistractorType,
+    Patient,
     Database,
 )
 from cranio.utils import logger, utc_datetime
@@ -370,6 +370,24 @@ class ShowPatientsState(MyState):
 
     def get_selected_patient_id(self) -> str:
         return self.patient_widget.get_selected_patient_id()
+
+    def select_patient(self, patient_id: str):
+        index = self.patient_widget.select_widget.findText(patient_id)
+        self.patient_widget.select_widget.setCurrentIndex(index)
+
+    def select_most_recently_used_patient(self, database: Database):
+        with database.session_scope() as s:
+            patient = (
+                s.query(Patient)
+                .join(Document)
+                .join(Session)
+                .order_by(Session.started_at.desc())
+                .first()
+            )
+            self.select_patient(patient_id=patient.patient_id)
+
+    def update_patients(self):
+        return self.patient_widget.update_patients()
 
 
 class AddPatientState(MyState):
