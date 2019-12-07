@@ -68,8 +68,12 @@ def run(args):
         Config.ENABLE_DUMMY_SENSOR = True
     database = DefaultDatabase.SQLITE
     database.create_engine()
-    Session.init(database=database)
     machine = StateMachine(database)
+    # Initialize session
+    with database.session_scope() as s:
+        session = Session()
+        s.add(session)
+    machine.session = session
     logger.register_machine(machine)
     logger.info('Start state machine')
     machine.start()

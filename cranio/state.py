@@ -2,8 +2,8 @@
 System states.
 """
 from typing import List
-from PyQt5.QtCore import QState, QEvent
-from PyQt5.QtWidgets import QMessageBox, QDialog, QVBoxLayout, QInputDialog
+from PyQt5.QtCore import QState, QEvent, QFinalState
+from PyQt5.QtWidgets import QMessageBox, QInputDialog
 from cranio.app.window import (
     MainWindow,
     RegionPlotWindow,
@@ -55,11 +55,7 @@ class StateMachineContextMixin:
         self.machine().annotated_events = values
 
 
-class MyState(QState, StateMachineContextMixin):
-    def __init__(self, name: str, parent=None):
-        super().__init__(parent)
-        self.name = name
-
+class StateMixin:
     def __str__(self):
         return f'{type(self).__name__}(name="{self.name}")'
 
@@ -68,6 +64,12 @@ class MyState(QState, StateMachineContextMixin):
 
     def onExit(self, event: QEvent):
         logger.debug(f'Exit {self.name}')
+
+
+class MyState(QState, StateMixin, StateMachineContextMixin):
+    def __init__(self, name: str, parent=None):
+        super().__init__(parent)
+        self.name = name
 
 
 class InitialState(MyState):
@@ -303,7 +305,6 @@ class NoteState(MyState):
         self.dialog = NotesWindow()
         # Signals
         self.signal_ok = self.dialog.ok_button.clicked
-        self.signal_close = self.dialog.signal_close
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
@@ -323,14 +324,23 @@ class NoteState(MyState):
             f'Calculate default full_turn_count = {self.full_turn_count} = '
             f'{event_count} / {sensor_info.turns_in_full_turn}'
         )
+        self.notes = ''
         self.dialog.open()
 
     def onExit(self, event: QEvent):
         super().onExit(event)
         # Update document and close window
-        self.document.notes = self.dialog.notes
-        self.document.full_turn_count = self.dialog.full_turn_count
+        self.document.notes = self.notes
+        self.document.full_turn_count = self.full_turn_count
         self.dialog.close()
+
+    @property
+    def notes(self):
+        return self.dialog.notes
+
+    @notes.setter
+    def notes(self, value: str):
+        self.dialog.notes = value
 
     @property
     def full_turn_count(self):
@@ -361,7 +371,11 @@ class ShowPatientsState(MyState):
 
     def onEntry(self, event: QEvent):
         super().onEntry(event)
+        self.patient_widget.add_button.setDefault(False)
+        self.patient_widget.ok_button.setDefault(True)
+        self.patient_widget.ok_button.setFocus()
         self.patient_widget.update_patients()
+        self.select_most_recently_used_patient(database=self.machine().database)
         self.dialog.open()
 
     def onExit(self, event: QEvent):
@@ -384,10 +398,11 @@ class ShowPatientsState(MyState):
                 .order_by(Session.started_at.desc())
                 .first()
             )
+        if patient is not None:
             self.select_patient(patient_id=patient.patient_id)
 
     def update_patients(self):
-        return self.patient_widget.update_patients()
+        self.patient_widget.update_patients()
 
 
 class AddPatientState(MyState):
@@ -406,3 +421,14 @@ class AddPatientState(MyState):
     def onExit(self, event: QEvent):
         super().onExit(event)
         self.dialog.close()
+
+
+class FinalState(QFinalState, StateMixin, StateMachineContextMixin):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+
+    def onEntry(self, event: QEvent):
+        super().onEntry(event)
+        if self.machine().producer_process is not None:
+            self.machine().producer_process.join()

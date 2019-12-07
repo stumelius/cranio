@@ -317,7 +317,7 @@ class PatientWidget(QWidget):
         self.button_layout = QHBoxLayout()
         self.label = QLabel('Patients')
         self.select_widget = QComboBox(parent=self)
-        self.add_button = QPushButton('Add', parent=self)
+        self.add_button = QPushButton('New', parent=self)
         self.ok_button = QPushButton('OK', parent=self)
         self.main_layout.addWidget(self.label)
         self.main_layout.addWidget(self.select_widget)

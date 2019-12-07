@@ -21,7 +21,6 @@ class CustomAdapter(logging.LoggerAdapter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.machine = None
-        self.database = None
 
     @property
     def name(self):
@@ -36,25 +35,11 @@ class CustomAdapter(logging.LoggerAdapter):
                 self.extra['state'] = str(self.machine.current_state())
             except ValueError:
                 self.extra['state'] = 'UndefinedState'
-        # Add database context
-        self.extra['database'] = self.database
         return super().process(msg, kwargs)
 
     def register_machine(self, machine: QStateMachine):
         logger.debug(f'{machine} registered with logging adapter')
         self.machine = machine
-
-    def register_database(self, database):
-        logger.debug(f'Database {database.url} registered with logging adapter')
-        self.database = database
-
-    def unregister_database(self, database):
-        if database != self.database:
-            raise ValueError(
-                f'Database {database.url} not registered with logging adapter'
-            )
-        logger.debug(f'Database {self.database.url} unregistered with logging adapter')
-        self.database = None
 
 
 logger = CustomAdapter(logging.getLogger('cranio'), {})

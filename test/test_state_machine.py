@@ -60,6 +60,61 @@ def test_stop_measurement_pauses_producer_and_inserts_measurements_to_database(m
         assert len(measurements) > 0
 
 
+def test_transition_from_initial_state_to_note_state_and_back_to_initial_state(machine):
+    pytest.helpers.transition_machine_to_s1(machine)
+    # Assign document
+    machine.document = machine.s2.create_document()
+    # Enter sensor info and document
+    machine.sensor.enter_info_to_database(machine.database)
+    machine.database.insert(machine.document)
+    # Generate and enter data
+    n = 10
+    time_s = list(range(n))
+    torque_Nm = list(range(n))
+    machine.document.insert_time_series(machine.database, time_s, torque_Nm)
+    # Trigger hidden transition from s1 to s6 (NoteState)
+    machine._s1_to_s6_signal.emit()
+    assert machine.in_state(machine.s6)
+    # Enter data
+    notes = 'pytest'
+    full_turn_count = 1
+    machine.s6.dialog.notes = notes
+    machine.s6.dialog.full_turn_count = full_turn_count
+    # Trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
+    machine.s6.signal_ok.emit()
+    app.processEvents()
+    # Trigger transition back to s6 (i.e., click No on "are you sure?" prompt)
+    machine.s7.signal_no.emit()
+    app.processEvents()
+    # Verify data is reset
+    assert machine.s6.dialog.notes == ''
+    assert machine.s6.dialog.full_turn_count == 0
+    machine.s6.dialog.notes = notes
+    machine.s6.dialog.full_turn_count = full_turn_count
+    # Trigger transition from s6 to s7 (i.e., click Ok on NotesWindow)
+    machine.s6.signal_ok.emit()
+    app.processEvents()
+    # Trigger transition from s7 to s1 (i.e., click Yes on "are you sure?" prompt)
+    machine.s7.signal_yes.emit()
+    app.processEvents()
+    assert machine.in_state(machine.s1)
+    # Verify that document updates were entered to database
+    with session_scope(machine.database) as s:
+        document = (
+            s.query(Document)
+            .filter(Document.document_id == machine.document.document_id)
+            .first()
+        )
+        assert document.notes == notes
+        assert float(document.full_turn_count) == full_turn_count
+    # Re-enter note state and verify that data have been reset
+    machine._s1_to_s6_signal.emit()
+    assert machine.in_state(machine.s6)
+    assert machine.s6.dialog.notes == ''
+    assert machine.s6.dialog.full_turn_count == 0
+
+
+@pytest.mark.skip('s3 and s4 are detached from s1')
 def test_event_detection_state_flow(machine, qtbot):
     pytest.helpers.transition_machine_to_s1(machine)
     # Assign document
@@ -153,6 +208,7 @@ def test_event_detection_state_flow(machine, qtbot):
         assert float(document.full_turn_count) == full_turn_count
 
 
+@pytest.mark.skip('s3 and s4 are detached from s1')
 def test_click_x_in_event_detection_state_returns_back_to_initial_state_via_are_you_sure_prompt(
     machine, qtbot
 ):
@@ -316,7 +372,7 @@ def test_press_enter_in_initial_state_is_start_and_enter_in_measurement_state_is
     assert machine.in_state(machine.s2)
     with qtbot.waitSignal(machine.main_window.signal_stop):
         qtbot.keyPress(machine.main_window.measurement_widget.stop_button, Qt.Key_Enter)
-    assert machine.in_state(machine.s3)
+    assert machine.in_state(machine.s6)
 
 
 def test_click_close_in_main_window_prompts_verification_from_user(machine):
