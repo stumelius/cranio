@@ -14,10 +14,8 @@ from config import Config
 def database_fixture():
     database = Database(drivername='sqlite')
     database.create_engine()
-    logger.register_database(database)
     database.init()
     yield database
-    logger.unregister_database(database)
     database.clear()
 
 

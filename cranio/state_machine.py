@@ -1,7 +1,7 @@
 """
 Finite-state machine.
 """
-from PyQt5.QtCore import QStateMachine, QState, QFinalState, pyqtSignal
+from PyQt5.QtCore import QStateMachine, QState, pyqtSignal
 from cranio.app.window import MainWindow
 from cranio.model import Session, Database
 from cranio.state import (
@@ -13,12 +13,11 @@ from cranio.state import (
     ChangeSessionState,
     ShowPatientsState,
     AddPatientState,
+    FinalState,
 )
 from cranio.transition import (
     StartMeasurementTransition,
     ChangeActiveSessionTransition,
-    EnterAnnotatedEventsTransition,
-    RemoveAnnotatedEventsTransition,
     UpdateDocumentTransition,
     AddPatientTransition,
     SetPatientTransition,
@@ -28,6 +27,7 @@ from cranio.transition import (
 class StateMachine(QStateMachine):
     # Hidden transition trigger signals for testing purposes
     _s1_to_s3_signal = pyqtSignal()
+    _s1_to_s6_signal = pyqtSignal()
 
     def __init__(self, database: Database):
         super().__init__()
@@ -61,7 +61,7 @@ class StateMachine(QStateMachine):
         self.s11 = AreYouSureState(
             'Are you sure you want to exit the application?', name='s11'
         )
-        self.s_final = QFinalState()
+        self.s_final = FinalState(name='s_final')
         for s in (
             self.s_final,
             self.s0,
@@ -99,18 +99,9 @@ class StateMachine(QStateMachine):
             self.s10.signal_yes
         )
         self.change_active_session_transition.setTargetState(self.s1)
-        self.enter_annotated_events_transition = EnterAnnotatedEventsTransition(
-            self.s3.signal_ok
-        )
-        self.enter_annotated_events_transition.setTargetState(self.s6)
-        self.remove_annotated_events_transition = RemoveAnnotatedEventsTransition(
-            self.s6.signal_close
-        )
-        self.remove_annotated_events_transition.setTargetState(self.s3)
         self.update_document_transition = UpdateDocumentTransition(self.s7.signal_yes)
         self.update_document_transition.setTargetState(self.s1)
         self.transition_map = {
-            # TODO: set_patient_transition_on_ok
             self.s0: {
                 self.s0_1: self.s0.signal_add_patient,
                 self.s1: [
@@ -123,20 +114,14 @@ class StateMachine(QStateMachine):
             },
             self.s1: {
                 self.s2: self.start_measurement_transition,
+                self.s6: self._s1_to_s6_signal,
                 self.s9: self.s1.signal_change_session,
-                self.s3: self._s1_to_s3_signal,
                 self.s11: self.main_window.signal_close,
             },
-            self.s2: {self.s3: self.main_window.signal_stop},
-            self.s3: {
-                self.s6: self.enter_annotated_events_transition,
-                self.s4: self.s3.signal_close,
-            },
-            self.s4: {self.s3: self.s4.signal_no, self.s1: self.s4.signal_yes},
-            self.s6: {
-                self.s7: self.s6.signal_ok,
-                self.s3: self.remove_annotated_events_transition,
-            },
+            self.s2: {self.s6: self.main_window.signal_stop},
+            self.s3: {self.s4: self.s3.signal_close},
+            self.s4: {self.s3: self.s4.signal_no},
+            self.s6: {self.s7: self.s6.signal_ok},
             self.s7: {
                 self.s6: self.s7.signal_no,
                 self.s1: self.update_document_transition,
@@ -166,6 +151,10 @@ class StateMachine(QStateMachine):
     @session.setter
     def session(self, value: Session):
         self._session = value
+
+    @property
+    def session_id(self) -> str:
+        return self.session.session_id
 
     @property
     def patient_id(self) -> str:

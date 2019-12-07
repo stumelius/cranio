@@ -51,6 +51,6 @@ def test_start_measurement_transition_automatically_connects_dummy_sensor_if_ima
         assert machine.in_state(machine.s2)
         assert isinstance(machine.main_window.sensor, Sensor)
         machine.s1.signal_stop.emit()
-        assert machine.in_state(machine.s3)
+        assert machine.in_state(machine.s6)
     finally:
         Config.ENABLE_DUMMY_SENSOR = False

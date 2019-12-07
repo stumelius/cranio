@@ -36,6 +36,11 @@ def load_document():
     logger.info('load_document() called!')
 
 
+class DialogMixin:
+    def disable_close_button(self):
+        self.setWindowFlag(Qt.WindowCloseButtonHint, False)
+
+
 class RegionPlotWindow(QDialog):
     """ Dialog with a region plot widget and an "Ok" button. """
 
@@ -145,9 +150,7 @@ class RegionPlotWindow(QDialog):
         self.signal_close.emit()
 
 
-class NotesWindow(QDialog):
-    signal_close = pyqtSignal()
-
+class NotesWindow(QDialog, DialogMixin):
     def __init__(self):
         super().__init__()
         # layout and widgets
@@ -169,6 +172,7 @@ class NotesWindow(QDialog):
         self.layout.addWidget(self.notes_widget)
         self.layout.addWidget(self.ok_button)
         self.setLayout(self.layout)
+        self.disable_close_button()
 
     @property
     def full_turn_count(self) -> float:
@@ -185,12 +189,6 @@ class NotesWindow(QDialog):
     @notes.setter
     def notes(self, value: str):
         self.notes_widget.value = value
-
-    def closeEvent(self, event):
-        """ User has clicked X on the dialog or QWidget.close() has been called programmatically. """
-        super().closeEvent(event)
-        logger.debug('X (close) button clicked')
-        self.signal_close.emit()
 
 
 class SessionDialog(QDialog):
