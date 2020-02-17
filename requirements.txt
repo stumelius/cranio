@@ -5,7 +5,7 @@ black==19.10b0
 Click==7.0
 colorama==0.4.3
 coverage==5.0.3
-more-itertools==4.3.0
+more-itertools==8.2.0
 numpy==1.16.3
 pandas==0.23.4
 pathspec==0.6.0
