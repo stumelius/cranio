@@ -3,7 +3,7 @@ atomicwrites==1.4.0
 attrs==21.2.0
 black==21.11b1
 Click==8.0.3
-colorama==0.4.0
+colorama==0.4.4
 coverage==4.5.4
 more-itertools==4.3.0
 numpy==1.16.3
