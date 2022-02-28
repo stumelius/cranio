@@ -17,7 +17,7 @@ pyqtgraph==0.12.3
 pyserial==3.5
 pytest==7.0.1
 pytest-cov==3.0.0
-pytest-helpers-namespace==2019.1.8
+pytest-helpers-namespace==2021.12.29
 pytest-qt==3.2.1
 python-dateutil==2.7.5
 pytz==2018.7
