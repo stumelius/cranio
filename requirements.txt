@@ -7,7 +7,7 @@ colorama==0.4.5
 coverage==6.4.3
 more-itertools==8.13.0
 numpy==1.23.1
-pandas==0.23.4
+pandas==1.4.3
 pathspec==0.6.0
 pluggy==0.8.0
 py==1.7.0
