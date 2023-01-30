@@ -14,7 +14,7 @@ py==1.11.0
 PyQt5==5.15.8
 PyQt5-sip==12.11.1
 pyqtgraph==0.13.1
-pyserial==3.4
+pyserial==3.5
 pytest==3.10.1
 pytest-cov==2.8.1
 pytest-helpers-namespace==2019.1.8
