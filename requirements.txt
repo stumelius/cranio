@@ -9,7 +9,7 @@ more-itertools==9.1.0
 numpy==1.24.3
 pandas==2.0.2
 pathspec==0.11.1
-pluggy==0.8.0
+pluggy==1.0.0
 py==1.7.0
 PyQt5==5.11.3
 PyQt5-sip==4.19.13
