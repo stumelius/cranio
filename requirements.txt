@@ -10,7 +10,7 @@ numpy==1.25.0
 pandas==2.0.2
 pathspec==0.11.1
 pluggy==1.1.0
-py==1.7.0
+py==1.11.0
 PyQt5==5.11.3
 PyQt5-sip==4.19.13
 pyqtgraph==0.10.0
