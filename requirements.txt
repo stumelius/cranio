@@ -8,7 +8,7 @@ coverage==7.3.2
 more-itertools==10.1.0
 numpy==1.26.1
 pandas==2.1.1
-pathspec==0.6.0
+pathspec==0.11.2
 pluggy==0.8.0
 py==1.7.0
 PyQt5==5.11.3
