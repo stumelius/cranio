@@ -6,7 +6,7 @@ Click==8.1.7
 colorama==0.4.6
 coverage==7.3.2
 more-itertools==10.1.0
-numpy==1.16.3
+numpy==1.26.1
 pandas==0.23.4
 pathspec==0.6.0
 pluggy==0.8.0
