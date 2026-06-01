@@ -4,7 +4,7 @@ attrs==26.1.0
 black==26.5.1
 Click==8.4.1
 colorama==0.4.6
-coverage==4.5.4
+coverage==7.14.1
 more-itertools==4.3.0
 numpy==1.16.3
 pandas==0.23.4
