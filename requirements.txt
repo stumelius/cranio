@@ -25,5 +25,5 @@ regex==2026.7.19
 ruamel.yaml==0.19.1
 six==1.17.0
 SQLAlchemy==2.0.51
-toml==0.10.0
+toml==0.10.2
 typed-ast==1.4.0
